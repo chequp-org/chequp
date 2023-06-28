@@ -21,19 +21,17 @@ git clone --recursive https://github.com/AMReX-Astro/Castro.git
 ## For 2D Cartesian sims
 
 ```
-cd 2d_cartesian
+cd 2d_cartesian/build
 make
 ```
 (for GPU, use `make USE_CUDA=TRUE)
 
 ```
-./Castro2d.gnu.MPI.ex inputs.2d.cyl_in_cartcoords
+cd ../run
+../build/Castro2d.gnu.MPI.ex inputs.2d.cyl_in_cartcoords
 ```
 
-## For 1D Cartesian sims
-
 ```
-cd 1d_cylindrical
-make
+cd ../analysis
+jupyter notebook Analysis.ipynb
 ```
-(for GPU, use `make USE_CUDA=TRUE)
