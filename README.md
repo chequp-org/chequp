@@ -35,3 +35,21 @@ cd ../run
 cd ../analysis
 jupyter notebook Analysis.ipynb
 ```
+
+## For 1D Cylindrical sims
+
+```
+cd 1d_cylindrical/build
+make
+```
+(for GPU, use `make USE_CUDA=TRUE)
+
+```
+cd ../run
+../build/Castro1d.gnu.MPI.ex inputs.1d.cyl
+```
+
+```
+cd ../analysis
+jupyter notebook Analysis.ipynb
+```
