@@ -2,15 +2,38 @@ This document describes how to perform simulations of plasma channel formation u
 
 # Installation
 
-Follow the instructions [here](https://amrex-astro.github.io/Castro/docs/getting_started.html) to download and compile the code.
-
 On Linux, I used the same compilation environment as for WarpX i.e.
 ```
 spack env activate warpx-openmp-dev
-make
 ```
 or (for GPU)
 ```
 spack env activate warpx-cuda-dev
-make USE_CUDA=TRUE
 ```
+
+To setup the folders:
+```
+git clone git@github.com:RemiLehe/castro_sim.git
+cd castro_sim
+git clone --recursive https://github.com/AMReX-Astro/Castro.git
+```
+
+## For 2D Cartesian sims
+
+```
+cd 2d_cartesian
+make
+```
+(for GPU, use `make USE_CUDA=TRUE)
+
+```
+./Castro2d.gnu.MPI.ex inputs.2d.cyl_in_cartcoords
+```
+
+## For 1D Cartesian sims
+
+```
+cd 1d_cylindrical
+make
+```
+(for GPU, use `make USE_CUDA=TRUE)
