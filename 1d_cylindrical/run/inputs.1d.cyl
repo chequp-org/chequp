@@ -57,13 +57,9 @@ amr.refine.pressgrad.max_level = 3
 amr.refine.pressgrad.gradient = 0.01
 amr.refine.pressgrad.field_name = pressure
 
-# CHECKPOINT FILES
-amr.check_file      = chk     # root name of checkpoint file
-amr.check_int       = 1000     # number of timesteps between checkpoints
-
 # PLOTFILES
 amr.plot_file       = plt
-amr.plot_int        = 10
+amr.plot_int        = 2
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS

@@ -35,7 +35,7 @@ amr.v                 = 1       # verbosity in Amr.cpp
 # REFINEMENT / REGRIDDING
 amr.max_level       = 3       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
-amr.regrid_int      = 2       # how often to regrid
+amr.regrid_int      = 5       # how often to regrid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.max_grid_size   = 256
 
@@ -57,13 +57,9 @@ amr.refine.pressgrad.max_level = 3
 amr.refine.pressgrad.gradient = 0.01
 amr.refine.pressgrad.field_name = pressure
 
-# CHECKPOINT FILES
-amr.check_file      = sedov_2d_cyl_in_cart_chk   # root name of checkpoint file
-amr.check_int       = 20       # number of timesteps between checkpoints
-
 # PLOTFILES
-amr.plot_file       = sedov_2d_cyl_in_cart_plt
-amr.plot_int        = 20
+amr.plot_file       = plt
+amr.plot_int        = 5
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
