@@ -67,10 +67,10 @@ amr.plot_int        = 10
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
-problem.r_init = 0.01
+problem.r_init = 0.01 # cm
 problem.p_ambient = 1.e-6
-problem.exp_energy = 1.0
-problem.dens_ambient = 1.0
+problem.exp_energy = 1.0 # erg per cm
+problem.dens_ambient = 1.0 # g per cm^3
 problem.nsub = 10
 
 # EOS
