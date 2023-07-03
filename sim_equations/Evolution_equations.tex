@@ -1,0 +1,70 @@
+\documentclass[11pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
+%\geometry{landscape}                		% Activate for rotated page geometry
+%\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}				% Use pdf, png, jpg, or eps§ with pdflatex; use eps in DVI mode
+								% TeX will automatically convert eps --> pdf in pdflatex		
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{url}
+
+%SetFonts
+
+%SetFonts
+
+
+\title{Equations to be implemented in Castro}
+\author{Remi Lehe}
+%\date{}							% Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+%\section{}
+%\subsection{}
+
+We start from the equations in Mewes at al. (\url{https://arxiv.org/abs/2305.16779}) and derive the corresponding form that is compatible with the Castro set of equations (\url{https://amrex-astro.github.io/Castro/docs/Hydrodynamics.html#conservation-forms}).
+
+\section{Conservation of mass}
+
+Equation (1) from Mewes et al. is already in the right form:
+\[ \partial_t \rho + \boldsymbol{\nabla}\cdot( \rho\boldsymbol{v} ) = 0  \]
+This implies that the corresponding source term in Castro is 0:
+\[ S_{ext,\rho} = 0 \] 
+
+\section{Evolution of the population of each species}
+
+We have 3 species: $H$, $H^+$ and $e^{-}$. Since the plasma is assumed to be neutral ($n_e = n_{H^+}$), we only need to track the mass fraction of $H$ and $H^+$ ($X_H$ and $X_{H^+}$), and $n_e$ is then given by
+\[ n_e = \rho X_{H^+} / m_H \]
+where $m_H$ is the mass of one ion (or atom) of $H$.
+
+To find the evolution of the fractions $X_k$, we start from the left-hand side of the Castro form and use differentiating rules for $\rho \times X_k$:
+\[ \partial_t \rho X_k + \boldsymbol{\nabla}\cdot( \rho X_k \boldsymbol{v} ) =  (\rho\partial_t + \rho \boldsymbol{v}\cdot\boldsymbol{\nabla})X_k + (\partial_t \rho + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v} ) ) X_k\]
+The first term on the right-hand side corresponds to Eq. (5) from Mewes et al. (with $w_\alpha = X_k$) and the second term on the right-hand side is 0 (due to the conservation of mass). \textbf{We furthermore neglect diffusion in Eq. (5) from Mewes et al.}
+\[ \partial_t \rho X_k + \boldsymbol{\nabla}\cdot( \rho X_k \boldsymbol{v} ) = R_k \]
+
+More specifically, $R_k$ is obtained from appendix D in Mewes et al:
+\[ R_{H+} = S_{ext, \rho X_{H+} } = m_H \sum_j A_j \left( \frac{k_BT_e}{e} \right)^{q_j}\exp\left( - \frac{\epsilon_j}{k_B T_e} \right)\left[ n_H n_e - n_{H^+}n_e^2 \lambda^3 e^{\epsilon_{ion}/k_BT_e} \right]\]
+\[ R_H = S_{ext, \rho X_{H} } = -R_{H+} \]
+where: \[ \lambda = \sqrt{\frac{h^2}{2\pi m_e k_B T_e} } \]
+
+\section{Conservation of momentum}
+
+We start from the left-hand side of the Castro form, and use differentiating rules for $\rho \times \boldsymbol{v}$:
+\[
+\partial_t \rho \boldsymbol{v} + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v} \boldsymbol{v}) = (\rho\partial_t + \rho \boldsymbol{v}\cdot\boldsymbol{\nabla}) \boldsymbol{v} + (\partial_t \rho + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v} ) ) \boldsymbol{v}
+\]
+The first term on the right-hand side corresponds to Eq. (2) from Mewes et al. and the second term on the right-hand side is 0 (due to the conservation of mass). \textbf{We furthermore neglect the viscosity and external forces in Eq. (2) from Mewes et al.}
+\[ \partial_t \rho \boldsymbol{v} + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v} \boldsymbol{v}) = -\boldsymbol{\nabla}p \]
+This implies that the corresponding source term in Castro is again 0:
+\[ \boldsymbol{S}_{ext,\rho\boldsymbol{u}} = \boldsymbol{0} \]
+
+\section{Conservation of energy}
+
+We have a separate equation for the heavy species and the electrons. For the heavy species (Eq. 3 in Mewes et al.):
+\begin{align} 
+\rho C_h (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})T_h &= \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})p_h + n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h) \\
+(\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})(\rho C_h T_h - p_h) - C_hT_h(\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})\rho &= \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h)
+\end{align}
+
+\end{document}  
