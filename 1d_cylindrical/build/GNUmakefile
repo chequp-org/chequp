@@ -22,7 +22,7 @@ EOS_DIR     := gamma_law
 
 # This sets the network directory in $(MICROPHYSICS_HOME)/Networks
 NETWORK_DIR := general_null
-NETWORK_INPUTS = gammalaw.net
+NETWORK_INPUTS = species.net
 
 Bpack   := ./Make.package
 Blocs   := .
