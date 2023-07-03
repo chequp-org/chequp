@@ -4,5 +4,5 @@
 
 # name   short name    aion     zion
   H_neutral  Hn         1.0      0.0
-  H_ion      Hp         1.0      0.0
+  H_ion      Hp         1.0      1.0
 
