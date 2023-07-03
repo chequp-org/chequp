@@ -121,6 +121,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     }
 
     Real e_zone = (vol_pert * problem::e_exp + vol_ambient * problem::e_ambient) / (vol_pert + vol_ambient);
+    Real ioniz_fraction = vol_pert / (vol_pert + vol_ambient);
 
     Real eint = problem::dens_ambient * e_zone;
 
@@ -144,7 +145,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     state(i,j,k,UTEMP) = problem::temp_ambient;
 
-    state(i,j,k,UFS) = state(i,j,k,URHO);
+    state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
+    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;    
 }
 
 #endif
