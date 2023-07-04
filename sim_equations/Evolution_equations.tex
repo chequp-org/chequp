@@ -86,7 +86,30 @@ we have:
 
 
 For the electron species:
-\[ \rho C_e (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})T_e = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})p_e - n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h) + Q_e\]
+\[ \rho C_e (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})T_e = \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) + (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})p_e - n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h) + Q_e\]
 where $C_e = \frac{5}{2}\frac{X_{H^+}k_B}{m_H}$ and $p_e = \frac{\rho X_{H^+} k_B T_e}{m_H}$.
+
+Let us re-express the left-hand side:
+\begin{align*} 
+\rho \frac{5}{2}\frac{X_{H^+}k_B}{m_H} (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})T_e  &=  (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla}) \rho \frac{5}{2}\frac{X_{H^+}k_B T_e}{m_H} - \frac{5}{2}\frac{k_BT_e}{m_H} (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla}) \rho X_{H^+} \\
+&= \partial_t \rho C_e T_e + \boldsymbol{\nabla}\cdot( \rho C_e T_e \boldsymbol{v} ) - \rho C_e T_e\boldsymbol{\nabla}\cdot \boldsymbol{v}  - \frac{5}{2}\frac{k_BT_e}{m_H} \left[ R_{H^+} - \rho X_{H^+}\boldsymbol{\nabla}\cdot\boldsymbol{v}\right] \\
+& = \partial_t \rho C_e T_e + \boldsymbol{\nabla}\cdot( \rho C_e T_e \boldsymbol{v} ) - Q_e^{num}
+\end{align*}
+
+We can thus rewrite the equation for the electrons as:
+\[ \partial_t \rho C_e T_e + \boldsymbol{\nabla}\cdot(\rho C_e T_e \boldsymbol{v}) = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})p_e - n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h) + Q_e^{chem} \]
+
+And finally, using
+\[ e_h = C_e T_e - \frac{p_e}{\rho} = \frac{3}{2}X_{H^+}\frac{k_B T_e}{m_H} \]
+we have:
+\[ \partial_t \rho e_e + \boldsymbol{\nabla}\cdot(\rho e_e \boldsymbol{v}) = \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) - p_e\boldsymbol{\nabla}\cdot\boldsymbol{v} - n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h) + Q_e^{chem} \]
+
+Finally, by summing the equations for the electrons and heavy species, we have:
+\[  \partial_t \rho e + \boldsymbol{\nabla}\cdot(\rho e \boldsymbol{v}) = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \]
+with:
+\[ e = e_h + e_e =  \frac{3}{2}\frac{k_B}{m_H}(T_h + X_{H^+}T_e) \qquad p = p_h + p_e = \frac{\rho k_B}{m_H}(T_h + X_{H^+}T_e) \]
+
+\textbf{If we neglect thermal diffusion}, this corresponds to \url{https://amrex-astro.github.io/Castro/docs/Hydrodynamics.html#internal-energy-and-temperature} with:
+\[ S_{ext, E} = Q_e^{chem} \]
 
 \end{document}  
