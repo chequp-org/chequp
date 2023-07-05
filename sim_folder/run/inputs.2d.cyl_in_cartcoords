@@ -1,12 +1,12 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step = 500
-stop_time = 0.1
+stop_time = 10e-9
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic =  0 0
 geometry.coord_sys   =  0       # 0 => cart
 geometry.prob_lo     =  0    0
-geometry.prob_hi     =  1    1
+geometry.prob_hi     =  0.06 0.06
 amr.n_cell           = 32   32
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -55,10 +55,10 @@ amr.plot_int        = 5
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
-problem.r_init = 0.01
+problem.r_init = 6e-4
 problem.p_ambient = 1.e-6
-problem.exp_energy = 1.0
-problem.dens_ambient = 1.0
+problem.exp_energy = 4400 # 44 mJ/m
+problem.dens_ambient = 1.67e-6  # H with 1e18 cc
 problem.nsub = 10
 
 # EOS
