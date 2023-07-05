@@ -21,7 +21,7 @@ git clone --recursive https://github.com/AMReX-Astro/Castro.git
 ## For 2D Cartesian sims
 
 ```
-cd 2d_cartesian/build
+cd sim_folder/build
 make
 ```
 (for GPU, use `make USE_CUDA=TRUE)
@@ -39,10 +39,10 @@ jupyter notebook Analysis.ipynb
 ## For 1D Cylindrical sims
 
 ```
-cd 1d_cylindrical/build
-make
+cd sim_folder/build
+make DIM=1
 ```
-(for GPU, use `make USE_CUDA=TRUE)
+(for GPU, use `make DIM=1 USE_CUDA=TRUE)
 
 ```
 cd ../run

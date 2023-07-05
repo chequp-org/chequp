@@ -1,21 +1,21 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 10000
+max_step = 500
 stop_time = 0.1
 
 # PROBLEM SIZE & GEOMETRY
-geometry.is_periodic =  0
-geometry.coord_sys   =  1        # r-z coordinates
-geometry.prob_lo     =  0
-geometry.prob_hi     =  1
-amr.n_cell           = 32
+geometry.is_periodic =  0 0
+geometry.coord_sys   =  0       # 0 => cart
+geometry.prob_lo     =  0    0
+geometry.prob_hi     =  1    1
+amr.n_cell           = 32   32
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
 # 1 = Inflow             4 = SlipWall
 # 2 = Outflow            5 = NoSlipWall
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
-castro.lo_bc       =  3
-castro.hi_bc       =  2
+castro.lo_bc       =  2   2
+castro.hi_bc       =  2   2
 
 # WHICH PHYSICS
 castro.do_hydro = 1
@@ -35,7 +35,7 @@ amr.v                 = 1       # verbosity in Amr.cpp
 # REFINEMENT / REGRIDDING
 amr.max_level       = 3       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
-amr.regrid_int      = 2       # how often to regrid
+amr.regrid_int      = 5       # how often to regrid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.max_grid_size   = 256
 
@@ -58,15 +58,15 @@ amr.refine.pressgrad.gradient = 0.01
 amr.refine.pressgrad.field_name = pressure
 
 # PLOTFILES
-amr.plot_file       = plt
-amr.plot_int        = 2
+amr.plot_file       = plt_2d_
+amr.plot_int        = 5
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
-problem.r_init = 0.01 # cm
+problem.r_init = 0.01
 problem.p_ambient = 1.e-6
-problem.exp_energy = 1.0 # erg per cm
-problem.dens_ambient = 1.0 # g per cm^3
+problem.exp_energy = 1.0
+problem.dens_ambient = 1.0
 problem.nsub = 10
 
 # EOS
