@@ -125,4 +125,4 @@ class SedovTalorProblem(object):
                             (self.d*(1-self.e*V)) ** (self.alpha_4 + self.alpha_1*(w-2)) * \
                             (self.b*(1-self.c*V/self.gamma)) ** (1+self.alpha_5)
 
-            return q
+        return q
