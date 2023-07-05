@@ -39,22 +39,14 @@ amr.regrid_int      = 5       # how often to regrid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.max_grid_size   = 256
 
-amr.refinement_indicators = denerr dengrad presserr pressgrad
-
-amr.refine.denerr.max_level = 3
-amr.refine.denerr.value_greater = 3
-amr.refine.denerr.field_name = density
+amr.refinement_indicators = dengrad pressgrad
 
 amr.refine.dengrad.max_level = 3
-amr.refine.dengrad.gradient = 0.01
+amr.refine.dengrad.relative_gradient = 0.01
 amr.refine.dengrad.field_name = density
 
-amr.refine.presserr.max_level = 3
-amr.refine.presserr.value_greater = 3
-amr.refine.presserr.field_name = pressure
-
 amr.refine.pressgrad.max_level = 3
-amr.refine.pressgrad.gradient = 0.01
+amr.refine.pressgrad.relative_gradient = 0.01
 amr.refine.pressgrad.field_name = pressure
 
 # PLOTFILES
