@@ -1,12 +1,12 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step = 10000
-stop_time = 0.1
+stop_time = 10e-9
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic =  0
 geometry.coord_sys   =  1        # r-z coordinates
 geometry.prob_lo     =  0
-geometry.prob_hi     =  1
+geometry.prob_hi     =  0.06
 amr.n_cell           = 32
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -30,7 +30,6 @@ castro.change_max     = 1.1     # maximum increase in dt over successive steps
 castro.sum_interval   = 1       # timesteps between computing mass
 castro.v              = 1       # verbosity in Castro.cpp
 amr.v                 = 1       # verbosity in Amr.cpp
-#amr.grid_log         = grdlog  # name of grid logging file
 
 # REFINEMENT / REGRIDDING
 amr.max_level       = 3       # maximum level number allowed
@@ -39,22 +38,14 @@ amr.regrid_int      = 2       # how often to regrid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.max_grid_size   = 256
 
-amr.refinement_indicators = denerr dengrad presserr pressgrad
-
-amr.refine.denerr.max_level = 3
-amr.refine.denerr.value_greater = 3
-amr.refine.denerr.field_name = density
+amr.refinement_indicators = dengrad pressgrad
 
 amr.refine.dengrad.max_level = 3
-amr.refine.dengrad.gradient = 0.01
+amr.refine.dengrad.relative_gradient = 0.01
 amr.refine.dengrad.field_name = density
 
-amr.refine.presserr.max_level = 3
-amr.refine.presserr.value_greater = 3
-amr.refine.presserr.field_name = pressure
-
 amr.refine.pressgrad.max_level = 3
-amr.refine.pressgrad.gradient = 0.01
+amr.refine.pressgrad.relative_gradient = 0.01
 amr.refine.pressgrad.field_name = pressure
 
 # PLOTFILES
@@ -63,12 +54,12 @@ amr.plot_int        = 2
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
-problem.r_init = 0.01 # cm
+problem.r_init = 6e-4
 problem.p_ambient = 1.e-6
-problem.exp_energy = 1.0 # erg per cm
-problem.dens_ambient = 1.0 # g per cm^3
+problem.exp_energy = 4400 # 44 mJ/m, converted to ergs/cm
+problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
 problem.nsub = 10
 
 # EOS
 eos.eos_assume_neutral = 1
-eos.eos_gamma =	1.66666667
+eos.eos_gamma = 1.66666667
