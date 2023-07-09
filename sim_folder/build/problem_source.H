@@ -2,11 +2,9 @@
 #define problem_source_H
 
 #include <prob_parameters.H>
+#include <fundamental_constants.H>
 
 using namespace amrex;
-
-constexpr Real y_layer = 1.25e8_rt;
-constexpr Real L_x = 2.5e8_rt;
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
 void problem_source (int i, int j, int k,
@@ -21,18 +19,32 @@ void problem_source (int i, int j, int k,
     const Real* dx = geomdata.CellSize();
 
     AMREX_D_DECL(
-                 auto x = (Real(i)+0.5e0_rt)*dx[0] + problo[0],
-                 auto y = (Real(j)+0.5e0_rt)*dx[1] + problo[1],
-                 auto z = (Real(k)+0.5e0_rt)*dx[2] + problo[2]
-                 );
-    /*    auto ey = std::exp(-(y-y_layer)*(y-y_layer)/1.e14_rt);
+    Real x = (Real(i)+0.5e0_rt)*dx[0] + problo[0],
+    Real y = (Real(j)+0.5e0_rt)*dx[1] + problo[1],
+    Real z = (Real(k)+0.5e0_rt)*dx[2] + problo[2]
+    );
 
-    auto H = ey * (1.e0_rt + 
-        0.00625_rt * std::sin( 2*M_PI*x/L_x) 
-        + 0.01875_rt * std::sin((6*M_PI*x/L_x) + M_PI/3.e0_rt) 
-        + 0.01250_rt * std::sin((8*M_PI*x/L_x) + M_PI/5.e0_rt)); */
+    Real A_direct_ionization = 7.1e-9; // m^3.s-1
+    Real q_direct_ionization = 0.4;
+    Real E_direct_ionization = 13.6 * C::ev2erg; // ergs
 
-    // Source terms: heating from reactions
+    // Density and temperature
+    Real rho = state(i,j,k,URHO);
+    Real T = state(i,j,k,UTEMP);
+    // Abundance of neutral and ionized H
+    Real X_Hn = state(i,j,k,UFS) / rho;
+    Real X_Hp = state(i,j,k,UFS+1) / rho;
+
+    // Rate of ionization
+    Real R_Hp = rho * rho / C::m_p * (
+        A_direct_ionization * ( C::k_B*T/C::ev2erg )**q_direct_ionization *
+        std::exp(-E_direct_ionization/(C::k_B*T)) *
+        X_Hn * X_Hp
+    );
+
+    // Update state
+    src(i,j,k,UFS) = -R_Hp;
+    src(i,j,k,UFS+1) = R_Hp;
     src(i,j,k,UEDEN) = 0;
     src(i,j,k,UEINT) = src(i,j,k,UEDEN);
 }
