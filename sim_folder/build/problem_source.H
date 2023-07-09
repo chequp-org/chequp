@@ -37,7 +37,8 @@ void problem_source (int i, int j, int k,
 
     // Rate of ionization
     Real R_Hp = rho * rho / C::m_p * (
-        A_direct_ionization * ( C::k_B*T/C::ev2erg )**q_direct_ionization *
+        A_direct_ionization *
+        std::pow( C::k_B*T/C::ev2erg, q_direct_ionization ) *
         std::exp(-E_direct_ionization/(C::k_B*T)) *
         X_Hn * X_Hp
     );
