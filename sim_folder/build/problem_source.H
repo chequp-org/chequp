@@ -15,19 +15,6 @@ void problem_source (int i, int j, int k,
 {
     using namespace problem;
 
-    const Real* problo = geomdata.ProbLo();
-    const Real* dx = geomdata.CellSize();
-
-    AMREX_D_DECL(
-    Real x = (Real(i)+0.5e0_rt)*dx[0] + problo[0],
-    Real y = (Real(j)+0.5e0_rt)*dx[1] + problo[1],
-    Real z = (Real(k)+0.5e0_rt)*dx[2] + problo[2]
-    );
-
-    Real A_direct_ionization = 7.1e-9; // m^3.s-1
-    Real q_direct_ionization = 0.4;
-    Real E_direct_ionization = 13.6 * C::ev2erg; // ergs
-
     // Density and temperature
     Real rho = state(i,j,k,URHO);
     Real T = state(i,j,k,UTEMP);
@@ -37,9 +24,9 @@ void problem_source (int i, int j, int k,
 
     // Rate of ionization
     Real R_Hp = rho * rho / C::m_p * (
-        A_direct_ionization *
-        std::pow( C::k_B*T/C::ev2erg, q_direct_ionization ) *
-        std::exp(-E_direct_ionization/(C::k_B*T)) *
+        problem::a_direct_ioniz *
+        std::pow( C::k_B*T/C::ev2erg, problem::q_direct_ioniz ) *
+        std::exp(-problem::e_direct_ioniz_eV*C::ev2erg/(C::k_B*T)) *
         X_Hn * X_Hp
     );
 

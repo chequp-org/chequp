@@ -16,3 +16,15 @@ r_init                 real                 0.05e0_rt                    y
 nsub                   integer              4                            y
 
 e_exp                  real                 0.0_rt
+
+a_direct_ioniz         real                 0.0_rt                       y
+
+q_direct_ioniz         real                 1.0_rt                       y
+
+e_direct_ioniz_eV      real                 1.0_rt                       y
+
+a_twostep_ioniz        real                 0.0_rt                       y
+
+q_twostep_ioniz        real                 1.0_rt                       y
+
+e_twostep_ioniz_eV     real                 1.0_rt                       y
