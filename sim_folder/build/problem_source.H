@@ -28,6 +28,11 @@ void problem_source (int i, int j, int k,
         std::pow( C::k_B*T/C::ev2erg, problem::q_direct_ioniz ) *
         std::exp(-problem::e_direct_ioniz_eV*C::ev2erg/(C::k_B*T)) *
         X_Hn * X_Hp
+        +
+        problem::a_twostep_ioniz *
+        std::pow( C::k_B*T/C::ev2erg, problem::q_twostep_ioniz ) *
+        std::exp(-problem::e_twostep_ioniz_eV*C::ev2erg/(C::k_B*T)) *
+        X_Hn * X_Hp
     );
 
     // Update state
