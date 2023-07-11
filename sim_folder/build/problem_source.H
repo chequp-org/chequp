@@ -15,6 +15,10 @@ void problem_source (int i, int j, int k,
 {
     using namespace problem;
 
+    auto coord = geomdata.Coord();
+    const Real* prob_lo = geomdata.ProbLo();
+    const Real* dx = geomdata.CellSize();
+
     // Density and temperature
     Real rho = state(i,j,k,URHO);
     Real T = state(i,j,k,UTEMP);
@@ -51,26 +55,26 @@ void problem_source (int i, int j, int k,
     Real r = 0.5_rt*(rm + rp);
     // compute div{U}
     if (coord == 0) {
-        divU = 0.5_rt*(U(i+1,j,k,UMX)/U(i+1,j,k,URHO)  -
-                                U(i-1,j,k,UMX)/U(i-1,j,k,URHO))/dx[0];
+        divU = 0.5_rt*(state(i+1,j,k,UMX)/state(i+1,j,k,URHO)  -
+                                state(i-1,j,k,UMX)/state(i-1,j,k,URHO))/dx[0];
 
     } else if (coord == 1) {
         // axisymmetric
-        divU = 0.5_rt*(rp*U(i+1,j,k,UMX)/U(i+1,j,k,URHO) -
-                                rm*U(i-1,j,k,UMX)/U(i-1,j,k,URHO))/(r*dx[0]);
+        divU = 0.5_rt*(rp*state(i+1,j,k,UMX)/state(i+1,j,k,URHO) -
+                                rm*state(i-1,j,k,UMX)/state(i-1,j,k,URHO))/(r*dx[0]);
 
     } else if (coord == 2) {
         // spherical
-        divU = 0.5_rt*(rp*rp*U(i+1,j,k,UMX)/U(i+1,j,k,URHO) -
-                                rm*rm*U(i-1,j,k,UMX)/U(i-1,j,k,URHO))/(r*r*dx[0]);
+        divU = 0.5_rt*(rp*rp*state(i+1,j,k,UMX)/state(i+1,j,k,URHO) -
+                                rm*rm*state(i-1,j,k,UMX)/state(i-1,j,k,URHO))/(r*r*dx[0]);
     }
 #if AMREX_SPACEDIM >= 2
-    divU += 0.5_rt*(U(i,j+1,k,UMY)/U(i,j+1,k,URHO) -
-                                U(i,j-1,k,UMY)/U(i,j-1,k,URHO))/dx[1];
+    divU += 0.5_rt*(state(i,j+1,k,UMY)/state(i,j+1,k,URHO) -
+                                state(i,j-1,k,UMY)/state(i,j-1,k,URHO))/dx[1];
 #endif
 #if AMREX_SPACEDIM == 3
-    divU += 0.5_rt*(U(i,j,k+1,UMZ)/U(i,j,k+1,URHO) -
-                                U(i,j,k-1,UMZ)/U(i,j,k-1,URHO))/dx[2];
+    divU += 0.5_rt*(state(i,j,k+1,UMZ)/state(i,j,k+1,URHO) -
+                                state(i,j,k-1,UMZ)/state(i,j,k-1,URHO))/dx[2];
 #endif
     // Compute pressure of heavy species
     Real e_h = state(i,j,k,UFX);
