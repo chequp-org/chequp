@@ -42,7 +42,40 @@ void problem_source (int i, int j, int k,
     src(i,j,k,UEINT) = src(i,j,k,UEDEN);
 
     // Update internal energy of heavy species
-    src(i,j,k,UFX) = 0;
+    // compute -p_h div{U}
+    // (See Castro/Source/sources/Castro_thermo.cpp)
+    Real divU = 0;
+    // radius for non-Cartesian
+    Real rp = prob_lo[0] + (static_cast<Real>(i) + 1.5_rt)*dx[0];
+    Real rm = prob_lo[0] + (static_cast<Real>(i) - 0.5_rt)*dx[0];
+    Real r = 0.5_rt*(rm + rp);
+    // compute div{U}
+    if (coord == 0) {
+        divU = 0.5_rt*(U(i+1,j,k,UMX)/U(i+1,j,k,URHO)  -
+                                U(i-1,j,k,UMX)/U(i-1,j,k,URHO))/dx[0];
+
+    } else if (coord == 1) {
+        // axisymmetric
+        divU = 0.5_rt*(rp*U(i+1,j,k,UMX)/U(i+1,j,k,URHO) -
+                                rm*U(i-1,j,k,UMX)/U(i-1,j,k,URHO))/(r*dx[0]);
+
+    } else if (coord == 2) {
+        // spherical
+        divU = 0.5_rt*(rp*rp*U(i+1,j,k,UMX)/U(i+1,j,k,URHO) -
+                                rm*rm*U(i-1,j,k,UMX)/U(i-1,j,k,URHO))/(r*r*dx[0]);
+    }
+#if AMREX_SPACEDIM >= 2
+    divU += 0.5_rt*(U(i,j+1,k,UMY)/U(i,j+1,k,URHO) -
+                                U(i,j-1,k,UMY)/U(i,j-1,k,URHO))/dx[1];
+#endif
+#if AMREX_SPACEDIM == 3
+    divU += 0.5_rt*(U(i,j,k+1,UMZ)/U(i,j,k+1,URHO) -
+                                U(i,j,k-1,UMZ)/U(i,j,k-1,URHO))/dx[2];
+#endif
+    // Compute pressure of heavy species
+    Real e_h = state(i,j,k,UFX);
+    Real p_h = 2./3 * rho*e_h;
+    src(i,j,k,UFX) = -p_h * divU;
 }
 
 #endif
