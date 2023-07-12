@@ -77,8 +77,8 @@ void problem_source (int i, int j, int k,
                                 state(i,j,k-1,UMZ)/state(i,j,k-1,URHO))/dx[2];
 #endif
     // Compute pressure of heavy species
-    Real e_h = state(i,j,k,UFX);
-    Real p_h = 2./3 * rho*e_h;
+    Real rho_e_h = state(i,j,k,UFX);
+    Real p_h = 2./3 * rho_e_h;
     src(i,j,k,UFX) = -p_h * divU;
 }
 
