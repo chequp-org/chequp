@@ -11,6 +11,9 @@ or (for GPU)
 spack env activate warpx-cuda-dev
 ```
 
+On MacOS, I followed the instruction here:
+https://github.com/AMReX-Astro/Castro/issues/2195
+
 To setup the folders:
 ```
 git clone git@github.com:RemiLehe/castro_sim.git
