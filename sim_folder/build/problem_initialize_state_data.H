@@ -136,6 +136,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
 
     state(i,j,k,UEINT) = eint;
+    state(i,j,k,UFX) = eint; // internal energy of heavy ions
 
     // The temperature initialization will be done later
     // in the call to clean_state. We want to avoid

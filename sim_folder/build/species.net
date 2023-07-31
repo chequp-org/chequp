@@ -3,3 +3,5 @@
   H_neutral  Hn         1.0      0.0
   H_ion      Hp         1.0      1.0
 
+# auxiliary variables
+__aux_e_heavy

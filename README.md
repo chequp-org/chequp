@@ -25,9 +25,9 @@ cd ..
 
 ```
 cd sim_folder/build
-make
+make -j 4
 ```
-(for GPU, use `make USE_CUDA=TRUE)
+(for GPU, use `make USE_CUDA=TRUE -j 4`)
 
 ```
 cd ../run
@@ -43,9 +43,9 @@ jupyter notebook Analysis.ipynb
 
 ```
 cd sim_folder/build
-make DIM=1
+make DIM=1 -j 4
 ```
-(for GPU, use `make DIM=1 USE_CUDA=TRUE)
+(for GPU, use `make DIM=1 USE_CUDA=TRUE -j 4`)
 
 ```
 cd ../run

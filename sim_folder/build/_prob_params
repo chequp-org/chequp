@@ -28,3 +28,5 @@ a_twostep_ioniz        real                 0.0_rt                       y
 q_twostep_ioniz        real                 1.0_rt                       y
 
 e_twostep_ioniz_eV     real                 1.0_rt                       y
+
+e_loss_ioniz_eV        real                 0.0_rt                       y
