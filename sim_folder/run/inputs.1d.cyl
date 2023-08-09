@@ -58,7 +58,7 @@ amr.plot_int        = 2
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
-problem.r_init = 6e-4
+problem.r_init = 50e-4
 problem.p_ambient = 1.e-6
 problem.exp_energy = 4400 # 44 mJ/m, converted to ergs/cm
 problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
