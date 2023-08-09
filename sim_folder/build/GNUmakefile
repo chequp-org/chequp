@@ -24,6 +24,10 @@ EOS_DIR     := gamma_law
 NETWORK_DIR := general_null
 NETWORK_INPUTS = species.net
 
+# Activate thermal diffusion
+USE_DIFFUSION = TRUE
+CONDUCTIVITY_DIR := constant
+
 Bpack   := ./Make.package
 Blocs   := .
 
