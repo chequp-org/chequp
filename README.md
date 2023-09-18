@@ -29,6 +29,8 @@ brew install --build-from-source open-mpi --cc=gcc-11
 ```
 and used `gmake` instead of `make` in the instructions below.
 
+In order to analyze the results, create a Python environment with `numpy`, `scipy`, `Jupyter` and `yt`.
+
 ## For 2D Cartesian sims
 
 ```
@@ -70,4 +72,4 @@ jupyter notebook Analysis.ipynb
 Castro documentation: https://amrex-astro.github.io/Castro/docs/
 Microphysics documentation: https://amrex-astro.github.io/Microphysics/docs/
 
-Note that all units in the input script are CGS.
+Note that all units in the input script and output are CGS.
