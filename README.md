@@ -2,6 +2,16 @@ This document describes how to perform simulations of plasma channel formation u
 
 # Installation
 
+To setup the folders:
+```
+git clone git@github.com:RemiLehe/castro_sim.git
+cd castro_sim
+git clone --recursive https://github.com/RemiLehe/Castro.git
+cd Castro
+git checkout avoid_out_of_bound
+cd ..
+```
+
 On Linux, I used the same compilation environment as for WarpX i.e.
 ```
 spack env activate warpx-openmp-dev
@@ -13,16 +23,11 @@ spack env activate warpx-cuda-dev
 
 On MacOS, I followed the instruction here:
 https://github.com/AMReX-Astro/Castro/issues/2195
-
-To setup the folders:
 ```
-git clone git@github.com:RemiLehe/castro_sim.git
-cd castro_sim
-git clone --recursive https://github.com/RemiLehe/Castro.git
-cd Castro
-git checkout avoid_out_of_bound
-cd ..
+brew install gcc make
+brew install --build-from-source open-mpi --cc=gcc-11
 ```
+and used `gmake` instead of `make` in the instructions below.
 
 ## For 2D Cartesian sims
 
@@ -59,3 +64,10 @@ cd ../run
 cd ../analysis
 jupyter notebook Analysis.ipynb
 ```
+
+# More info on the simulations
+
+Castro documentation: https://amrex-astro.github.io/Castro/docs/
+Microphysics documentation: https://amrex-astro.github.io/Microphysics/docs/
+
+Note that all units in the input script are CGS.
