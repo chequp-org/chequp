@@ -1,5 +1,5 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 500
+max_step = 10000
 stop_time = 10e-9
 
 # PROBLEM SIZE & GEOMETRY
@@ -19,8 +19,11 @@ castro.hi_bc       =  2   2
 
 # WHICH PHYSICS
 castro.do_hydro = 1
-castro.do_react = 0
+castro.do_react = 0 // Here, reactions (ionization) are included as ext_src
 castro.add_ext_src = 1
+castro.diffuse_temp = 1
+
+conductivity.const_conductivity = 10000000.0
 
 # TIME STEP CONTROL
 castro.cfl            = 0.5     # cfl number for hyperbolic system
@@ -51,15 +54,26 @@ amr.refine.pressgrad.field_name = pressure
 
 # PLOTFILES
 amr.plot_file       = plt_2d_
-amr.plot_int        = 5
+amr.plot_int        = 10
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
-problem.r_init = 6e-4
+problem.r_init = 50e-4
 problem.p_ambient = 1.e-6
 problem.exp_energy = 4400 # 44 mJ/m, converted to ergs/cm
 problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
 problem.nsub = 10
+
+# PARAMETERS OF ARRHENIUS LAW FOR DIRECT IONIZATION
+problem.a_direct_ioniz = 7.1e-9 // cm^3.s-1
+problem.q_direct_ioniz = 0.4
+problem.e_direct_ioniz_eV = 13.6 // eV
+# PARAMETERS OF ARRHENIUS LAW FOR TWO-STEP IONIZATION
+problem.a_twostep_ioniz = 12.4e-9 // cm^3.s-1
+problem.q_twostep_ioniz = 0.3
+problem.e_twostep_ioniz_eV = 10.6 // eV
+# ENERGY LOST PER IONIZATION PROCESS
+problem.e_loss_ioniz_eV = 13.6 // eV
 
 # EOS
 eos.eos_assume_neutral = 0
