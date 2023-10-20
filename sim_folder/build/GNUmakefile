@@ -26,7 +26,7 @@ NETWORK_INPUTS = species.net
 
 # Activate thermal diffusion
 USE_DIFFUSION = TRUE
-CONDUCTIVITY_DIR := constant
+CONDUCTIVITY_DIR := .
 
 Bpack   := ./Make.package
 Blocs   := .
