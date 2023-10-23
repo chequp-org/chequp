@@ -1,0 +1,110 @@
+Loading ../../Castro/external/amrex/Tools/GNUMake/comps/gnu.mak...
+Loading ../../Castro/external/amrex/Tools/GNUMake/comps/nvcc.mak...
+Loading ../../Castro/external/amrex/Tools/GNUMake/sites/Make.nersc...
+../../Castro/external/amrex/Tools/C_scripts/describe_sources.py \
+          --git_names "Castro AMReX Microphysics" \
+          --git_dirs "../../Castro ../../Castro/external/amrex ../../Castro/external/Microphysics"
+Compiling timestep.cpp ...
+nvcc -MMD -MP -ccbin=g++ -Xcompiler=' -Werror=return-type -gdwarf-4 -O3 -std=c++17  -pthread  -std=c++17' --std=c++17 -Wno-deprecated-gpu-targets -m64 -arch=compute_80 -code=sm_80 -maxrregcount=255 --expt-relaxed-constexpr --expt-extended-lambda --forward-unknown-to-host-compiler -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --Werror cross-execution-space-call -lineinfo --ptxas-options=-O3 --use_fast_math  --Werror ext-lambda-captures-this --display-error-number --diag-error 20092 -x cu -dc -Xcompiler='-march=znver3'   -DBL_USE_MPI -DAMREX_USE_MPI -DAMREX_MPI_THREAD_MULTIPLE -DBL_NO_FORT -DAMREX_USE_CUDA -DAMREX_USE_GPU -DBL_COALESCE_FABS -DAMREX_GPU_MAX_THREADS=256 -DAMREX_USE_GPU_RDC -DBL_SPACEDIM=2 -DAMREX_SPACEDIM=2 -DBL_FORT_USE_UNDERSCORE -DAMREX_FORT_USE_UNDERSCORE -DBL_Linux -DAMREX_Linux -DAMREX_DIMENSION_AGNOSTIC -DNDEBUG -DAMREX_NO_PROBINIT -DSPONGE -DDIFFUSION -DSTRANG -DSCREEN_METHOD=0 -DCONDUCTIVITY "-DNAUX_NET=1" -Itmp_build_dir/s/2d.gnu.MPI.CUDA.EXE -I. -I../../Castro/external/amrex/Src/Base -I../../Castro/external/amrex/Src/Base/Parser -I../../Castro/external/amrex/Src/AmrCore -I../../Castro/external/amrex/Src/Amr -I../../Castro/external/amrex/Src/Boundary -I../../Castro/external/amrex/Src/LinearSolvers/MLMG -I../../Castro/external/Microphysics/util -I../../Castro/external/Microphysics/util/gcem/include -I. -I../../Castro/Source/driver -I../../Castro/Source/hydro -I../../Castro/Source/problems -I../../Castro/Source/sources -I../../Castro/Source/diffusion -I../../Castro/external/Microphysics/EOS -I../../Castro/external/Microphysics/EOS/gamma_law -I../../Castro/external/Microphysics/networks/general_null -I../../Castro/external/Microphysics/EOS -I../../Castro/external/Microphysics/networks -I../../Castro/external/Microphysics/interfaces -I../../Castro/external/Microphysics/conductivity -I../../Castro/external/Microphysics/conductivity/constant -I../../Castro/external/Microphysics/constants -Itmp_build_dir/castro_sources/2d.gnu.MPI.CUDA.EXE -I../../Castro/external/amrex/Tools/C_scripts -isystem /opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/include -I/opt/cray/pe/mpich/8.1.25/ofi/gnu/9.1/include -I/opt/cray/pe/libsci/23.02.1.1/GNU/9.1/x86_64/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/nvvm/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/extras/CUPTI/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/extras/Debugger/include -I/opt/cray/pe/dsmml/0.2.2/dsmml//include -I/opt/cray/xpmem/2.6.2-2.5_2.27__gd067c3f.shasta/include  -c ../../Castro/Source/driver/timestep.cpp -o tmp_build_dir/o/2d.gnu.MPI.CUDA.EXE/timestep.o
+
+source git hashes:
+  Castro              : 042aa5c9b-dirty
+  AMReX               : 23.07
+  Microphysics        : 23.07-dirty
+
+
+Compiling diffusion_util.cpp ...
+nvcc -MMD -MP -ccbin=g++ -Xcompiler=' -Werror=return-type -gdwarf-4 -O3 -std=c++17  -pthread  -std=c++17' --std=c++17 -Wno-deprecated-gpu-targets -m64 -arch=compute_80 -code=sm_80 -maxrregcount=255 --expt-relaxed-constexpr --expt-extended-lambda --forward-unknown-to-host-compiler -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --Werror cross-execution-space-call -lineinfo --ptxas-options=-O3 --use_fast_math  --Werror ext-lambda-captures-this --display-error-number --diag-error 20092 -x cu -dc -Xcompiler='-march=znver3'   -DBL_USE_MPI -DAMREX_USE_MPI -DAMREX_MPI_THREAD_MULTIPLE -DBL_NO_FORT -DAMREX_USE_CUDA -DAMREX_USE_GPU -DBL_COALESCE_FABS -DAMREX_GPU_MAX_THREADS=256 -DAMREX_USE_GPU_RDC -DBL_SPACEDIM=2 -DAMREX_SPACEDIM=2 -DBL_FORT_USE_UNDERSCORE -DAMREX_FORT_USE_UNDERSCORE -DBL_Linux -DAMREX_Linux -DAMREX_DIMENSION_AGNOSTIC -DNDEBUG -DAMREX_NO_PROBINIT -DSPONGE -DDIFFUSION -DSTRANG -DSCREEN_METHOD=0 -DCONDUCTIVITY "-DNAUX_NET=1" -Itmp_build_dir/s/2d.gnu.MPI.CUDA.EXE -I. -I../../Castro/external/amrex/Src/Base -I../../Castro/external/amrex/Src/Base/Parser -I../../Castro/external/amrex/Src/AmrCore -I../../Castro/external/amrex/Src/Amr -I../../Castro/external/amrex/Src/Boundary -I../../Castro/external/amrex/Src/LinearSolvers/MLMG -I../../Castro/external/Microphysics/util -I../../Castro/external/Microphysics/util/gcem/include -I. -I../../Castro/Source/driver -I../../Castro/Source/hydro -I../../Castro/Source/problems -I../../Castro/Source/sources -I../../Castro/Source/diffusion -I../../Castro/external/Microphysics/EOS -I../../Castro/external/Microphysics/EOS/gamma_law -I../../Castro/external/Microphysics/networks/general_null -I../../Castro/external/Microphysics/EOS -I../../Castro/external/Microphysics/networks -I../../Castro/external/Microphysics/interfaces -I../../Castro/external/Microphysics/conductivity -I../../Castro/external/Microphysics/conductivity/constant -I../../Castro/external/Microphysics/constants -Itmp_build_dir/castro_sources/2d.gnu.MPI.CUDA.EXE -I../../Castro/external/amrex/Tools/C_scripts -isystem /opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/include -I/opt/cray/pe/mpich/8.1.25/ofi/gnu/9.1/include -I/opt/cray/pe/libsci/23.02.1.1/GNU/9.1/x86_64/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/nvvm/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/extras/CUPTI/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/extras/Debugger/include -I/opt/cray/pe/dsmml/0.2.2/dsmml//include -I/opt/cray/xpmem/2.6.2-2.5_2.27__gd067c3f.shasta/include  -c ../../Castro/Source/diffusion/diffusion_util.cpp -o tmp_build_dir/o/2d.gnu.MPI.CUDA.EXE/diffusion_util.o
+../../Castro/external/amrex/Tools/C_scripts/makebuildinfo_C.py \
+          --amrex_home "../../Castro/external/amrex" \
+          --COMP "gnu" --COMP_VERSION "11.2.0" \
+          --CXX_comp_name "nvcc" --CXX_flags "-ccbin=g++ -Xcompiler=' -Werror=return-type -gdwarf-4 -O3 -std=c++17  -pthread  -std=c++17' --std=c++17 -Wno-deprecated-gpu-targets -m64 -arch=compute_80 -code=sm_80 -maxrregcount=255 --expt-relaxed-constexpr --expt-extended-lambda --forward-unknown-to-host-compiler -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --Werror cross-execution-space-call -lineinfo --ptxas-options=-O3 --use_fast_math  --Werror ext-lambda-captures-this --display-error-number --diag-error 20092 -x cu -dc -Xcompiler='-march=znver3'  -DBL_USE_MPI -DAMREX_USE_MPI -DAMREX_MPI_THREAD_MULTIPLE -DBL_NO_FORT -DAMREX_USE_CUDA -DAMREX_USE_GPU -DBL_COALESCE_FABS -DAMREX_GPU_MAX_THREADS=256 -DAMREX_USE_GPU_RDC -DBL_SPACEDIM=2 -DAMREX_SPACEDIM=2 -DBL_FORT_USE_UNDERSCORE -DAMREX_FORT_USE_UNDERSCORE -DBL_Linux -DAMREX_Linux -DAMREX_DIMENSION_AGNOSTIC -DNDEBUG -DAMREX_NO_PROBINIT -DSPONGE -DDIFFUSION -DSTRANG -DSCREEN_METHOD=0 -DCONDUCTIVITY "-DNAUX_NET=1" -Itmp_build_dir/s/2d.gnu.MPI.CUDA.EXE -I. -I../../Castro/external/amrex/Src/Base -I../../Castro/external/amrex/Src/Base/Parser -I../../Castro/external/amrex/Src/AmrCore -I../../Castro/external/amrex/Src/Amr -I../../Castro/external/amrex/Src/Boundary -I../../Castro/external/amrex/Src/LinearSolvers/MLMG -I../../Castro/external/Microphysics/util -I../../Castro/external/Microphysics/util/gcem/include -I. -I../../Castro/Source/driver -I../../Castro/Source/hydro -I../../Castro/Source/problems -I../../Castro/Source/sources -I../../Castro/Source/diffusion -I../../Castro/external/Microphysics/EOS -I../../Castro/external/Microphysics/EOS/gamma_law -I../../Castro/external/Microphysics/networks/general_null -I../../Castro/external/Microphysics/EOS -I../../Castro/external/Microphysics/networks -I../../Castro/external/Microphysics/interfaces -I../../Castro/external/Microphysics/conductivity -I../../Castro/external/Microphysics/conductivity/constant -I../../Castro/external/Microphysics/constants -Itmp_build_dir/castro_sources/2d.gnu.MPI.CUDA.EXE -I../../Castro/external/amrex/Tools/C_scripts -isystem /opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/include -I/opt/cray/pe/mpich/8.1.25/ofi/gnu/9.1/include -I/opt/cray/pe/libsci/23.02.1.1/GNU/9.1/x86_64/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/nvvm/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/extras/CUPTI/include -I/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/extras/Debugger/include -I/opt/cray/pe/dsmml/0.2.2/dsmml//include -I/opt/cray/xpmem/2.6.2-2.5_2.27__gd067c3f.shasta/include" \
+          --F_comp_name "gfortran" --F_flags " -g -O3 -ffree-line-length-none -fno-range-check -fno-second-underscore -fimplicit-none " \
+          --CUDA_VERSION "11.7" \
+          --link_flags "-L. -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/lib64" --libraries " -L/opt/cray/pe/mpich/8.1.25/ofi/gnu/9.1/lib -L/opt/cray/pe/mpich/8.1.25/gtl/lib -L/opt/cray/pe/libsci/23.02.1.1/GNU/9.1/x86_64/lib -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/lib64/stubs -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/lib64 -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/nvvm/lib64 -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/extras/CUPTI/lib64 -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/extras/Debugger/lib64 -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/math_libs/11.7/lib64 -L/opt/cray/pe/dsmml/0.2.2/dsmml//lib -L/opt/cray/xpmem/2.6.2-2.5_2.27__gd067c3f.shasta/lib64 -Xlinker=--as-needed,-lcupti,-lcudart,--no-as-needed -lcuda -Xlinker=--as-needed,-lmpi_gnu_91,--no-as-needed -lmpi_gtl_cuda -Xlinker=--as-needed,-lsci_gnu_82_mpi,--no-as-needed -Xlinker=--as-needed,-lsci_gnu_82,--no-as-needed -ldl -Xlinker=--as-needed,-ldsmml,--no-as-needed -lxpmem -lcuda " \
+          --MODULES "EOS=../../Castro/external/Microphysics/EOS/gamma_law NETWORK=../../Castro/external/Microphysics/networks/general_null CONDUCTIVITY=../../Castro/external/Microphysics/conductivity/constant"  \
+          --GIT "../../Castro ../../Castro/external/amrex ../../Castro/external/Microphysics"
+linking network data files...
+nvcc -ccbin=g++ -Xcompiler=' -Werror=return-type -gdwarf-4 -O3 -std=c++17  -pthread  -std=c++17' --std=c++17 -Wno-deprecated-gpu-targets -m64 -arch=compute_80 -code=sm_80 -maxrregcount=255 --expt-relaxed-constexpr --expt-extended-lambda --forward-unknown-to-host-compiler -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --Werror cross-execution-space-call -lineinfo --ptxas-options=-O3 --use_fast_math  --Werror ext-lambda-captures-this --display-error-number --diag-error 20092 -x cu -dc -Xcompiler='-march=znver3'  -DBL_USE_MPI -DAMREX_USE_MPI -DAMREX_MPI_THREAD_MULTIPLE -DBL_NO_FORT -DAMREX_USE_CUDA -DAMREX_USE_GPU -DBL_COALESCE_FABS -DAMREX_GPU_MAX_THREADS=256 -DAMREX_USE_GPU_RDC -DBL_SPACEDIM=2 -DAMREX_SPACEDIM=2 -DBL_FORT_USE_UNDERSCORE -DAMREX_FORT_USE_UNDERSCORE -DBL_Linux -DAMREX_Linux -DAMREX_DIMENSION_AGNOSTIC -DNDEBUG -DAMREX_NO_PROBINIT -DSPONGE -DDIFFUSION -DSTRANG -DSCREEN_METHOD=0 -DCONDUCTIVITY "-DNAUX_NET=1" -c  AMReX_buildInfo.cpp -o tmp_build_dir/o/2d.gnu.MPI.CUDA.EXE/AMReX_buildInfo.o
+rm -f AMReX_buildInfo.cpp
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(23): warning #177-D: variable "epsilon0" was declared but never referenced
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(35): error: identifier "eos_state" is undefined
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(35): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(42): error: identifier "epsilon0" is undefined
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(42): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(43): error: identifier "e" is undefined
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(49): error: identifier "me" is undefined
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(49): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(57): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(59): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/diffusion/diffusion_util.cpp(45): here
+
+9 errors detected in the compilation of "../../Castro/Source/diffusion/diffusion_util.cpp".
+make: *** [../../Castro/external/amrex/Tools/GNUMake/Make.rules:262: tmp_build_dir/o/2d.gnu.MPI.CUDA.EXE/diffusion_util.o] Error 1
+make: *** Waiting for unfinished jobs....
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(23): warning #177-D: variable "epsilon0" was declared but never referenced
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(35): error: identifier "eos_state" is undefined
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(35): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(42): error: identifier "epsilon0" is undefined
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(42): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(43): error: identifier "e" is undefined
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(49): error: identifier "me" is undefined
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(49): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(57): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+../../Castro/external/Microphysics/conductivity/constant/actual_conductivity.H(59): error: name followed by "::" must be a class or namespace name
+          detected during instantiation of "void conductivity(T &) [with T=eos_t]" 
+../../Castro/Source/driver/timestep.cpp(280): here
+
+9 errors detected in the compilation of "../../Castro/Source/driver/timestep.cpp".
+make: *** [../../Castro/external/amrex/Tools/GNUMake/Make.rules:262: tmp_build_dir/o/2d.gnu.MPI.CUDA.EXE/timestep.o] Error 1
