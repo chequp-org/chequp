@@ -1,5 +1,5 @@
 #conver to ev
-#initial temperature 
+#initial temperature
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step = 10000
@@ -8,9 +8,9 @@ stop_time = 10e-9
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic =  0 0 # Not periodic in either x or z
 geometry.coord_sys   =  0       # 0 => cart
-geometry.prob_lo     =  0    0 
+geometry.prob_lo     =  0    0
 geometry.prob_hi     =  0.06 0.06
-amr.n_cell           = 64   64 #number of cells in each direction at the coarsest level
+amr.n_cell           = 32   32 #number of cells in each direction at the coarsest level
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -24,12 +24,10 @@ castro.hi_bc       =  2   2 #Outflow in all directions
 castro.do_hydro = 1 #time-advance the fluid dynamical equations
 castro.do_react = 0 // Here, reactions (ionization) are included as ext_src
 castro.add_ext_src = 1
-castro.diffuse_temp = 0
-
-conductivity.const_conductivity = 1000000.0
+castro.diffuse_temp = 1
 
 # TIME STEP CONTROL
-castro.cfl            = 0.25     # cfl number for hyperbolic system
+castro.cfl            = 0.5     # cfl number for hyperbolic system
 castro.init_shrink    = 0.01    # scale back initial timestep
 castro.change_max     = 1.1     # maximum increase in dt over successive steps
 
@@ -43,7 +41,7 @@ amr.max_level       = 3       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 5       # how often to regrid
 amr.blocking_factor = 8       # block factor in grid generation
-amr.max_grid_size   = 4096
+amr.max_grid_size   = 256
 
 amr.refinement_indicators = dengrad pressgrad
 
@@ -57,7 +55,7 @@ amr.refine.pressgrad.field_name = pressure
 
 # PLOTFILES
 amr.plot_file       = plt_2d_
-amr.plot_int        = 1
+amr.plot_int        = 10
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
