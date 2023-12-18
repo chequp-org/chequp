@@ -28,6 +28,9 @@ NETWORK_INPUTS = species.net
 USE_DIFFUSION = TRUE
 CONDUCTIVITY_DIR := constant
 
+# Activate custom source terms for species
+USE_SPECIES_SOURCES = TRUE
+
 Bpack   := ./Make.package
 Blocs   := .
 
