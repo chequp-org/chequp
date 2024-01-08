@@ -8,7 +8,7 @@ git clone git@github.com:RemiLehe/castro_sim.git
 cd castro_sim
 git clone --recursive https://github.com/AMReX-Astro/Castro.git
 cd Castro
-git checkout development
+git checkout 8ee041f
 cd ..
 ```
 
