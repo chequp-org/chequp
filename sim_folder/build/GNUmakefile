@@ -26,7 +26,7 @@ NETWORK_INPUTS = species.net
 
 # Activate thermal diffusion
 USE_DIFFUSION = TRUE
-CONDUCTIVITY_DIR := constant
+CONDUCTIVITY_DIR := .
 
 # Activate custom source terms for species
 USE_SPECIES_SOURCES = TRUE
