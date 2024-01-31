@@ -1,0 +1,78 @@
+# ------------------  INPUTS TO MAIN PROGRAM  -------------------
+max_step = 10000
+stop_time = 10e-9
+
+# PROBLEM SIZE & GEOMETRY
+geometry.is_periodic =  0 0 # Not periodic in either x or z
+geometry.coord_sys   =  1       # r-z coordinates
+geometry.prob_lo     =  0    0
+geometry.prob_hi     =  0.06 0.06
+amr.n_cell           = 32   32 #number of cells in each direction at the coarsest level
+
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+# 0 = Interior           3 = Symmetry
+# 1 = Inflow             4 = SlipWall
+# 2 = Outflow            5 = NoSlipWall
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+castro.lo_bc       =  3   3
+castro.hi_bc       =  2   2 #Outflow in all directions
+
+# WHICH PHYSICS
+castro.do_hydro = 1 #time-advance the fluid dynamical equations
+castro.do_react = 0 // Here, reactions (ionization) are included as ext_src
+castro.add_ext_src = 1
+castro.diffuse_temp = 1
+
+# TIME STEP CONTROL
+castro.cfl            = 0.5     # cfl number for hyperbolic system
+castro.init_shrink    = 0.01    # scale back initial timestep
+castro.change_max     = 1.1     # maximum increase in dt over successive steps
+
+# DIAGNOSTICS & VERBOSITY
+castro.sum_interval   = 1       # timesteps between computing mass
+castro.v              = 1       # verbosity in Castro.cpp
+amr.v                 = 1       # verbosity in Amr.cpp
+
+# REFINEMENT / REGRIDDING
+amr.max_level       = 3       # maximum level number allowed
+amr.ref_ratio       = 2 2 2 2 # refinement ratio
+amr.regrid_int      = 5       # how often to regrid
+amr.blocking_factor = 8       # block factor in grid generation
+amr.max_grid_size   = 256
+
+amr.refinement_indicators = dengrad pressgrad
+
+amr.refine.dengrad.max_level = 3
+amr.refine.dengrad.relative_gradient = 0.01
+amr.refine.dengrad.field_name = density
+
+amr.refine.pressgrad.max_level = 3
+amr.refine.pressgrad.relative_gradient = 0.01
+amr.refine.pressgrad.field_name = pressure
+
+# PLOTFILES
+amr.plot_file       = plt_2d_
+amr.plot_int        = 10
+amr.derive_plot_vars=ALL
+
+# PROBLEM PARAMETERS
+problem.r_init = 50e-4
+problem.p_ambient = 1.e-6
+problem.exp_energy = 4400 # 44 mJ/m, converted to ergs/cm
+problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
+problem.nsub = 10
+
+# PARAMETERS OF ARRHENIUS LAW FOR DIRECT IONIZATION
+problem.a_direct_ioniz = 7.1e-9 // cm^3.s-1
+problem.q_direct_ioniz = 0.4
+problem.e_direct_ioniz_eV = 13.6 // eV
+# PARAMETERS OF ARRHENIUS LAW FOR TWO-STEP IONIZATION
+problem.a_twostep_ioniz = 12.4e-9 // cm^3.s-1
+problem.q_twostep_ioniz = 0.3
+problem.e_twostep_ioniz_eV = 10.6 // eV
+# ENERGY LOST PER IONIZATION PROCESS
+problem.e_loss_ioniz_eV = 13.6 // eV
+
+# EOS
+eos.eos_assume_neutral = 0
+eos.eos_gamma = 1.66666667
