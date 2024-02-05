@@ -57,7 +57,7 @@ amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
 problem.p_ambient = 1.e-6
-problem.dens_ambient = 3.34e-6 # g per cm^3 ; H with 2e18 cc
+problem.dens_ambient = 5.01e-06 # g per cm^3 ; H with 2e18 cc
 
 # PARAMETERS OF ARRHENIUS LAW FOR DIRECT IONIZATION
 problem.a_direct_ioniz = 7.1e-9 // cm^3.s-1
