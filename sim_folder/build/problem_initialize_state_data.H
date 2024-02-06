@@ -28,7 +28,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real r0 = 7.6e-4; // in cm
     Real r = std::sqrt( x*x + y*y + z*z );
     Real ioniz_fraction = (x*x + y*y + z*z < r0*r0)? 1 : 0;
-    Real Te_max = 208881.; // 18 eV, in Kelvins
+    Real Te_max = 290112.5; // 25 eV, in Kelvins
     Real Ta = 348.; // 0.03 eV, in Kelvins
     Real Te = (Te_max - Ta)*(1. - std::pow( r/r0, 3 ) ) + Ta;
 
