@@ -109,7 +109,6 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
             }
         }
     }
-    std::cout << " r " << r << " ionization fraction " << ioniz_fraction << " Te " << te << std::endl;
     Real eint = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * te +  3./2 * C::k_B * 348.)/C::m_u;
 
     state(i,j,k,URHO) = problem::dens_ambient;
