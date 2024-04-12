@@ -86,7 +86,6 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     } else {
         amrex::Abort("Failed to open plasma_data.csv");
     }
-    std::cout << " first r value " << plasma_data_r[0] << " second r value " << plasma_data_r[1] << " ionization 1 " << plasma_data_ioniz[0] << " ionization 2 " << plasma_data_ioniz[1] << std::endl;
     // Linear interpolation to find ionization fraction and electron temperature
     Real ioniz_fraction = 0.0;
     Real te = 0.0;
