@@ -3,6 +3,11 @@
 
 #include <prob_parameters.H>
 #include <eos.H>
+#include <AMReX_Math.H>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
 void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& state, const GeometryData& geomdata)
@@ -12,118 +17,101 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     const Real* dx = geomdata.CellSize();
     const Real* problo = geomdata.ProbLo();
     
-#if AMREX_SPACEDIM == 1
-    int nsubx = problem::nsub;
-    int nsuby = 1;
-    int nsubz = 1;
-#elif AMREX_SPACEDIM == 2
-    int nsubx = problem::nsub;
-    int nsuby = problem::nsub;
-    int nsubz = 1;
-#else
-    int nsubx = problem::nsub;
-    int nsuby = problem::nsub;
-    int nsubz = problem::nsub;
-#endif
+    Real x = 0;
+    Real y = 0;
+    Real z = 0;
 
-    Real ds[3] = {0.0, 0.0, 0.0};
-    Real xmin = 0.0;
-    Real ymin = 0.0;
-    Real zmin = 0.0;
-
-    ds[0] = dx[0] / nsubx;
-    xmin = problo[0] + dx[0] * static_cast<Real>(i);
-
+    x = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
 #if AMREX_SPACEDIM >= 2
-    ds[1] = dx[1] / nsuby;
-    ymin = problo[1] + dx[1] * static_cast<Real>(j);
+    y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
 #endif
-
-#if AMREX_SPACEDIM == 3
-    ds[2] = dx[2] / nsubz;
-    zmin = problo[2] + dx[2] * static_cast<Real>(k);
+#if AMREX_SPACEDIM >= 3
+    z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
 #endif
+    
+    Real r = sqrt(x*x + y*y + z*z);
+    
 
-    Real vol_pert = 0.0_rt;
-    Real vol_ambient = 0.0_rt;
+    // Read plasma data from file
+    std::vector<Real> plasma_data_r;
+    std::vector<Real> plasma_data_ioniz;
+    std::vector<Real> plasma_data_te;
 
-    for (int kk = 0; kk <= nsubz-1; ++kk) {
-        Real zz = zmin + ds[2] * (static_cast<Real>(kk) + 0.5_rt);
-
-        for (int jj = 0; jj <= nsuby-1; ++jj) {
-            Real yy = ymin + ds[1] * (static_cast<Real>(jj) + 0.5_rt);
-
-            for (int ii = 0; ii <= nsubx-1; ++ii) {
-                Real xx = xmin + ds[0] * (static_cast<Real>(ii) + 0.5_rt);
-
-                Real dist = (problem::center[0] - xx) * (problem::center[0] - xx) +
-                            (problem::center[1] - yy) * (problem::center[1] - yy) +
-                            (problem::center[2] - zz) * (problem::center[2] - zz);
-
-                bool pert = false;
-
-                if (dist <= problem::r_init * problem::r_init) {
-                    pert = true;
+    std::ifstream file("plasma_data.csv");
+    if (file.is_open()) {
+        std::string line;
+        
+        // Skip the header line
+        std::getline(file, line);
+        
+        while (std::getline(file, line)) {
+            std::stringstream ss(line);
+            std::string value;
+            
+            // Read radius
+            if (std::getline(ss, value, ',')) {
+                try {
+                    plasma_data_r.push_back(std::stod(value));
+                } catch (const std::invalid_argument&) {
+                    amrex::Abort("Invalid radius value: " + value);
                 }
-
-                if (coord_type == 1) {
-
-                    // The volume of a cell is a annular cylindrical region.
-                    // The main thing that matters is the distance from the
-                    // symmetry axis.
-                    //   V = pi*dy*(x_r**2 - x_l**2) = pi*dy*dx*0.5*xx
-                    // (where x_r is the coordinate of the x right edge,
-                    //        x_l is the coordinate of the x left edge,
-                    //    and xx  is the coordinate of the x center of the cell)
-                    //
-                    // since dx and dy are constant, they cancel out
-
-                    if (pert) {
-                        vol_pert = vol_pert + xx;
-                    }
-                    else {
-                        vol_ambient = vol_ambient + xx;
-                    }
-
+            } else {
+                amrex::Abort("Missing radius value");
+            }
+            
+            // Read ionization fraction
+            if (std::getline(ss, value, ',')) {
+                try {
+                    plasma_data_ioniz.push_back(std::stod(value));
+                } catch (const std::invalid_argument&) {
+                    amrex::Abort("Invalid ionization fraction value: " + value);
                 }
-                else if (coord_type == 2) {
-
-                    Real xl = xx - 0.5_rt * ds[0];
-                    Real xr = xx + 0.5_rt * ds[0];
-
-                    // the volume of a subzone is (4/3) pi (xr^3 - xl^3).
-                    // we can factor this as: (4/3) pi dr (xr^2 + xl*xr + xl^2)
-                    // The (4/3) pi dr factor is common, so we can neglect it.
-
-                    if (pert) {
-                        vol_pert = vol_pert + (xr * xr + xl * xr + xl * xl);
-                    }
-                    else {
-                        vol_ambient = vol_ambient + (xr * xr + xl * xr + xl * xl);
-                    }
-
+            } else {
+                amrex::Abort("Missing ionization fraction value");
+            }
+            
+            // Read electron temperature
+            if (std::getline(ss, value)) {
+                try {
+                    plasma_data_te.push_back(std::stod(value));
+                } catch (const std::invalid_argument&) {
+                    amrex::Abort("Invalid electron temperature value: " + value);
                 }
-                else {
-
-                    // Cartesian -- equal volume of dx * dy * dz is factored out.
-
-                    if (pert) {
-                        vol_pert = vol_pert + 1.0_rt;
-                    }
-                    else {
-                        vol_ambient = vol_ambient + 1.0_rt;
-                    }
-
-                }
-
+            } else {
+                amrex::Abort("Missing electron temperature value");
+            }
+            
+        }
+        file.close();
+    } else {
+        amrex::Abort("Failed to open plasma_data.csv");
+    }
+    std::cout << " first r value " << plasma_data_r[0] << " second r value " << plasma_data_r[1] << " ionization 1 " << plasma_data_ioniz[0] << " ionization 2 " << plasma_data_ioniz[1] << std::endl;
+    // Linear interpolation to find ionization fraction and electron temperature
+    Real ioniz_fraction = 0.0;
+    Real te = 0.0;
+    
+    if (r <= plasma_data_r.front()) {
+        ioniz_fraction = plasma_data_ioniz.front();
+        te = plasma_data_te.front();
+    } else if (r >= plasma_data_r.back()) {
+        ioniz_fraction = plasma_data_ioniz.back();
+        te = plasma_data_te.back();
+    } else {
+        for (int idx = 1; idx < plasma_data_r.size(); ++idx) {
+            if (r < plasma_data_r[idx]) {
+                Real r_low = plasma_data_r[idx-1];
+                Real r_high = plasma_data_r[idx];
+                Real frac = (r - r_low) / (r_high - r_low);
+    
+                ioniz_fraction = plasma_data_ioniz[idx-1] + frac * (plasma_data_ioniz[idx] - plasma_data_ioniz[idx-1]);
+                te = plasma_data_te[idx-1] + frac * (plasma_data_te[idx] - plasma_data_te[idx-1]);
+                break;
             }
         }
     }
-
-    Real e_zone = (vol_pert * problem::e_exp + vol_ambient * problem::e_ambient) / (vol_pert + vol_ambient);
-    Real ioniz_fraction = vol_pert / (vol_pert + vol_ambient);
-
-    Real eint = problem::dens_ambient * e_zone;
+    std::cout << " r " << r << " ionization fraction " << ioniz_fraction << " Te " << te << std::endl;
+    Real eint = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * te +  3./2 * C::k_B * 348.)/C::m_u;
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
@@ -136,18 +124,12 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
 
     state(i,j,k,UEINT) = eint;
-    state(i,j,k,UFX) = eint; // internal energy of heavy ions
-
-    // The temperature initialization will be done later
-    // in the call to clean_state. We want to avoid
-    // EOS calls in ca_initdata. So that there is valid
-    // data for an initial guess for the EOS, we initialize
-    // to the ambient temperature everywhere.
+    state(i,j,k,UFX) = eint;
 
     state(i,j,k,UTEMP) = problem::temp_ambient;
 
     state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
-    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;    
+    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
 }
 
 #endif
