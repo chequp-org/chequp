@@ -29,18 +29,18 @@ actual_conductivity (T& state)
     // Infer electron density by summing over species and assuming overall neutrality
     // See https://github.com/AMReX-Astro/Microphysics/blob/main/EOS/gamma_law/actual_eos.H#L62
     // for a similar calculation
-    Real sum = 0;
+    amrex::Real sum = 0;
     for (int n=0; n < NumSpec; n++) {
         sum += zion[n] * state.xn[n] * aion_inv[n];
     }
-    const Real n_e_cgs = state.rho * sum / C::m_u;
-    const Real n_e = n_e_cgs * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
+    const amrex::Real n_e_cgs = state.rho * sum / C::m_u;
+    const amrex::Real n_e = n_e_cgs * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
 
-    const Real T_e = state.T; // Electron temperature
-    const Real T_h = T_e; // Assuming this parameter is available in your state object
+    const amrex::Real T_e = state.T; // Electron temperature
+    const amrex::Real T_h = T_e; // Assuming this parameter is available in your state object
 
     // Calculate Lambda_ei
-    const Real rawLambdaEi = std::log(
+    const amrex::Real rawLambdaEi = std::log(
         (3.0 / (2.0 * std::sqrt(M_PI))) * std::sqrt(
             std::pow(4.0 * M_PI * epsilon0 * k_B * T_e, 3) /
             (std::pow(q_e, 6) * n_e * (1.0 + T_e / T_h))
@@ -48,19 +48,19 @@ actual_conductivity (T& state)
     );
 
     // Apply lower limit
-    const Real Lambda_ei = std::max(rawLambdaEi, 0.5 * std::log(2.0));
+    const amrex::Real Lambda_ei = std::max(rawLambdaEi, 0.5 * std::log(2.0));
 
     // Calculate v_ei (or v_eH) using the corrected expression
-    const Real v_ei = (4.0 / 3.0) * std::sqrt(2.0 * M_PI / m_e) *
+    const amrex::Real v_ei = (4.0 / 3.0) * std::sqrt(2.0 * M_PI / m_e) *
         (n_e * std::pow(q_e, 4) * Lambda_ei) /
         (std::pow(4.0 * M_PI * epsilon0, 2) * std::pow(k_B * T_e, 1.5));
 
     // Calculate thermal conductivity using the earlier formula
-    const Real denominator = 1; // Eventually, this should be 1 + gamma_e
-    const Real conductivitySI = (1.0 / denominator) *
+    const amrex::Real denominator = 1; // Eventually, this should be 1 + gamma_e
+    const amrex::Real conductivitySI = (1.0 / denominator) *
         15 * std::pow(k_B, 2) * n_e * T_e / (2 * M_PI * m_e * v_ei);
     // SI to cgs conversion factor for thermal conductivity
-    const Real si_to_cgs_conversion_factor = 1e5; // (10^7 erg/J) / (10^2 cm/m)
+    const amrex::Real si_to_cgs_conversion_factor = 1e5; // (10^7 erg/J) / (10^2 cm/m)
 
     // Convert state.conductivity from SI units to cgs units and store in a new variable
     state.conductivity = conductivitySI * si_to_cgs_conversion_factor;
