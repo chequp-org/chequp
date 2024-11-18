@@ -26,7 +26,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
 
     Real sigma1 = 38e-4; // in cm
-    Real ioniz_fraction = (1. - 1.e-3)*std::exp( -std::pow((x*x + y*y + z*z)/(2*sigma1*sigma1), 12) ) + 1.e-3;
+    Real ioniz_fraction = 1;
+    //Real ioniz_fraction = (1. - 1.e-3)*std::exp( -std::pow((x*x + y*y + z*z)/(2*sigma1*sigma1), 12) ) + 1.e-3;
     Real sigma2 = 35e-4; // in cm
     Real Te_max = 313322.; // 27 eV, in Kelvins
     Real Ta = 348.; // 0.03 eV, in Kelvins
