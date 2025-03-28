@@ -11,7 +11,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     const Real* dx = geomdata.CellSize();
     const Real* problo = geomdata.ProbLo();
-    
+
 #if AMREX_SPACEDIM == 1
     int nsubx = problem::nsub;
     int nsuby = 1;
@@ -56,9 +56,14 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
             for (int ii = 0; ii <= nsubx-1; ++ii) {
                 Real xx = xmin + ds[0] * (static_cast<Real>(ii) + 0.5_rt);
 
-                Real dist = (problem::center[0] - xx) * (problem::center[0] - xx) +
+                Real dist = 0;
+                if (coord_type == 0) {  // Cartesian
+                    dist = (problem::center[0] - xx) * (problem::center[0] - xx) +
                             (problem::center[1] - yy) * (problem::center[1] - yy) +
                             (problem::center[2] - zz) * (problem::center[2] - zz);
+                } else if (coord_type == 1) { // cylindrical
+                    dist = (problem::center[0] - xx) * (problem::center[0] - xx);
+                }
 
                 bool pert = false;
 
@@ -147,7 +152,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     state(i,j,k,UTEMP) = problem::temp_ambient;
 
     state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
-    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;    
+    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
 }
 
 #endif
