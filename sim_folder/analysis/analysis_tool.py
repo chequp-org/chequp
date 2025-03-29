@@ -54,10 +54,17 @@ class CastroSimulation(object):
                                 left_edge=ds.domain_left_edge,
                                 dims=[ds.domain_dimensions[0]*2**level, ds.domain_dimensions[1]*2**level, 1] )
             q = ad[quantity].to_ndarray().squeeze()
-            q = q[q.shape[0]//2:,q.shape[1]//2]
-            r = np.linspace(
-                0.5*(ds.domain_left_edge[0] + ds.domain_right_edge[0]),
-                ds.domain_right_edge[0],
-                ds.domain_dimensions[0]*2**level//2)
-            r -= 0.5*(ds.domain_left_edge[0] + ds.domain_right_edge[0])
+            if ds.geometry == 'cylindrical':
+                r = np.linspace(
+                    ds.domain_left_edge[0],
+                    ds.domain_right_edge[0],
+                    ds.domain_dimensions[0]*2**level)
+                q = q[:, q.shape[1]//2]
+            else:
+                q = q[q.shape[0]//2:,q.shape[1]//2]
+                r = np.linspace(
+                    0.5*(ds.domain_left_edge[0] + ds.domain_right_edge[0]),
+                    ds.domain_right_edge[0],
+                    ds.domain_dimensions[0]*2**level//2)
+                r -= 0.5*(ds.domain_left_edge[0] + ds.domain_right_edge[0])
         return r.to_ndarray(), q, ds.current_time.to_value()
