@@ -26,10 +26,6 @@ class CastroSimulation(object):
         self.ts = yt.load(os.path.join(run_dir, file_start + '*'), hint="castro")
         self.output_times = np.array([ float(ds.current_time) for ds in tqdm.tqdm(self.ts) ])
 
-        # Clean 1D data to avoid yt bug
-        if self.ts[0].dimensionality == 1:
-            clean_1d_files(run_dir, file_start)
-
 
     def extract_data( self, t, quantity, level ):
         """
@@ -65,21 +61,3 @@ class CastroSimulation(object):
                 ds.domain_dimensions[0]*2**level//2)
             r -= 0.5*(ds.domain_left_edge[0] + ds.domain_right_edge[0])
         return r.to_ndarray(), q, ds.current_time.to_value()
-
-
-def clean_1d_files( run_dir, file_start ):
-    """
-    Castro 1D cylindrical files are by default not readable by yt (!)
-    This function fixes their format to make them readable
-    """
-    for filename in os.listdir(run_dir):
-        if filename.startswith(file_start):
-            header_file = os.path.join(run_dir, filename, 'Header')
-            # Read file
-            with open(header_file) as f:
-                text = f.read()
-            # Replace the flag that indicates cylindrical geometry
-            text = re.sub('(\d\..*) \n1\n0', '\g<1> \n0\n0', text)
-            # Write file
-            with open(header_file, 'w') as f:
-                f.write(text)
