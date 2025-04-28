@@ -7,7 +7,7 @@ geometry.is_periodic =  0
 geometry.coord_sys   =  1        # r-z coordinates
 geometry.prob_lo     =  0
 geometry.prob_hi     =  0.03
-amr.n_cell           = 2048
+amr.n_cell           = 512
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -20,8 +20,8 @@ castro.hi_bc       =  2
 # WHICH PHYSICS
 castro.do_hydro = 1
 castro.do_react = 0 // Here, reactions (ionization) are included as ext_src
-castro.add_ext_src = 0
-castro.diffuse_temp = 0
+castro.add_ext_src = 1
+castro.diffuse_temp = 1
 
 # TIME STEP CONTROL
 castro.cfl            = 0.5     # cfl number for hyperbolic system
