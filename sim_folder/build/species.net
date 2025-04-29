@@ -4,4 +4,4 @@
   H_ion      Hp         1.0      1.0
 
 # auxiliary variables
-__aux_rho_f_h
+__aux_f_heavies
