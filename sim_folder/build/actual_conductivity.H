@@ -46,10 +46,8 @@ actual_conductivity (T& state)
             (std::pow(q_e, 6) * n_e * (1.0 + T_e / T_h))
         )
     );
-
     // Apply lower limit
     const amrex::Real Lambda_ei = std::max(rawLambdaEi, 0.5 * std::log(2.0));
-
     // Calculate v_ei (or v_eH) using the corrected expression
     const amrex::Real v_ei = (4.0 / 3.0) * std::sqrt(2.0 * M_PI / m_e) *
         (n_e * std::pow(q_e, 4) * Lambda_ei) /
