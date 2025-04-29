@@ -52,7 +52,7 @@ void problem_source (int i, int j, int k,
     src(i,j,k,UEDEN) = -R_Hp * (problem::e_loss_ioniz_eV*C::ev2erg / C::m_p);
     src(i,j,k,UEINT) = src(i,j,k,UEDEN);
     // Update fraction of internal energy stored in ions
-    src(i,j,k,UFX) = 0;
+    src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN);
 }
 
 #endif
