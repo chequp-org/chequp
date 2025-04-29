@@ -22,9 +22,16 @@ void problem_source (int i, int j, int k,
     // Density and temperature
     Real rho = state(i,j,k,URHO);
     Real T = state(i,j,k,UTEMP);
+
     // Abundance of neutral and ionized H
     Real X_Hn = state(i,j,k,UFS) / rho;
     Real X_Hp = state(i,j,k,UFS+1) / rho;
+
+    // Electron and heavy temperatures
+    Real f = state(i,j,k,UFX)/rho;  // fraction of energy in heavy ions
+    Real e = state(i,j,k,UEINT)/rho;  // internal energy per unit mass
+    Real Th = 2 * C::m_u * e * f / (3 * C::k_B);
+    Real Te = 2 * C::m_u * e * (1 - f) / (3 * X_Hp * C::k_B);
 
     // Rate of ionization
     Real R_Hp = rho * rho / C::m_p * (

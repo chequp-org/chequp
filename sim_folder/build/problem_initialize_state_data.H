@@ -45,7 +45,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
                                      state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) +
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
     state(i,j,k,UEINT) = rho_e_electrons + rho_e_heavies;
-    // UFX is rho*f, where f is the fraction of internal energy stored in ions
+    // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
     state(i,j,k,UFX) = problem::dens_ambient * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
 
     // The temperature initialization will be done later
