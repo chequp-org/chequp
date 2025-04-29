@@ -1,5 +1,6 @@
 \documentclass[11pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
 \usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
+\usepackage{hyperref}
 \geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
 %\geometry{landscape}                		% Activate for rotated page geometry
 %\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
@@ -107,29 +108,58 @@ we have:
 \[ \partial_t \rho e_e + \boldsymbol{\nabla}\cdot(\rho e_e \boldsymbol{v}) = \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) - p_e\boldsymbol{\nabla}\cdot\boldsymbol{v} - n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h) + Q_e^{chem} \]
 
 Finally, by summing the equations for the electrons and heavy species, we have:
-\[  \partial_t \rho e + \boldsymbol{\nabla}\cdot(\rho e \boldsymbol{v}) = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \]
+\begin{equation}  
+\partial_t \rho e + \boldsymbol{\nabla}\cdot(\rho e \boldsymbol{v}) = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \label{eq:internal_energy}
+\end{equation}
 with:
 \[ e = e_h + e_e =  \frac{3}{2}\frac{k_B}{m_H}(T_h + X_{H^+}T_e) \qquad p = p_h + p_e = \frac{\rho k_B}{m_H}(T_h + X_{H^+}T_e) \]
+and thus:
+\[ e = \frac{3/2} p \]
 
-\textbf{If we neglect thermal diffusion}, this corresponds to \url{https://amrex-astro.github.io/Castro/docs/Hydrodynamics.html#internal-energy-and-temperature} with:
+This corresponds to \url{https://amrex-astro.github.io/Castro/docs/Hydrodynamics.html#internal-energy-and-temperature} with diffusion turned on and with:
 \[ S_{ext, E} = Q_e^{chem} \]
 
 \section{Final set of equations}
 
-When neglecting diffusion, viscosity and thermal diffusion:
+When neglecting diffusion and viscosity:
 
 \begin{align}
 \partial_t \rho + \boldsymbol{\nabla}\cdot( \rho\boldsymbol{v} ) &= 0 &\qquad S_{ext,\rho} = 0 \\
 \partial_t \rho \boldsymbol{v} + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v} \boldsymbol{v}) &= -\boldsymbol{\nabla}p &\qquad \boldsymbol{S}_{ext,\rho\boldsymbol{u}} = \boldsymbol{0} \\
- \partial_t \rho E + \boldsymbol{\nabla}\cdot(\rho E \boldsymbol{v}) &= - \boldsymbol{\nabla}\cdot (p\boldsymbol{v}) -R_{H+} \frac{\epsilon_{ion}}{m_H}& \qquad S_{ext, E} = -R_{H+} \frac{\epsilon_{ion}}{m_H} \\
+ \partial_t \rho E + \boldsymbol{\nabla}\cdot(\rho E \boldsymbol{v}) &= - \boldsymbol{\nabla}\cdot (p\boldsymbol{v}) + \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h)-R_{H+} \frac{\epsilon_{ion}}{m_H}& \qquad S_{ext, E} = -R_{H+} \frac{\epsilon_{ion}}{m_H} \\
  \partial_t \rho X_H + \boldsymbol{\nabla}\cdot( \rho X_H \boldsymbol{v} ) &= -R_{H+} & \qquad S_{ext, X_H} = - R_{H^+}\\
  \partial_t \rho X_{H^+} + \boldsymbol{\nabla}\cdot( \rho X_{H^+} \boldsymbol{v} ) &= R_{H+} & \qquad S_{ext, X_{H^+}} = R_{H^+}\\
-  \partial_t \rho e_h + \boldsymbol{\nabla}\cdot(\rho e_h \boldsymbol{v}) &= - p_h \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) 
+  \partial_t \rho e_h + \boldsymbol{\nabla}\cdot(\rho e_h \boldsymbol{v}) &= - p_h \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \label{eq:eh}
 \end{align}
 
 with 
 \[ R_{H+} = \frac{\rho^2}{m_H}\sum_j A_j \left( \frac{k_BT_e}{e} \right)^{q_j}\exp\left( - \frac{\epsilon_j}{k_B T_e} \right)\left[ X_H X_{H^+} - X_{H^+}^3 \frac{\rho \lambda^3}{m_H} e^{\epsilon_{ion}/k_BT_e} \right]  \]
 and
 \[ e = e_h + e_e =  \frac{3}{2}\frac{k_B}{m_H}(T_h + X_{H^+}T_e) \qquad p = p_h + p_e = \frac{\rho k_B}{m_H}(T_h + X_{H^+}T_e) \]
+
+\section{Equation for the energy fraction in the heavies}
+
+As suggested in \href{https://github.com/AMReX-Astro/Castro/issues/2679#issuecomment-1887213580}{this Github issue}, in order to avoid having to handle the $-p_h \boldsymbol{\nabla}\cdot \boldsymbol{v}$ term in the energy equation for the heavies Eq.~(\ref{eq:eh}), we instead use the following variable:
+\[ f = \frac{e_h}{e} \]
+which represents the fraction of energy stored in the heavy species.
+
+With this variable, Eq.~(\ref{eq:eh}) can be expressed as:
+\begin{align*} 
+\partial_t \rho e f + \boldsymbol{\nabla}\cdot(\rho e f \boldsymbol{v}) &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \\
+e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + \rho f \left[ \partial_t e + \boldsymbol{v}\cdot\nabla e \right] &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) 
+\end{align*}
+
+In addition, from Eq.~(\ref{eq:internal_energy}), we have:
+\begin{align*} 
+\partial_t \rho e + \boldsymbol{\nabla}\cdot(\rho e \boldsymbol{v}) &= \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \\
+ e \left[ \partial_t \rho + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v}) \right] + \rho \left[\partial_t  e + \boldsymbol{v}\cdot \boldsymbol{\nabla}\cdot e \right]  ) &= \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \\
+\rho \left[\partial_t  e + \boldsymbol{v}\cdot \boldsymbol{\nabla}\cdot e \right]  ) &= \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} 
+\end{align*}
+where we used the conservation of mass equation in the last line.
+
+Thus the equation for the energy of the heavies can be written as:
+\[ e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + f \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \right] =- p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \]
+
+\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) + Q_e^{chem} \right] + \frac{\rho X_{H^+}\nu_{eh}^\epsilon}{e}\frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \]
 
 \end{document}  
