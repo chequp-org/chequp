@@ -21,7 +21,6 @@ void problem_source (int i, int j, int k,
 
     // Density and temperature
     Real rho = state(i,j,k,URHO);
-    Real T = state(i,j,k,UTEMP);
 
     // Abundance of neutral and ionized H
     Real X_Hn = state(i,j,k,UFS) / rho;
@@ -36,13 +35,13 @@ void problem_source (int i, int j, int k,
     // Rate of ionization
     Real R_Hp = rho * rho / C::m_p * (
         problem::a_direct_ioniz *
-        std::pow( C::k_B*T/C::ev2erg, problem::q_direct_ioniz ) *
-        std::exp(-problem::e_direct_ioniz_eV*C::ev2erg/(C::k_B*T)) *
+        std::pow( C::k_B*T_e/C::ev2erg, problem::q_direct_ioniz ) *
+        std::exp(-problem::e_direct_ioniz_eV*C::ev2erg/(C::k_B*T_e)) *
         X_Hn * X_Hp
         +
         problem::a_twostep_ioniz *
-        std::pow( C::k_B*T/C::ev2erg, problem::q_twostep_ioniz ) *
-        std::exp(-problem::e_twostep_ioniz_eV*C::ev2erg/(C::k_B*T)) *
+        std::pow( C::k_B*T_e/C::ev2erg, problem::q_twostep_ioniz ) *
+        std::exp(-problem::e_twostep_ioniz_eV*C::ev2erg/(C::k_B*T_e)) *
         X_Hn * X_Hp
     );
 
