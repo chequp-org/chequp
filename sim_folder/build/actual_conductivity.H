@@ -64,13 +64,17 @@ actual_conductivity (T& state)
     const amrex::Real mu_en = m_e * m_H / (m_e + m_H);
     // - Calculate cross section for electron-neutral collisions, using polynomial of the
     //   Morgan database, www.lxcat.net (PROCESS: E + H -> E + H, Elastic)
-    const amrex::Real log_E_eV = std::log(E_bar / q_e);
-    const amrex::Real log_sigma_m2 =
-        -4.28906183e+01
-        -3.20501602e-01*log_E_eV
-        -9.75994914e-02*std::pow(log_E_eV, 2)
-        -1.72242991e-02*std::pow(log_E_eV, 3)
-        + 2.59407262e-03*std::pow(log_E_eV, 4);
+    amrex::Real log_sigma_m2;
+    if (E_bar < 0.1*q_e) {
+        log_sigma_m2 = -4.28906183e+01;
+    } else {
+        const amrex::Real log_E_eV = std::log(E_bar / q_e);
+        log_sigma_m2 = -4.28906183e+01
+            -3.20501602e-01*log_E_eV
+            -9.75994914e-02*std::pow(log_E_eV, 2)
+            -1.72242991e-02*std::pow(log_E_eV, 3)
+            + 2.59407262e-03*std::pow(log_E_eV, 4);
+    }
     const amrex::Real sigma_m2 = std::exp(log_sigma_m2);
     // - Calculate frequency of electron-neutral collisions
     const amrex::Real v_en = n_n * 4.0/3.0 * std::sqrt(2*E_bar/mu_en) * sigma_m2;
