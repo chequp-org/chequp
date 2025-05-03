@@ -62,7 +62,7 @@ actual_conductivity (T& state)
     // - Find mean energy and reduced mass
     const amrex::Real E_bar = 4.0 / M_PI * k_B * T_e;
     const amrex::Real mu_en = m_e * m_H / (m_e + m_H);
-    // - Calculate cross section for electron-neutral collisions, using polynomial of the
+    // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
     //   Morgan database, www.lxcat.net (PROCESS: E + H -> E + H, Elastic)
     amrex::Real log_sigma_m2;
     if (E_bar < 0.1*q_e) {
