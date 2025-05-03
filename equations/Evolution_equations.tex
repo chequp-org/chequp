@@ -148,8 +148,8 @@ which represents the fraction of energy stored in the heavy species.
 
 With this variable, Eq.~(\ref{eq:eh}) can be expressed as:
 \begin{align*} 
-\partial_t \rho e f + \boldsymbol{\nabla}\cdot(\rho e f \boldsymbol{v}) &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \\
-e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + \rho f \left[ \partial_t e + \boldsymbol{v}\cdot\nabla e \right] &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) 
+\partial_t \rho e f + \boldsymbol{\nabla}\cdot(\rho e f \boldsymbol{v}) &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}k_B(T_e - T_h) \\
+e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + \rho f \left[ \partial_t e + \boldsymbol{v}\cdot\nabla e \right] &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}k_B(T_e - T_h) 
 \end{align*}
 
 In addition, from Eq.~(\ref{eq:internal_energy}), we have:
@@ -163,7 +163,7 @@ where we used the conservation of mass equation in the last line.
 Thus the equation for the energy of the heavies can be written as:
 \[ e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + f \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \right] =- p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \]
 
-\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) + Q_e^{chem} \right] + \frac{\rho X_{H^+}\nu_{eh}^\epsilon}{e}\frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \]
+\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) + Q_e^{chem} \right] + \frac{\rho X_{H^+}\nu_{eh}^\epsilon}{e}\frac{3}{2}k_B(T_e - T_h) \]
 
 Finally, using $e = \frac{3}{2}\frac{k_B}{m_H}(T_h + X_{H^+}T_e)$, we have:
 \[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) + Q_e^{chem} \right] + \rho X_{H^+}\nu_{eh}^\epsilon \frac{(T_e - T_h)}{(T_h + X_{H^+}T_e)} \]
