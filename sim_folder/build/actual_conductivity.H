@@ -79,10 +79,9 @@ actual_conductivity (T& state)
     // - Calculate frequency of electron-neutral collisions
     const amrex::Real v_en = n_n * 4.0/3.0 * std::sqrt(2*E_bar/mu_en) * sigma_m2;
 
-    // Calculate thermal conductivity using the earlier formula
-    const amrex::Real denominator = 1; // Eventually, this should be 1 + gamma_e
-    const amrex::Real conductivitySI = (1.0 / denominator) *
-        15 * std::pow(k_B, 2) * n_e * T_e / (2 * M_PI * m_e * v_ei);
+    // Calculate thermal conductivity using Eq. B1 in https://arxiv.org/pdf/2305.16779
+    const amrex::Real gamma_e = 0; // TODO: Use proper value
+    const amrex::Real conductivitySI = 15 * std::pow(k_B, 2) * n_e * T_e / (2 * M_PI * m_e * (v_en + (1+gamma_e)*v_ei));
     // SI to cgs conversion factor for thermal conductivity
     const amrex::Real si_to_cgs_conversion_factor = 1e5; // (10^7 erg/J) / (10^2 cm/m)
 
