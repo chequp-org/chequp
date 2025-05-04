@@ -1,5 +1,5 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 100000
+max_step = 500000
 stop_time = 10e-9
 
 # PROBLEM SIZE & GEOMETRY
@@ -44,6 +44,7 @@ amr.max_grid_size   = 256
 amr.plot_file       = plt_1d_
 amr.plot_int        = 40
 amr.derive_plot_vars=ALL
+amr.file_name_digits=7
 
 # PROBLEM PARAMETERS
 problem.p_ambient = 1.e-6
