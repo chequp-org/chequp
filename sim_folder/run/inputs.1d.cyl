@@ -42,7 +42,7 @@ amr.max_grid_size   = 256
 
 # PLOTFILES
 amr.plot_file       = plt_1d_
-amr.plot_int        = 40
+amr.plot_int        = 400
 amr.derive_plot_vars=ALL
 amr.file_name_digits=7
 
