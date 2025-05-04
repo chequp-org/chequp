@@ -41,7 +41,7 @@ actual_conductivity (T& state)
 
     const amrex::Real T_e = state.T; // Electron temperature
     // TODO: Extract correct ion temperature
-    const amrex::Real T_h = T_e; // Assuming this parameter is available in your state object
+    const amrex::Real T_h = T_e;
 
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
     // - Calculate Lambda_ei
