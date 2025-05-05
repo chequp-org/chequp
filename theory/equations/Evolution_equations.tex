@@ -69,7 +69,7 @@ This implies that the corresponding source term in Castro is again 0:
 \subsection{Conservation of energy}
 
 We have a separate equation for the heavy species and the electrons. For the heavy species, i.e. $H$ and $H^+$ together (Eq. 3 in Mewes et al.):
-\[ \rho C_h (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})T_h = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) + (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})p_h + n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h) \]
+\[ \rho C_h (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})T_h = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) + (\partial_t + \boldsymbol{v}\cdot\boldsymbol{\nabla})p_h + n_e\nu_{eh}^\epsilon \frac{3}{2} k_B(T_e - T_h) \]
 where $C_h = \frac{5}{2}\frac{k_B}{m_H}$ and $p_H = \frac{\rho k_B T_h}{m_H}$.
 
 Since $C_h$ is constant, we have:
@@ -85,7 +85,7 @@ We can thus rewrite the equation for heavy species as:
 And finally, using
 \[ e_h = C_h T_e - \frac{p_h}{\rho} = \frac{3}{2}\frac{k_B T_h}{m_H} \]
 we have:
-\[ \partial_t \rho e_h + \boldsymbol{\nabla}\cdot(\rho e_h \boldsymbol{v}) = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p_h \boldsymbol{\nabla}\cdot \boldsymbol{v} + n_e\nu_{eh}^\epsilon \frac{3}{2}k_b(T_e - T_h) \]
+\[ \partial_t \rho e_h + \boldsymbol{\nabla}\cdot(\rho e_h \boldsymbol{v}) = \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p_h \boldsymbol{\nabla}\cdot \boldsymbol{v} + n_e\nu_{eh}^\epsilon \frac{3}{2}k_B(T_e - T_h) \]
 
 
 For the electron species:
@@ -129,7 +129,7 @@ When neglecting diffusion and viscosity, as well as thermal diffusion from the h
  \partial_t \rho E + \boldsymbol{\nabla}\cdot(\rho E \boldsymbol{v}) &= - \boldsymbol{\nabla}\cdot (p\boldsymbol{v}) + \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) -R_{H+} \frac{\epsilon_{ion}}{m_H}& \qquad S_{ext, E} = -R_{H+} \frac{\epsilon_{ion}}{m_H} \\
  \partial_t \rho X_H + \boldsymbol{\nabla}\cdot( \rho X_H \boldsymbol{v} ) &= -R_{H+} & \qquad S_{ext, X_H} = - R_{H^+}\\
  \partial_t \rho X_{H^+} + \boldsymbol{\nabla}\cdot( \rho X_{H^+} \boldsymbol{v} ) &= R_{H+} & \qquad S_{ext, X_{H^+}} = R_{H^+}\\
-  \partial_t \rho e_h + \boldsymbol{\nabla}\cdot(\rho e_h \boldsymbol{v}) &= - p_h \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}k_B(T_e - T_h) \label{eq:eh}
+  \partial_t \rho e_h + \boldsymbol{\nabla}\cdot(\rho e_h \boldsymbol{v}) &= - p_h \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3 k_B}{2 m_H}(T_e - T_h) \label{eq:eh}
 \end{align}
 
 with
@@ -148,8 +148,8 @@ which represents the fraction of energy stored in the heavy species.
 
 With this variable, Eq.~(\ref{eq:eh}) can be expressed as:
 \begin{align*}
-\partial_t \rho e f + \boldsymbol{\nabla}\cdot(\rho e f \boldsymbol{v}) &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}k_B(T_e - T_h) \\
-e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + \rho f \left[ \partial_t e + \boldsymbol{v}\cdot\nabla e \right] &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}k_B(T_e - T_h)
+\partial_t \rho e f + \boldsymbol{\nabla}\cdot(\rho e f \boldsymbol{v}) &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3 k_B}{2 m_H}(T_e - T_h) \\
+e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + \rho f \left[ \partial_t e + \boldsymbol{v}\cdot\nabla e \right] &= - p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3 k_B}{2 m_H}(T_e - T_h)
 \end{align*}
 
 In addition, from Eq.~(\ref{eq:internal_energy}), we have:
@@ -161,11 +161,13 @@ In addition, from Eq.~(\ref{eq:internal_energy}), we have:
 where we used the conservation of mass equation in the last line.
 
 Thus the equation for the energy of the heavies can be written as:
-\[ e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + f \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  - p\boldsymbol{\nabla}\cdot\boldsymbol{v} -R_{H+} \frac{\epsilon_{ion}}{m_H} \right] =- p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \]
+\[ e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + f \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  - p\boldsymbol{\nabla}\cdot\boldsymbol{v} -R_{H+} \frac{\epsilon_{ion}}{m_H} \right] =- p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3k_B}{2 m_H}(T_e - T_h) \]
 
-\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  -R_{H+} \frac{\epsilon_{ion}}{m_H} \right] + \frac{\rho X_{H^+}\nu_{eh}^\epsilon}{e}\frac{3}{2}k_B(T_e - T_h) \]
+\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  -R_{H+} \frac{\epsilon_{ion}}{m_H} \right] + \frac{\rho X_{H^+}\nu_{eh}^\epsilon}{e}\frac{3k_B}{2m_H}(T_e - T_h) \]
 
-Finally, using $e = \frac{3}{2}\frac{k_B}{m_H}(T_h + X_{H^+}T_e)$, we have:
-\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  -R_{H+} \frac{\epsilon_{ion}}{m_H}  \right] + \rho X_{H^+}\nu_{eh}^\epsilon \frac{(T_e - T_h)}{(T_h + X_{H^+}T_e)} \]
+Finally, using
+\[ \frac{3k_BT_h}{2 m_H} = ef \qquad \frac{3k_B T_e}{2m_H} = \frac{(1-f)e}{X_{H^+}} \]
+ we have:
+\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  -R_{H+} \frac{\epsilon_{ion}}{m_H}  \right] + \rho \nu_{eh}^\epsilon [\, 1- (1 + X_{H^+})f \,] \]
 
 \end{document}
