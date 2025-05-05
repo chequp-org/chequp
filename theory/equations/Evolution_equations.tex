@@ -121,12 +121,12 @@ This corresponds to \url{https://amrex-astro.github.io/Castro/docs/Hydrodynamics
 
 \section{Final set of equations}
 
-When neglecting diffusion and viscosity:
+When neglecting diffusion and viscosity, as well as thermal diffusion from the heavies:
 
 \begin{align}
 \partial_t \rho + \boldsymbol{\nabla}\cdot( \rho\boldsymbol{v} ) &= 0 &\qquad S_{ext,\rho} = 0 \\
 \partial_t \rho \boldsymbol{v} + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v} \boldsymbol{v}) &= -\boldsymbol{\nabla}p &\qquad \boldsymbol{S}_{ext,\rho\boldsymbol{u}} = \boldsymbol{0} \\
- \partial_t \rho E + \boldsymbol{\nabla}\cdot(\rho E \boldsymbol{v}) &= - \boldsymbol{\nabla}\cdot (p\boldsymbol{v}) + \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h)-R_{H+} \frac{\epsilon_{ion}}{m_H}& \qquad S_{ext, E} = -R_{H+} \frac{\epsilon_{ion}}{m_H} \\
+ \partial_t \rho E + \boldsymbol{\nabla}\cdot(\rho E \boldsymbol{v}) &= - \boldsymbol{\nabla}\cdot (p\boldsymbol{v}) + \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) -R_{H+} \frac{\epsilon_{ion}}{m_H}& \qquad S_{ext, E} = -R_{H+} \frac{\epsilon_{ion}}{m_H} \\
  \partial_t \rho X_H + \boldsymbol{\nabla}\cdot( \rho X_H \boldsymbol{v} ) &= -R_{H+} & \qquad S_{ext, X_H} = - R_{H^+}\\
  \partial_t \rho X_{H^+} + \boldsymbol{\nabla}\cdot( \rho X_{H^+} \boldsymbol{v} ) &= R_{H+} & \qquad S_{ext, X_{H^+}} = R_{H^+}\\
   \partial_t \rho e_h + \boldsymbol{\nabla}\cdot(\rho e_h \boldsymbol{v}) &= - p_h \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}k_B(T_e - T_h) \label{eq:eh}
@@ -154,18 +154,18 @@ e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right
 
 In addition, from Eq.~(\ref{eq:internal_energy}), we have:
 \begin{align*}
-\partial_t \rho e + \boldsymbol{\nabla}\cdot(\rho e \boldsymbol{v}) &= \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \\
- e \left[ \partial_t \rho + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v}) \right] + \rho \left[\partial_t  e + \boldsymbol{v}\cdot \boldsymbol{\nabla}\cdot e \right]  ) &= \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \\
-\rho \left[\partial_t  e + \boldsymbol{v}\cdot \boldsymbol{\nabla}\cdot e \right]  ) &= \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem}
+\partial_t \rho e + \boldsymbol{\nabla}\cdot(\rho e \boldsymbol{v}) &= \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) - p\boldsymbol{\nabla}\cdot\boldsymbol{v}  -R_{H+} \frac{\epsilon_{ion}}{m_H}  \\
+ e \left[ \partial_t \rho + \boldsymbol{\nabla}\cdot(\rho \boldsymbol{v}) \right] + \rho \left[\partial_t  e + \boldsymbol{v}\cdot \boldsymbol{\nabla}\cdot e \right]  ) &= \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) - p\boldsymbol{\nabla}\cdot\boldsymbol{v}  -R_{H+} \frac{\epsilon_{ion}}{m_H}  \\
+\rho \left[\partial_t  e + \boldsymbol{v}\cdot \boldsymbol{\nabla}\cdot e \right]  ) &= \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e) - p\boldsymbol{\nabla}\cdot\boldsymbol{v}  -R_{H+} \frac{\epsilon_{ion}}{m_H} 
 \end{align*}
 where we used the conservation of mass equation in the last line.
 
 Thus the equation for the energy of the heavies can be written as:
-\[ e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + f \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) - p\boldsymbol{\nabla}\cdot\boldsymbol{v} + Q_e^{chem} \right] =- p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \]
+\[ e\left[\partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v})\right] + f \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  - p\boldsymbol{\nabla}\cdot\boldsymbol{v} -R_{H+} \frac{\epsilon_{ion}}{m_H} \right] =- p f \boldsymbol{\nabla}\cdot \boldsymbol{v} + \rho X_{H^+}\nu_{eh}^\epsilon \frac{3}{2}\frac{k_B}{m_e}(T_e - T_h) \]
 
-\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) + Q_e^{chem} \right] + \frac{\rho X_{H^+}\nu_{eh}^\epsilon}{e}\frac{3}{2}k_B(T_e - T_h) \]
+\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  -R_{H+} \frac{\epsilon_{ion}}{m_H} \right] + \frac{\rho X_{H^+}\nu_{eh}^\epsilon}{e}\frac{3}{2}k_B(T_e - T_h) \]
 
 Finally, using $e = \frac{3}{2}\frac{k_B}{m_H}(T_h + X_{H^+}T_e)$, we have:
-\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_e) + \boldsymbol{\nabla}\cdot(\lambda_h\boldsymbol{\nabla}T_h) + Q_e^{chem} \right] + \rho X_{H^+}\nu_{eh}^\epsilon \frac{(T_e - T_h)}{(T_h + X_{H^+}T_e)} \]
+\[ \partial_t \rho f + \boldsymbol{\nabla}\cdot(\rho f \boldsymbol{v}) = - \frac{f}{e} \left[ \boldsymbol{\nabla}\cdot(\lambda_e\boldsymbol{\nabla}T_e)  -R_{H+} \frac{\epsilon_{ion}}{m_H}  \right] + \rho X_{H^+}\nu_{eh}^\epsilon \frac{(T_e - T_h)}{(T_h + X_{H^+}T_e)} \]
 
 \end{document}
