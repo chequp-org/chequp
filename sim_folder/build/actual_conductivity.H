@@ -32,12 +32,14 @@ actual_conductivity (T& state)
     const amrex::Real n_e = n_e_cgs * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
     const amrex::Real n_n = n_n_cgs * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
 
-    const amrex::Real T_e = state.T; // Electron temperature
-    // TODO: Extract correct ion temperature
-    const amrex::Real T_h = T_e;
+    // Electron temperature
+    // In a single-temperature model (gamma_law), this will extract the average temperature
+    // In a two-temperature model (e.g. gamma_law_2T), this will extract the electron temperature
+    const amrex::Real T_e = state.T;
 
     // Get collision frequencies
     amrex::Real v_ei, v_en;
+    const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
     get_collision_frequencies(n_e, n_n, T_e, T_h, v_ei, v_en);
 
     // Calculate thermal conductivity using Eq. B1 in https://arxiv.org/pdf/2305.16779

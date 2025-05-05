@@ -23,9 +23,10 @@ void problem_source (int i, int j, int k,
     // Density and temperature
     Real rho = state(i,j,k,URHO);
 
-    const amrex::Real T_e = state(i,j,k,UTEMP); // Electron temperature
-    // TODO: Extract correct ion temperature
-    const amrex::Real T_h = T_e;
+    // Electron temperature
+    // In a single-temperature model (gamma_law), this will extract the average temperature
+    // In a two-temperature model (e.g. gamma_law_2T), this will extract the electron temperature
+    const amrex::Real T_e = state(i,j,k,UTEMP);
 
     // Abundance of neutral and ionized H
     Real X_Hn = state(i,j,k,UFS) / rho;
@@ -60,13 +61,14 @@ void problem_source (int i, int j, int k,
     const amrex::Real n_n = rho * X_Hn / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
     // Get collision frequencies
     amrex::Real v_ei, v_en;
+    const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
     get_collision_frequencies(n_e, n_n, T_e, T_h, v_ei, v_en);
 
     // Calculate the collision frequency for energy transfer between electrons and heavies
     const amrex::Real v_e_E = 2*SI::m_e/SI::m_H * (v_ei + v_en);
 
     // Update fraction of internal energy stored in ions
-    src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN) + rho*X_Hp*v_e_E*(T_e - T_h)/(T_h + X_Hp*T_e);
+    src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN) + rho * v_e_E * ( 1 - (1+X_Hp)*f );
 }
 
 #endif
