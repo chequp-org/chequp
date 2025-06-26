@@ -28,6 +28,21 @@ and used `gmake` instead of `make` in the instructions below.
 
 In order to analyze the results, create a Python environment with `numpy`, `scipy`, `Jupyter` and `yt`.
 
+## Switch between two-temperature and single-temperature model
+
+The choice of a single-temperature model or two-temperature model is done before compiling,
+by changing the flag `EOS_DIR` in `sim_folder/build/GNUmakefile`.
+
+- For a two-temperature model (default), use
+```
+EOS_DIR     := gamma_law_2T
+```
+
+- For a single-temperature model, use
+```
+EOS_DIR     := gamma_law
+```
+
 ## For 2D Cartesian sims
 
 ```
