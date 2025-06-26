@@ -24,7 +24,7 @@ castro.add_ext_src = 1
 castro.diffuse_temp = 1
 
 # TIME STEP CONTROL
-castro.cfl            = 0.5     # cfl number for hyperbolic system
+castro.cfl            = 0.25     # cfl number for hyperbolic system
 castro.init_shrink    = 0.01    # scale back initial timestep
 castro.change_max     = 1.1     # maximum increase in dt over successive steps
 
