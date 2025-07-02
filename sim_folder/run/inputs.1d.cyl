@@ -1,5 +1,5 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 500000
+max_step = 2000000
 stop_time = 10e-9
 
 # PROBLEM SIZE & GEOMETRY
@@ -28,7 +28,7 @@ castro.diffuse_temp = 1
 castro.diffuse_use_amrex_mlmg = 0
 
 # TIME STEP CONTROL
-castro.cfl            = 0.2     # cfl number for hyperbolic system
+castro.cfl            = 0.5     # cfl number for hyperbolic system
 castro.init_shrink    = 0.01    # scale back initial timestep
 castro.change_max     = 1.1     # maximum increase in dt over successive steps
 
@@ -46,7 +46,7 @@ amr.max_grid_size   = 256
 
 # PLOTFILES
 amr.plot_file       = plt_1d_
-amr.plot_int        = 400
+amr.plot_int        = 1000
 amr.derive_plot_vars=ALL
 amr.file_name_digits=7
 
