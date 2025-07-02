@@ -36,17 +36,21 @@ void problem_source (int i, int j, int k,
     Real f = state(i,j,k,UFX)/rho;  // fraction of energy in heavy ions
     Real e = state(i,j,k,UEINT)/rho;  // internal energy per unit mass
 
+    // Thermal de Broglie wavelength
+    Real const lambda_DB = C::hbar * std::sqrt( 2*M_PI/(C::m_e*C::k_B*T_e) ); // in cm
+    Real const reverse_rate_factor = rho * std::pow(lambda_DB, 3) / C::m_p;
+
     // Rate of ionization
     Real R_Hp = rho * rho / C::m_p * (
         problem::a_direct_ioniz *
-        std::pow( C::k_B*T_e/C::ev2erg, problem::q_direct_ioniz ) *
-        std::exp(-problem::e_direct_ioniz_eV*C::ev2erg/(C::k_B*T_e)) *
-        X_Hn * X_Hp
+        std::pow( C::k_B*T_e/C::ev2erg, problem::q_direct_ioniz ) * (
+            std::exp(-problem::e_direct_ioniz_eV*C::ev2erg/(C::k_B*T_e)) * X_Hn * X_Hp
+            - std::pow(X_Hp, 3) * reverse_rate_factor )
         +
         problem::a_twostep_ioniz *
-        std::pow( C::k_B*T_e/C::ev2erg, problem::q_twostep_ioniz ) *
-        std::exp(-problem::e_twostep_ioniz_eV*C::ev2erg/(C::k_B*T_e)) *
-        X_Hn * X_Hp
+        std::pow( C::k_B*T_e/C::ev2erg, problem::q_twostep_ioniz ) * (
+            std::exp(-problem::e_twostep_ioniz_eV*C::ev2erg/(C::k_B*T_e)) * X_Hn * X_Hp
+            - std::pow(X_Hp, 3) * reverse_rate_factor )
     );
 
     // Update state
