@@ -1,13 +1,13 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 2000000
+max_step = 10000
 stop_time = 10e-9
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic =  0
 geometry.coord_sys   =  1        # r-z coordinates
 geometry.prob_lo     =  0
-geometry.prob_hi     =  0.03
-amr.n_cell           = 512
+geometry.prob_hi     =  0.06
+amr.n_cell           = 32
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -38,21 +38,33 @@ castro.v              = 1       # verbosity in Castro.cpp
 amr.v                 = 1       # verbosity in Amr.cpp
 
 # REFINEMENT / REGRIDDING
-amr.max_level       = 0       # maximum level number allowed
+amr.max_level       = 3       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 5       # how often to regrid
 amr.blocking_factor = 8       # block factor in grid generation
 amr.max_grid_size   = 256
 
+amr.refinement_indicators = dengrad pressgrad
+
+amr.refine.dengrad.max_level = 3
+amr.refine.dengrad.relative_gradient = 0.01
+amr.refine.dengrad.field_name = density
+
+amr.refine.pressgrad.max_level = 3
+amr.refine.pressgrad.relative_gradient = 0.01
+amr.refine.pressgrad.field_name = pressure
+
 # PLOTFILES
 amr.plot_file       = plt_1d_
-amr.plot_int        = 1000
+amr.plot_int        = 10
 amr.derive_plot_vars=ALL
-amr.file_name_digits=7
 
 # PROBLEM PARAMETERS
+problem.r_init = 50e-4
 problem.p_ambient = 1.e-6
+problem.exp_energy = 4400 # 44 mJ/m, converted to ergs/cm
 problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
+problem.nsub = 10
 
 # PARAMETERS OF ARRHENIUS LAW FOR DIRECT IONIZATION
 problem.a_direct_ioniz = 7.1e-9 // cm^3.s-1

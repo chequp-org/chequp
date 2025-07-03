@@ -53,11 +53,64 @@ void problem_initialize ()
     for (int n = 0; n < NumSpec; ++n) {
         eos_state.xn[n] = xn_zone[n];
     }
-
+        
     eos(eos_input_rp, eos_state);
 
+    problem::e_ambient = eos_state.e;
     problem::temp_ambient = eos_state.T;
 
+    // set explosion pressure -- we will convert the point-explosion energy into
+    // a corresponding pressure distributed throughout the perturbed volume
+
+    Real vctr = 0.0;
+
+    if (coord_type == 0) {
+
+#if AMREX_SPACEDIM == 1
+
+        amrex::Abort("Sedov problem unsupported in 1D Cartesian geometry.");
+
+#elif AMREX_SPACEDIM == 2
+
+        // Cylindrical problem in Cartesian coordinates
+
+        vctr = M_PI * problem::r_init * problem::r_init;
+
+#else
+
+        // Spherical problem in Cartesian coordinates
+
+        vctr = (4.0_rt / 3.0_rt) * M_PI * problem::r_init * problem::r_init * problem::r_init;
+
+#endif
+
+    }
+    else if (coord_type == 1) {
+
+#if AMREX_SPACEDIM == 1
+
+        vctr = M_PI * problem::r_init * problem::r_init;
+
+#elif AMREX_SPACEDIM == 2
+
+        vctr = (4.0_rt / 3.0_rt) * M_PI * problem::r_init * problem::r_init * problem::r_init;
+
+#else
+
+        amrex::Abort("Sedov problem unsupported in 3D axisymmetric geometry.");
+
+#endif
+
+    }
+    else if (coord_type == 2) {
+
+        // Must have AMREX_SPACEDIM == 1 for this coord_type.
+
+        vctr = (4.0_rt / 3.0_rt) * M_PI * problem::r_init * problem::r_init * problem::r_init;
+
+    }
+
+    problem::e_exp = problem::exp_energy / vctr / problem::dens_ambient;
 }
 
 #endif
