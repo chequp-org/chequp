@@ -37,5 +37,5 @@ def interpolate_data(case):
 
         np.save(path + path_end + '.npy', q_interp.T)
 
-for case in [ '2T_yes_diff_noenergy_ioniz', '2T_yes_diff_yes_ioniz']:
+for case in [ '2T_old_diffusion', '2T_new_diffusion']:
     interpolate_data(case)
