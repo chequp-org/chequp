@@ -148,7 +148,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
     state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
-    state(i,j,k,UFX) = 0;
+    state(i,j,k,UFX) = problem::e_ambient/e_zone; // fraction of energy in heavies
 }
 
 #endif
