@@ -53,10 +53,9 @@ void problem_initialize ()
     for (int n = 0; n < NumSpec; ++n) {
         eos_state.xn[n] = xn_zone[n];
     }
-        
+
     eos(eos_input_rp, eos_state);
 
-    problem::e_ambient = eos_state.e;
     problem::temp_ambient = eos_state.T;
 
     // set explosion pressure -- we will convert the point-explosion energy into

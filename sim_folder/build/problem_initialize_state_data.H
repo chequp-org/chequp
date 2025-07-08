@@ -120,23 +120,26 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
         }
     }
 
-    Real e_zone = (vol_pert * problem::e_exp + vol_ambient * problem::e_ambient) / (vol_pert + vol_ambient);
-    Real ioniz_fraction = vol_pert / (vol_pert + vol_ambient);
-
-    Real eint = problem::dens_ambient * e_zone;
+    // Model: heavies and min_ioniz_fraction of electrons are at temp_ambient
+    // The rest of the electrons have the energy density e_exp
+    Real min_ioniz_fraction = 1.e-3;
+    Real ioniz_fraction = (1. - min_ioniz_fraction)*vol_pert / (vol_pert + vol_ambient) + min_ioniz_fraction;
+    Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * problem::temp_ambient / C::m_u;
+    Real rho_e_electrons = problem::dens_ambient * (problem::e_exp * vol_pert / (vol_pert + vol_ambient) + min_ioniz_fraction * 3./2 * C::k_B * problem::temp_ambient / C::m_u);
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
     state(i,j,k,UMY) = 0.e0_rt;
     state(i,j,k,UMZ) = 0.e0_rt;
 
-    state(i,j,k,UEDEN) = eint +
+    state(i,j,k,UEDEN) = rho_e_electrons + rho_e_heavies +
                          0.5e0_rt * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) +
                                      state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) +
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
 
-    state(i,j,k,UEINT) = eint;
-    state(i,j,k,UFX) = eint; // internal energy of heavy ions
+    state(i,j,k,UEINT) = rho_e_electrons + rho_e_heavies;
+    // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
+    state(i,j,k,UFX) = problem::dens_ambient * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
 
     // The temperature initialization will be done later
     // in the call to clean_state. We want to avoid
@@ -145,10 +148,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     // to the ambient temperature everywhere.
 
     state(i,j,k,UTEMP) = problem::temp_ambient;
-
     state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
     state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
-    state(i,j,k,UFX) = problem::e_ambient/e_zone; // fraction of energy in heavies
 }
 
 #endif

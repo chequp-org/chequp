@@ -9,8 +9,6 @@ exp_energy             real                 1.e0_rt                      y
 
 temp_ambient           real                 300_rt                       y
 
-e_ambient              real                 62120_rt
-
 r_init                 real                 0.05e0_rt                    y
 
 nsub                   integer              4                            y
