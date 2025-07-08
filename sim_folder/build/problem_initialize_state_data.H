@@ -146,7 +146,6 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     // EOS calls in ca_initdata. So that there is valid
     // data for an initial guess for the EOS, we initialize
     // to the ambient temperature everywhere.
-
     state(i,j,k,UTEMP) = problem::temp_ambient;
     state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
     state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
