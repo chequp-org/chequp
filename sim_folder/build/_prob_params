@@ -7,7 +7,7 @@ dens_ambient           real                 1.e0_rt                      y
 
 exp_energy             real                 1.e0_rt                      y
 
-temp_ambient           real                 300_rt                       y
+temp_ambient           real                 -1.e2_rt                     y
 
 r_init                 real                 0.05e0_rt                    y
 
