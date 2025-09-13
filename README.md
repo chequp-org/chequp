@@ -7,9 +7,6 @@ To setup the folders:
 git clone git@github.com:RemiLehe/castro_sim.git
 cd castro_sim
 git clone --recursive https://github.com/AMReX-Astro/Castro.git
-cd Castro
-git checkout 8ee041f
-cd ..
 ```
 
 On Linux, I used the same compilation environment as for WarpX i.e.
