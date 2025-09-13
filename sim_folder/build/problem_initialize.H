@@ -3,6 +3,7 @@
 
 #include <prob_parameters.H>
 #include <eos.H>
+#include <problem_initialize_state_data.H>
 
 AMREX_INLINE
 void problem_initialize ()
@@ -57,6 +58,9 @@ void problem_initialize ()
     eos(eos_input_rp, eos_state);
 
     problem::temp_ambient = eos_state.T;
+
+    // Initialize plasma data from CSV file
+    initialize_plasma_data();
 
 }
 

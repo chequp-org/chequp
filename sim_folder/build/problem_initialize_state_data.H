@@ -4,38 +4,21 @@
 #include <prob_parameters.H>
 #include <eos.H>
 #include <AMReX_Math.H>
+#include <AMReX_Print.H>
+#include <fundamental_constants.H>
 #include <fstream>
 #include <vector>
 #include <string>
 #include <sstream>
 
-AMREX_GPU_HOST_DEVICE AMREX_INLINE
-void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& state, const GeometryData& geomdata)
+// Static plasma data arrays - initialized once in problem_initialize
+static std::vector<Real> plasma_data_r;
+static std::vector<Real> plasma_data_ioniz;
+static std::vector<Real> plasma_data_te;
+
+// Function to initialize plasma data from CSV file
+inline void initialize_plasma_data()
 {
-    int coord_type = geomdata.Coord();
-
-    const Real* dx = geomdata.CellSize();
-    const Real* problo = geomdata.ProbLo();
-
-    Real x = 0;
-    Real y = 0;
-    Real z = 0;
-
-    x = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
-#if AMREX_SPACEDIM >= 2
-    y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
-#endif
-#if AMREX_SPACEDIM >= 3
-    z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
-#endif
-
-    Real r = sqrt(x*x + y*y + z*z);
-
-    // Read plasma data from file
-    std::vector<Real> plasma_data_r;
-    std::vector<Real> plasma_data_ioniz;
-    std::vector<Real> plasma_data_te;
-
     std::ifstream file("plasma_data.csv");
     if (file.is_open()) {
         std::string line;
@@ -79,15 +62,43 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
             } else {
                 amrex::Abort("Missing electron temperature value");
             }
-
         }
         file.close();
     } else {
         amrex::Abort("Failed to open plasma_data.csv");
     }
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_INLINE
+void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& state, const GeometryData& geomdata)
+{
+    int coord_type = geomdata.Coord();
+
+    const Real* dx = geomdata.CellSize();
+    const Real* problo = geomdata.ProbLo();
+
+    Real x = 0;
+    Real y = 0;
+    Real z = 0;
+
+    x = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
+#if AMREX_SPACEDIM >= 2
+    y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
+#endif
+#if AMREX_SPACEDIM >= 3
+    z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
+#endif
+
+    Real r = sqrt(x*x + y*y + z*z);
+
     // Linear interpolation to find ionization fraction and electron temperature
     Real ioniz_fraction = 0.0;
     Real te = 0.0;
+
+    // Check if plasma data has been loaded
+    if (plasma_data_r.empty()) {
+        amrex::Abort("Plasma data not initialized. Make sure problem_initialize() is called first.");
+    }
 
     if (r <= plasma_data_r.front()) {
         ioniz_fraction = plasma_data_ioniz.front();
