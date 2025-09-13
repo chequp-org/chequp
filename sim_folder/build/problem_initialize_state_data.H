@@ -16,7 +16,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     const Real* dx = geomdata.CellSize();
     const Real* problo = geomdata.ProbLo();
-    
+
     Real x = 0;
     Real y = 0;
     Real z = 0;
@@ -28,9 +28,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 #if AMREX_SPACEDIM >= 3
     z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
 #endif
-    
+
     Real r = sqrt(x*x + y*y + z*z);
-    
 
     // Read plasma data from file
     std::vector<Real> plasma_data_r;
@@ -40,14 +39,14 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     std::ifstream file("plasma_data.csv");
     if (file.is_open()) {
         std::string line;
-        
+
         // Skip the header line
         std::getline(file, line);
-        
+
         while (std::getline(file, line)) {
             std::stringstream ss(line);
             std::string value;
-            
+
             // Read radius
             if (std::getline(ss, value, ',')) {
                 try {
@@ -58,7 +57,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
             } else {
                 amrex::Abort("Missing radius value");
             }
-            
+
             // Read ionization fraction
             if (std::getline(ss, value, ',')) {
                 try {
@@ -69,7 +68,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
             } else {
                 amrex::Abort("Missing ionization fraction value");
             }
-            
+
             // Read electron temperature
             if (std::getline(ss, value)) {
                 try {
@@ -80,7 +79,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
             } else {
                 amrex::Abort("Missing electron temperature value");
             }
-            
+
         }
         file.close();
     } else {
@@ -89,7 +88,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     // Linear interpolation to find ionization fraction and electron temperature
     Real ioniz_fraction = 0.0;
     Real te = 0.0;
-    
+
     if (r <= plasma_data_r.front()) {
         ioniz_fraction = plasma_data_ioniz.front();
         te = plasma_data_te.front();
@@ -102,14 +101,14 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
                 Real r_low = plasma_data_r[idx-1];
                 Real r_high = plasma_data_r[idx];
                 Real frac = (r - r_low) / (r_high - r_low);
-    
+
                 ioniz_fraction = plasma_data_ioniz[idx-1] + frac * (plasma_data_ioniz[idx] - plasma_data_ioniz[idx-1]);
                 te = plasma_data_te[idx-1] + frac * (plasma_data_te[idx] - plasma_data_te[idx-1]);
                 break;
             }
         }
     }
-    Real eint = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * te +  3./2 * C::k_B * 348.)/C::m_u;
+    Real eint = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * te +  3./2 * C::k_B * problem::temp_ambient)/C::m_u;
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
@@ -122,7 +121,13 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
 
     state(i,j,k,UEINT) = eint;
-    state(i,j,k,UFX) = eint;
+    state(i,j,k,UFX) = eint; // internal energy of heavy ions
+
+    // The temperature initialization will be done later
+    // in the call to clean_state. We want to avoid
+    // EOS calls in ca_initdata. So that there is valid
+    // data for an initial guess for the EOS, we initialize
+    // to the ambient temperature everywhere.
 
     state(i,j,k,UTEMP) = problem::temp_ambient;
 
