@@ -60,7 +60,7 @@ void problem_initialize ()
     problem::temp_ambient = eos_state.T;
 
     // Initialize plasma data from CSV file
-    initialize_plasma_data();
+    read_initial_conditions();
 
 }
 

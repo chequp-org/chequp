@@ -11,15 +11,15 @@
 #include <string>
 #include <sstream>
 
-// Static plasma data arrays - initialized once in problem_initialize
-static std::vector<Real> plasma_data_r;
-static std::vector<Real> plasma_data_ioniz;
-static std::vector<Real> plasma_data_te;
+// Static arrays for initial conditions that are read from a CSV file
+static std::vector<Real> initial_conditions_r;
+static std::vector<Real> initial_conditions_ioniz;
+static std::vector<Real> initial_conditions_te;
 
 // Function to initialize plasma data from CSV file
-inline void initialize_plasma_data()
+inline void read_initial_conditions()
 {
-    std::ifstream file("plasma_data.csv");
+    std::ifstream file("initial_conditions.csv");
     if (file.is_open()) {
         std::string line;
 
@@ -33,7 +33,7 @@ inline void initialize_plasma_data()
             // Read radius
             if (std::getline(ss, value, ',')) {
                 try {
-                    plasma_data_r.push_back(std::stod(value));
+                    initial_conditions_r.push_back(std::stod(value));
                 } catch (const std::invalid_argument&) {
                     amrex::Abort("Invalid radius value: " + value);
                 }
@@ -44,7 +44,7 @@ inline void initialize_plasma_data()
             // Read ionization fraction
             if (std::getline(ss, value, ',')) {
                 try {
-                    plasma_data_ioniz.push_back(std::stod(value));
+                    initial_conditions_ioniz.push_back(std::stod(value));
                 } catch (const std::invalid_argument&) {
                     amrex::Abort("Invalid ionization fraction value: " + value);
                 }
@@ -55,7 +55,7 @@ inline void initialize_plasma_data()
             // Read electron temperature
             if (std::getline(ss, value)) {
                 try {
-                    plasma_data_te.push_back(std::stod(value));
+                    initial_conditions_te.push_back(std::stod(value));
                 } catch (const std::invalid_argument&) {
                     amrex::Abort("Invalid electron temperature value: " + value);
                 }
@@ -65,7 +65,7 @@ inline void initialize_plasma_data()
         }
         file.close();
     } else {
-        amrex::Abort("Failed to open plasma_data.csv");
+        amrex::Abort("Failed to open initial_conditions.csv");
     }
 }
 
@@ -96,25 +96,25 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real te = 0.0;
 
     // Check if plasma data has been loaded
-    if (plasma_data_r.empty()) {
+    if (initial_conditions_r.empty()) {
         amrex::Abort("Plasma data not initialized. Make sure problem_initialize() is called first.");
     }
 
-    if (r <= plasma_data_r.front()) {
-        ioniz_fraction = plasma_data_ioniz.front();
-        te = plasma_data_te.front();
-    } else if (r >= plasma_data_r.back()) {
-        ioniz_fraction = plasma_data_ioniz.back();
-        te = plasma_data_te.back();
+    if (r <= initial_conditions_r.front()) {
+        ioniz_fraction = initial_conditions_ioniz.front();
+        te = initial_conditions_te.front();
+    } else if (r >= initial_conditions_r.back()) {
+        ioniz_fraction = initial_conditions_ioniz.back();
+        te = initial_conditions_te.back();
     } else {
-        for (int idx = 1; idx < plasma_data_r.size(); ++idx) {
-            if (r < plasma_data_r[idx]) {
-                Real r_low = plasma_data_r[idx-1];
-                Real r_high = plasma_data_r[idx];
+        for (int idx = 1; idx < initial_conditions_r.size(); ++idx) {
+            if (r < initial_conditions_r[idx]) {
+                Real r_low = initial_conditions_r[idx-1];
+                Real r_high = initial_conditions_r[idx];
                 Real frac = (r - r_low) / (r_high - r_low);
 
-                ioniz_fraction = plasma_data_ioniz[idx-1] + frac * (plasma_data_ioniz[idx] - plasma_data_ioniz[idx-1]);
-                te = plasma_data_te[idx-1] + frac * (plasma_data_te[idx] - plasma_data_te[idx-1]);
+                ioniz_fraction = initial_conditions_ioniz[idx-1] + frac * (initial_conditions_ioniz[idx] - initial_conditions_ioniz[idx-1]);
+                te = initial_conditions_te[idx-1] + frac * (initial_conditions_te[idx] - initial_conditions_te[idx-1]);
                 break;
             }
         }
