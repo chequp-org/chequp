@@ -19,7 +19,7 @@ static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 static amrex::Gpu::DeviceVector<Real> initial_conditions_ioniz; // fraction of atoms that are ionized
 static amrex::Gpu::DeviceVector<Real> initial_conditions_Te; // electron temperature in K
 
-// Function to initialize initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
+// Function to fill out initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
 {
     const std::string initial_conditions_filename = "initial_conditions.csv";
@@ -78,6 +78,10 @@ inline void read_initial_conditions()
     file.close();
 
     // Copy the vectors to the static variables
+    // Resize the static variables to the size of the vectors
+    initial_conditions_r.resize(r.size());
+    initial_conditions_ioniz.resize(ioniz.size());
+    initial_conditions_Te.resize(Te.size());
 #ifdef AMREX_USE_GPU
     // Copy vectors to device
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
@@ -88,6 +92,7 @@ inline void read_initial_conditions()
                           initial_conditions_Te.begin());
     amrex::Gpu::streamSynchronize();
 #else
+    // Copy the vectors to the static variables
     std::copy(r.begin(), r.end(), initial_conditions_r.begin());
     std::copy(ioniz.begin(), ioniz.end(), initial_conditions_ioniz.begin());
     std::copy(Te.begin(), Te.end(), initial_conditions_Te.begin());
@@ -102,10 +107,10 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     const Real* dx = geomdata.CellSize();
     const Real* problo = geomdata.ProbLo();
 
+    // Get radius for this cell
     Real x = 0;
     Real y = 0;
     Real z = 0;
-
     x = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
 #if AMREX_SPACEDIM >= 2
     y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
@@ -113,7 +118,6 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 #if AMREX_SPACEDIM >= 3
     z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
 #endif
-
     Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
