@@ -10,6 +10,9 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#ifdef AMREX_USE_GPU
+#include <cuda_runtime.h>
+#endif
 
 // Static arrays for initial conditions that are read from a CSV file
 // These arrays are initialized from a file in the function read_initial_conditions
@@ -115,13 +118,25 @@ inline void read_initial_conditions()
     initial_conditions_size = initial_conditions_r.size();
 
     // Set device-accessible variables
+#ifdef AMREX_USE_GPU
+    // Copy simple variables to device using cudaMemcpyToSymbol
+    cudaMemcpyToSymbol(d_initial_conditions_size, &initial_conditions_size, sizeof(int));
+
+    // For pointers, we need to copy the actual data first, then set the pointers
+    // The DeviceVector data() method returns device pointers, so we can use those directly
+    cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
+    cudaMemcpyToSymbol(d_initial_conditions_ioniz_data, &initial_conditions_ioniz_data, sizeof(Real*));
+    cudaMemcpyToSymbol(d_initial_conditions_Te_data, &initial_conditions_Te_data, sizeof(Real*));
+#else
+    // For CPU-only builds, direct assignment is fine
     d_initial_conditions_r_data = initial_conditions_r_data;
     d_initial_conditions_ioniz_data = initial_conditions_ioniz_data;
     d_initial_conditions_Te_data = initial_conditions_Te_data;
     d_initial_conditions_size = initial_conditions_size;
+#endif
 }
 
-AMREX_GPU_HOST_DEVICE AMREX_INLINE
+AMREX_GPU_DEVICE AMREX_INLINE
 void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& state, const GeometryData& geomdata)
 {
     int coord_type = geomdata.Coord();
