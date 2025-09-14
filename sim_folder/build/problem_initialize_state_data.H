@@ -22,54 +22,55 @@ static std::vector<Real> initial_conditions_Te; // electron temperature in K
 // Function to initialize initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
 {
-    std::ifstream file("initial_conditions.csv");
-    if (file.is_open()) {
-        std::string line;
-
-        // Skip the header line
-        std::getline(file, line);
-
-        while (std::getline(file, line)) {
-            std::stringstream ss(line);
-            std::string value;
-
-            // Read radius
-            if (std::getline(ss, value, ',')) {
-                try {
-                    initial_conditions_r.push_back(std::stod(value));
-                } catch (const std::invalid_argument&) {
-                    amrex::Abort("Invalid radius value: " + value);
-                }
-            } else {
-                amrex::Abort("Missing radius value");
-            }
-
-            // Read ionization fraction
-            if (std::getline(ss, value, ',')) {
-                try {
-                    initial_conditions_ioniz.push_back(std::stod(value));
-                } catch (const std::invalid_argument&) {
-                    amrex::Abort("Invalid ionization fraction value: " + value);
-                }
-            } else {
-                amrex::Abort("Missing ionization fraction value");
-            }
-
-            // Read electron temperature
-            if (std::getline(ss, value)) {
-                try {
-                    initial_conditions_Te.push_back(std::stod(value));
-                } catch (const std::invalid_argument&) {
-                    amrex::Abort("Invalid electron temperature value: " + value);
-                }
-            } else {
-                amrex::Abort("Missing electron temperature value");
-            }
-        }
-        file.close();
-    } else {
-        amrex::Abort("Failed to open initial_conditions.csv");
+    const std::string initial_conditions_filename = "initial_conditions.csv";
+    std::ifstream file(initial_conditions_filename);
+    if (!file.is_open()) {
+        amrex::Abort("Failed to open " + initial_conditions_filename);
     }
+
+    std::string line;
+
+    // Skip the header line
+    std::getline(file, line);
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string value;
+
+        // Read radius
+        if (std::getline(ss, value, ',')) {
+            try {
+                initial_conditions_r.push_back(std::stod(value));
+            } catch (const std::invalid_argument&) {
+                amrex::Abort("Invalid radius value: " + value);
+            }
+        } else {
+            amrex::Abort("Missing radius value");
+        }
+
+        // Read ionization fraction
+        if (std::getline(ss, value, ',')) {
+            try {
+                initial_conditions_ioniz.push_back(std::stod(value));
+            } catch (const std::invalid_argument&) {
+                amrex::Abort("Invalid ionization fraction value: " + value);
+            }
+        } else {
+            amrex::Abort("Missing ionization fraction value");
+        }
+
+        // Read electron temperature
+        if (std::getline(ss, value)) {
+            try {
+                initial_conditions_Te.push_back(std::stod(value));
+            } catch (const std::invalid_argument&) {
+                amrex::Abort("Invalid electron temperature value: " + value);
+            }
+        } else {
+            amrex::Abort("Missing electron temperature value");
+        }
+    }
+    file.close();
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
