@@ -21,11 +21,6 @@
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 static amrex::Gpu::DeviceVector<Real> initial_conditions_ioniz; // fraction of atoms that are ionized
 static amrex::Gpu::DeviceVector<Real> initial_conditions_Te; // electron temperature in K
-static Real* initial_conditions_r_data = nullptr;
-static Real* initial_conditions_ioniz_data = nullptr;
-static Real* initial_conditions_Te_data = nullptr;
-static int initial_conditions_size = 0;
-
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
 AMREX_GPU_DEVICE static Real* d_initial_conditions_ioniz_data = nullptr;
@@ -90,13 +85,24 @@ inline void read_initial_conditions()
     }
     file.close();
 
-    // Copy the vectors to the static variables
-    // Resize the static variables to the size of the vectors
-    initial_conditions_r.resize(r.size());
-    initial_conditions_ioniz.resize(ioniz.size());
-    initial_conditions_Te.resize(Te.size());
+    // Initialize pointers
+    int initial_conditions_size = initial_conditions_r.size();
+    Real* initial_conditions_r_data = initial_conditions_r.data();
+    Real* initial_conditions_ioniz_data = initial_conditions_ioniz.data();
+    Real* initial_conditions_Te_data = initial_conditions_Te.data();
+    // Resize the static vectors
+    initial_conditions_r.resize(initial_conditions_size);
+    initial_conditions_ioniz.resize(initial_conditions_size);
+    initial_conditions_Te.resize(initial_conditions_size);
+
+    // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
-    // Copy vectors to device
+    // Copy simple variables
+    cudaMemcpyToSymbol(d_initial_conditions_size, &initial_conditions_size, sizeof(int));
+    cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
+    cudaMemcpyToSymbol(d_initial_conditions_ioniz_data, &initial_conditions_ioniz_data, sizeof(Real*));
+    cudaMemcpyToSymbol(d_initial_conditions_Te_data, &initial_conditions_Te_data, sizeof(Real*));
+    // Copy vectors
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
                           initial_conditions_r.begin());
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, ioniz.begin(), ioniz.end(),
@@ -105,34 +111,15 @@ inline void read_initial_conditions()
                           initial_conditions_Te.begin());
     amrex::Gpu::streamSynchronize();
 #else
-    // Copy the vectors to the static variables
-    std::copy(r.begin(), r.end(), initial_conditions_r.begin());
-    std::copy(ioniz.begin(), ioniz.end(), initial_conditions_ioniz.begin());
-    std::copy(Te.begin(), Te.end(), initial_conditions_Te.begin());
-#endif
-
-    // Initialize pointers to be used in the GPU kernel
-    initial_conditions_r_data = initial_conditions_r.data();
-    initial_conditions_ioniz_data = initial_conditions_ioniz.data();
-    initial_conditions_Te_data = initial_conditions_Te.data();
-    initial_conditions_size = initial_conditions_r.size();
-
-    // Set device-accessible variables
-#ifdef AMREX_USE_GPU
-    // Copy simple variables to device using cudaMemcpyToSymbol
-    cudaMemcpyToSymbol(d_initial_conditions_size, &initial_conditions_size, sizeof(int));
-
-    // For pointers, we need to copy the actual data first, then set the pointers
-    // The DeviceVector data() method returns device pointers, so we can use those directly
-    cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
-    cudaMemcpyToSymbol(d_initial_conditions_ioniz_data, &initial_conditions_ioniz_data, sizeof(Real*));
-    cudaMemcpyToSymbol(d_initial_conditions_Te_data, &initial_conditions_Te_data, sizeof(Real*));
-#else
-    // For CPU-only builds, direct assignment is fine
+    // Copy simple variables
+    d_initial_conditions_size = initial_conditions_size;
     d_initial_conditions_r_data = initial_conditions_r_data;
     d_initial_conditions_ioniz_data = initial_conditions_ioniz_data;
     d_initial_conditions_Te_data = initial_conditions_Te_data;
-    d_initial_conditions_size = initial_conditions_size;
+    // Copy vectors
+    std::copy(r.begin(), r.end(), initial_conditions_r.begin());
+    std::copy(ioniz.begin(), ioniz.end(), initial_conditions_ioniz.begin());
+    std::copy(Te.begin(), Te.end(), initial_conditions_Te.begin());
 #endif
 }
 
