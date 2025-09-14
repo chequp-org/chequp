@@ -18,7 +18,7 @@ BL_NO_FORT := TRUE
 CASTRO_HOME  := ../../Castro
 
 # This sets the EOS directory in $(MICROPHYSICS_HOME)/EOS
-EOS_DIR     := gamma_law_2T
+EOS_DIR     := gamma_law
 
 # This sets the network directory in $(MICROPHYSICS_HOME)/Networks
 NETWORK_DIR := general_null
