@@ -18,6 +18,10 @@
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 static amrex::Gpu::DeviceVector<Real> initial_conditions_ioniz; // fraction of atoms that are ionized
 static amrex::Gpu::DeviceVector<Real> initial_conditions_Te; // electron temperature in K
+static Real* initial_conditions_r_data = nullptr;
+static Real* initial_conditions_ioniz_data = nullptr;
+static Real* initial_conditions_Te_data = nullptr;
+static int initial_conditions_size = 0;
 
 // Function to fill out initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
@@ -97,6 +101,12 @@ inline void read_initial_conditions()
     std::copy(ioniz.begin(), ioniz.end(), initial_conditions_ioniz.begin());
     std::copy(Te.begin(), Te.end(), initial_conditions_Te.begin());
 #endif
+
+    // Initialize pointers to be used in the GPU kernel
+    initial_conditions_r_data = initial_conditions_r.data();
+    initial_conditions_ioniz_data = initial_conditions_ioniz.data();
+    initial_conditions_Te_data = initial_conditions_Te.data();
+    initial_conditions_size = initial_conditions_r.size();
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
@@ -121,34 +131,13 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
-    Real ioniz_fraction = 0.0;
-    Real te = 0.0;
+    int const idx = amrex::bisect( initial_conditions_r_data, 0, initial_conditions_size-1, r );
+    AMREX_ASSERT( initial_conditions_r_data[idx] <= r && initial_conditions_r_data[idx+1] > r);
+    Real frac = (r - initial_conditions_r_data[idx]) / (initial_conditions_r_data[idx+1] - initial_conditions_r_data[idx]);
+    Real ioniz_fraction = initial_conditions_ioniz[idx] + frac * (initial_conditions_ioniz[idx+1] - initial_conditions_ioniz[idx]);
+    Real Te = initial_conditions_Te[idx] + frac * (initial_conditions_Te[idx+1] - initial_conditions_Te[idx]);
 
-    // Check if plasma data has been loaded
-    if (initial_conditions_r.empty()) {
-        amrex::Abort("Plasma data not initialized. Make sure problem_initialize() is called first.");
-    }
-
-    if (r <= initial_conditions_r.front()) {
-        ioniz_fraction = initial_conditions_ioniz.front();
-        te = initial_conditions_Te.front();
-    } else if (r >= initial_conditions_r.back()) {
-        ioniz_fraction = initial_conditions_ioniz.back();
-        te = initial_conditions_Te.back();
-    } else {
-        for (int idx = 1; idx < initial_conditions_r.size(); ++idx) {
-            if (r < initial_conditions_r[idx]) {
-                Real r_low = initial_conditions_r[idx-1];
-                Real r_high = initial_conditions_r[idx];
-                Real frac = (r - r_low) / (r_high - r_low);
-
-                ioniz_fraction = initial_conditions_ioniz[idx-1] + frac * (initial_conditions_ioniz[idx] - initial_conditions_ioniz[idx-1]);
-                te = initial_conditions_Te[idx-1] + frac * (initial_conditions_Te[idx] - initial_conditions_Te[idx-1]);
-                break;
-            }
-        }
-    }
-    Real eint = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * te +  3./2 * C::k_B * problem::temp_ambient)/C::m_u;
+    Real eint = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * Te +  3./2 * C::k_B * problem::temp_ambient)/C::m_u;
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
