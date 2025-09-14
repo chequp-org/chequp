@@ -150,12 +150,11 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real ioniz_fraction = d_initial_conditions_ioniz_data[idx] + frac * (d_initial_conditions_ioniz_data[idx+1] - d_initial_conditions_ioniz_data[idx]);
     Real Te = d_initial_conditions_Te_data[idx] + frac * (d_initial_conditions_Te_data[idx+1] - d_initial_conditions_Te_data[idx]);
 
-    // Model: heavies and min_ioniz_fraction of electrons are at Ta = 300 K
-    // The rest of the electrons have the energy density e_exp
-    Real Ta = 300;
-    Real min_ioniz_fraction = 1.e-3;
-    Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * Ta / C::m_u;
-    Real rho_e_electrons = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * Te + min_ioniz_fraction * 3./2 * C::k_B * Ta / C::m_u);
+    // Model: heavies and min_ioniz_fraction of electrons are at temp_ambient
+    // The rest of the electrons have the temperature read from the file.
+    Real min_ioniz_fraction = 0;
+    Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * problem::temp_ambient / C::m_u;
+    Real rho_e_electrons = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * Te + min_ioniz_fraction * 3./2 * C::k_B * problem::temp_ambient / C::m_u);
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
