@@ -15,9 +15,9 @@
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
-static std::vector<Real> initial_conditions_r; // radius in cm
-static std::vector<Real> initial_conditions_ioniz; // fraction of atoms that are ionized
-static std::vector<Real> initial_conditions_Te; // electron temperature in K
+static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
+static amrex::Gpu::DeviceVector<Real> initial_conditions_ioniz; // fraction of atoms that are ionized
+static amrex::Gpu::DeviceVector<Real> initial_conditions_Te; // electron temperature in K
 
 // Function to initialize initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
@@ -27,6 +27,11 @@ inline void read_initial_conditions()
     if (!file.is_open()) {
         amrex::Abort("Failed to open " + initial_conditions_filename);
     }
+
+    // Vector to fill when reading the file
+    static std::vector<Real> r; // radius in cm
+    static std::vector<Real> ioniz; // fraction of atoms that are ionized
+    static std::vector<Real> Te; // electron temperature in K
 
     std::string line;
 
@@ -40,7 +45,7 @@ inline void read_initial_conditions()
         // Read radius
         if (std::getline(ss, value, ',')) {
             try {
-                initial_conditions_r.push_back(std::stod(value));
+                r.push_back(std::stod(value));
             } catch (const std::invalid_argument&) {
                 amrex::Abort("Invalid radius value: " + value);
             }
@@ -51,7 +56,7 @@ inline void read_initial_conditions()
         // Read ionization fraction
         if (std::getline(ss, value, ',')) {
             try {
-                initial_conditions_ioniz.push_back(std::stod(value));
+                ioniz.push_back(std::stod(value));
             } catch (const std::invalid_argument&) {
                 amrex::Abort("Invalid ionization fraction value: " + value);
             }
@@ -62,7 +67,7 @@ inline void read_initial_conditions()
         // Read electron temperature
         if (std::getline(ss, value)) {
             try {
-                initial_conditions_Te.push_back(std::stod(value));
+                Te.push_back(std::stod(value));
             } catch (const std::invalid_argument&) {
                 amrex::Abort("Invalid electron temperature value: " + value);
             }
@@ -71,6 +76,22 @@ inline void read_initial_conditions()
         }
     }
     file.close();
+
+    // Copy the vectors to the static variables
+#ifdef AMREX_USE_GPU
+    // Copy vectors to device
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
+                          initial_conditions_r.begin());
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, ioniz.begin(), ioniz.end(),
+                          initial_conditions_ioniz.begin());
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, Te.begin(), Te.end(),
+                          initial_conditions_Te.begin());
+    amrex::Gpu::streamSynchronize();
+#else
+    std::copy(r.begin(), r.end(), initial_conditions_r.begin());
+    std::copy(ioniz.begin(), ioniz.end(), initial_conditions_ioniz.begin());
+    std::copy(Te.begin(), Te.end(), initial_conditions_Te.begin());
+#endif
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
