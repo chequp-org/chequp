@@ -154,19 +154,19 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     // The rest of the electrons have the temperature read from the file.
     Real min_ioniz_fraction = 0;
     Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * problem::temp_ambient / C::m_u;
-    Real rho_e_electrons = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * Te + min_ioniz_fraction * 3./2 * C::k_B * problem::temp_ambient / C::m_u);
+    Real rho_e_electrons = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * Te + min_ioniz_fraction * 3./2 * C::k_B * problem::temp_ambient ) / C::m_u;
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
     state(i,j,k,UMY) = 0.e0_rt;
     state(i,j,k,UMZ) = 0.e0_rt;
 
-    state(i,j,k,UEDEN) = rho_e_electrons + rho_e_heavies +
+    state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
                          0.5e0_rt * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) +
                                      state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) +
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
 
-    state(i,j,k,UEINT) = rho_e_electrons + rho_e_heavies;
+    state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
     // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
     state(i,j,k,UFX) = problem::dens_ambient * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
 
