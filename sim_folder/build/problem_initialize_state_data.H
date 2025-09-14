@@ -12,11 +12,14 @@
 #include <sstream>
 
 // Static arrays for initial conditions that are read from a CSV file
-static std::vector<Real> initial_conditions_r;
-static std::vector<Real> initial_conditions_ioniz;
-static std::vector<Real> initial_conditions_te;
+// These arrays are initialized from a file in the function read_initial_conditions
+// We then use interpolation to read these values for each cell,
+// in the function problem_initialize_state_data (GPU kernel)
+static std::vector<Real> initial_conditions_r; // radius in cm
+static std::vector<Real> initial_conditions_ioniz; // fraction of atoms that are ionized
+static std::vector<Real> initial_conditions_Te; // electron temperature in K
 
-// Function to initialize plasma data from CSV file
+// Function to initialize initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
 {
     std::ifstream file("initial_conditions.csv");
@@ -55,7 +58,7 @@ inline void read_initial_conditions()
             // Read electron temperature
             if (std::getline(ss, value)) {
                 try {
-                    initial_conditions_te.push_back(std::stod(value));
+                    initial_conditions_Te.push_back(std::stod(value));
                 } catch (const std::invalid_argument&) {
                     amrex::Abort("Invalid electron temperature value: " + value);
                 }
@@ -102,10 +105,10 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     if (r <= initial_conditions_r.front()) {
         ioniz_fraction = initial_conditions_ioniz.front();
-        te = initial_conditions_te.front();
+        te = initial_conditions_Te.front();
     } else if (r >= initial_conditions_r.back()) {
         ioniz_fraction = initial_conditions_ioniz.back();
-        te = initial_conditions_te.back();
+        te = initial_conditions_Te.back();
     } else {
         for (int idx = 1; idx < initial_conditions_r.size(); ++idx) {
             if (r < initial_conditions_r[idx]) {
@@ -114,7 +117,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
                 Real frac = (r - r_low) / (r_high - r_low);
 
                 ioniz_fraction = initial_conditions_ioniz[idx-1] + frac * (initial_conditions_ioniz[idx] - initial_conditions_ioniz[idx-1]);
-                te = initial_conditions_te[idx-1] + frac * (initial_conditions_te[idx] - initial_conditions_te[idx-1]);
+                te = initial_conditions_Te[idx-1] + frac * (initial_conditions_Te[idx] - initial_conditions_Te[idx-1]);
                 break;
             }
         }
