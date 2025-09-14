@@ -30,10 +30,9 @@ AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 // Function to fill out initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
 {
-    const std::string initial_conditions_filename = "initial_conditions.csv";
-    std::ifstream file(initial_conditions_filename);
+    std::ifstream file(problem::initial_conditions_file);
     if (!file.is_open()) {
-        amrex::Abort("Failed to open " + initial_conditions_filename);
+        amrex::Abort("Failed to open " + problem::initial_conditions_file);
     }
 
     // Vector to fill when reading the file
