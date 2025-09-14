@@ -22,10 +22,12 @@ static Real* initial_conditions_r_data = nullptr;
 static Real* initial_conditions_ioniz_data = nullptr;
 static Real* initial_conditions_Te_data = nullptr;
 static int initial_conditions_size = 0;
-static int* initial_conditions_size_device = nullptr; // Device-accessible size
-static Real** initial_conditions_r_data_device = nullptr; // Device-accessible data pointers
-static Real** initial_conditions_ioniz_data_device = nullptr;
-static Real** initial_conditions_Te_data_device = nullptr;
+
+// Device-accessible static variables
+AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
+AMREX_GPU_DEVICE static Real* d_initial_conditions_ioniz_data = nullptr;
+AMREX_GPU_DEVICE static Real* d_initial_conditions_Te_data = nullptr;
+AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 
 // Function to fill out initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
@@ -112,29 +114,11 @@ inline void read_initial_conditions()
     initial_conditions_Te_data = initial_conditions_Te.data();
     initial_conditions_size = initial_conditions_r.size();
 
-    // Allocate and initialize device-accessible size variable
-#ifdef AMREX_USE_GPU
-    if (initial_conditions_size_device == nullptr) {
-        initial_conditions_size_device = static_cast<int*>(amrex::The_Device_Arena()->alloc(sizeof(int)));
-    }
-    amrex::Gpu::htod_memcpy(initial_conditions_size_device, &initial_conditions_size, sizeof(int));
-
-    // Allocate and initialize device-accessible data pointers
-    if (initial_conditions_r_data_device == nullptr) {
-        initial_conditions_r_data_device = static_cast<Real**>(amrex::The_Device_Arena()->alloc(sizeof(Real*)));
-        initial_conditions_ioniz_data_device = static_cast<Real**>(amrex::The_Device_Arena()->alloc(sizeof(Real*)));
-        initial_conditions_Te_data_device = static_cast<Real**>(amrex::The_Device_Arena()->alloc(sizeof(Real*)));
-    }
-    amrex::Gpu::htod_memcpy(initial_conditions_r_data_device, &initial_conditions_r_data, sizeof(Real*));
-    amrex::Gpu::htod_memcpy(initial_conditions_ioniz_data_device, &initial_conditions_ioniz_data, sizeof(Real*));
-    amrex::Gpu::htod_memcpy(initial_conditions_Te_data_device, &initial_conditions_Te_data, sizeof(Real*));
-#else
-    // For CPU-only builds, just use the host variables
-    initial_conditions_size_device = &initial_conditions_size;
-    initial_conditions_r_data_device = &initial_conditions_r_data;
-    initial_conditions_ioniz_data_device = &initial_conditions_ioniz_data;
-    initial_conditions_Te_data_device = &initial_conditions_Te_data;
-#endif
+    // Set device-accessible variables
+    d_initial_conditions_r_data = initial_conditions_r_data;
+    d_initial_conditions_ioniz_data = initial_conditions_ioniz_data;
+    d_initial_conditions_Te_data = initial_conditions_Te_data;
+    d_initial_conditions_size = initial_conditions_size;
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
@@ -159,15 +143,11 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
-    Real* r_data = *initial_conditions_r_data_device;
-    Real* ioniz_data = *initial_conditions_ioniz_data_device;
-    Real* Te_data = *initial_conditions_Te_data_device;
-
-    int const idx = amrex::bisect( r_data, 0, *initial_conditions_size_device-1, r );
-    AMREX_ASSERT( r_data[idx] <= r && r_data[idx+1] > r);
-    Real frac = (r - r_data[idx]) / (r_data[idx+1] - r_data[idx]);
-    Real ioniz_fraction = ioniz_data[idx] + frac * (ioniz_data[idx+1] - ioniz_data[idx]);
-    Real Te = Te_data[idx] + frac * (Te_data[idx+1] - Te_data[idx]);
+    int const idx = amrex::bisect( d_initial_conditions_r_data, 0, d_initial_conditions_size-1, r );
+    AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
+    Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
+    Real ioniz_fraction = d_initial_conditions_ioniz_data[idx] + frac * (d_initial_conditions_ioniz_data[idx+1] - d_initial_conditions_ioniz_data[idx]);
+    Real Te = d_initial_conditions_Te_data[idx] + frac * (d_initial_conditions_Te_data[idx+1] - d_initial_conditions_Te_data[idx]);
 
     Real eint = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * Te +  3./2 * C::k_B * problem::temp_ambient)/C::m_u;
 
