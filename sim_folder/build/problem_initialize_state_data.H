@@ -85,15 +85,15 @@ inline void read_initial_conditions()
     }
     file.close();
 
-    // Initialize pointers
-    int initial_conditions_size = initial_conditions_r.size();
-    Real* initial_conditions_r_data = initial_conditions_r.data();
-    Real* initial_conditions_ioniz_data = initial_conditions_ioniz.data();
-    Real* initial_conditions_Te_data = initial_conditions_Te.data();
     // Resize the static vectors
+    int initial_conditions_size = r.size();
     initial_conditions_r.resize(initial_conditions_size);
     initial_conditions_ioniz.resize(initial_conditions_size);
     initial_conditions_Te.resize(initial_conditions_size);
+    // Initialize pointers to be copied into static variables
+    Real* initial_conditions_r_data = initial_conditions_r.data();
+    Real* initial_conditions_ioniz_data = initial_conditions_ioniz.data();
+    Real* initial_conditions_Te_data = initial_conditions_Te.data();
 
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
