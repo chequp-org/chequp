@@ -150,31 +150,32 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real ioniz_fraction = d_initial_conditions_ioniz_data[idx] + frac * (d_initial_conditions_ioniz_data[idx+1] - d_initial_conditions_ioniz_data[idx]);
     Real Te = d_initial_conditions_Te_data[idx] + frac * (d_initial_conditions_Te_data[idx+1] - d_initial_conditions_Te_data[idx]);
 
-    Real eint = problem::dens_ambient * (ioniz_fraction * 3./2 * C::k_B * Te +  3./2 * C::k_B * problem::temp_ambient)/C::m_u;
+    Real Ta = 348.; // 0.03 eV, in Kelvins
+    Real rho_e_electrons = problem::dens_ambient * ioniz_fraction * 3./2 * C::k_B * Te / C::m_u;
+    Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * Ta / C::m_u;
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
     state(i,j,k,UMY) = 0.e0_rt;
     state(i,j,k,UMZ) = 0.e0_rt;
 
-    state(i,j,k,UEDEN) = eint +
+    state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
                          0.5e0_rt * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) +
                                      state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) +
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
 
-    state(i,j,k,UEINT) = eint;
-    state(i,j,k,UFX) = eint; // internal energy of heavy ions
+    state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
+    state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
+    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
+    // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
+    state(i,j,k,UFX) = problem::dens_ambient * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
 
     // The temperature initialization will be done later
     // in the call to clean_state. We want to avoid
     // EOS calls in ca_initdata. So that there is valid
     // data for an initial guess for the EOS, we initialize
     // to the ambient temperature everywhere.
-
     state(i,j,k,UTEMP) = problem::temp_ambient;
-
-    state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
-    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
 }
 
 #endif
