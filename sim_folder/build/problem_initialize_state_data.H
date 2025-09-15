@@ -159,11 +159,14 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     state(i,j,k,UMY) = 0.e0_rt;
     state(i,j,k,UMZ) = 0.e0_rt;
 
-    state(i,j,k,UEDEN) = rho_e_electrons + rho_e_heavies +
+    state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
                          0.5e0_rt * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) +
                                      state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) +
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
-    state(i,j,k,UEINT) = rho_e_electrons + rho_e_heavies;
+
+    state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
+    state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
+    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
     // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
     state(i,j,k,UFX) = problem::dens_ambient * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
 
@@ -173,9 +176,6 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     // data for an initial guess for the EOS, we initialize
     // to the ambient temperature everywhere.
     state(i,j,k,UTEMP) = problem::temp_ambient;
-
-    state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
-    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
 }
 
 #endif
