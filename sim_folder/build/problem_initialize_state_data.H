@@ -3,8 +3,126 @@
 
 #include <prob_parameters.H>
 #include <eos.H>
+#include <AMReX_Math.H>
+#include <AMReX_Print.H>
+#include <fundamental_constants.H>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
+#ifdef AMREX_USE_GPU
+#include <cuda_runtime.h>
+#endif
 
-AMREX_GPU_HOST_DEVICE AMREX_INLINE
+// Static arrays for initial conditions that are read from a CSV file
+// These arrays are initialized from a file in the function read_initial_conditions
+// We then use interpolation to read these values for each cell,
+// in the function problem_initialize_state_data (GPU kernel)
+static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
+static amrex::Gpu::DeviceVector<Real> initial_conditions_ioniz; // fraction of atoms that are ionized
+static amrex::Gpu::DeviceVector<Real> initial_conditions_Te; // electron temperature in K
+// Device-accessible static variables
+AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
+AMREX_GPU_DEVICE static Real* d_initial_conditions_ioniz_data = nullptr;
+AMREX_GPU_DEVICE static Real* d_initial_conditions_Te_data = nullptr;
+AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
+
+// Function to fill out initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
+inline void read_initial_conditions()
+{
+    std::ifstream file(problem::initial_conditions_file);
+    if (!file.is_open()) {
+        amrex::Abort("Failed to open " + problem::initial_conditions_file);
+    }
+
+    // Vector to fill when reading the file
+    static std::vector<Real> r; // radius in cm
+    static std::vector<Real> ioniz; // fraction of atoms that are ionized
+    static std::vector<Real> Te; // electron temperature in K
+
+    std::string line;
+
+    // Skip the header line
+    std::getline(file, line);
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string value;
+
+        // Read radius
+        if (std::getline(ss, value, ',')) {
+            try {
+                r.push_back(std::stod(value));
+            } catch (const std::invalid_argument&) {
+                amrex::Abort("Invalid radius value: " + value);
+            }
+        } else {
+            amrex::Abort("Missing radius value");
+        }
+
+        // Read ionization fraction
+        if (std::getline(ss, value, ',')) {
+            try {
+                ioniz.push_back(std::stod(value));
+            } catch (const std::invalid_argument&) {
+                amrex::Abort("Invalid ionization fraction value: " + value);
+            }
+        } else {
+            amrex::Abort("Missing ionization fraction value");
+        }
+
+        // Read electron temperature
+        if (std::getline(ss, value)) {
+            try {
+                Te.push_back(std::stod(value));
+            } catch (const std::invalid_argument&) {
+                amrex::Abort("Invalid electron temperature value: " + value);
+            }
+        } else {
+            amrex::Abort("Missing electron temperature value");
+        }
+    }
+    file.close();
+
+    // Resize the static vectors
+    int initial_conditions_size = r.size();
+    initial_conditions_r.resize(initial_conditions_size);
+    initial_conditions_ioniz.resize(initial_conditions_size);
+    initial_conditions_Te.resize(initial_conditions_size);
+    // Initialize pointers to be copied into static variables
+    Real* initial_conditions_r_data = initial_conditions_r.data();
+    Real* initial_conditions_ioniz_data = initial_conditions_ioniz.data();
+    Real* initial_conditions_Te_data = initial_conditions_Te.data();
+
+    // Copy all needed information into the static variables
+#ifdef AMREX_USE_GPU
+    // Copy simple variables
+    cudaMemcpyToSymbol(d_initial_conditions_size, &initial_conditions_size, sizeof(int));
+    cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
+    cudaMemcpyToSymbol(d_initial_conditions_ioniz_data, &initial_conditions_ioniz_data, sizeof(Real*));
+    cudaMemcpyToSymbol(d_initial_conditions_Te_data, &initial_conditions_Te_data, sizeof(Real*));
+    // Copy vectors
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
+                          initial_conditions_r.begin());
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, ioniz.begin(), ioniz.end(),
+                          initial_conditions_ioniz.begin());
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, Te.begin(), Te.end(),
+                          initial_conditions_Te.begin());
+    amrex::Gpu::streamSynchronize();
+#else
+    // Copy simple variables
+    d_initial_conditions_size = initial_conditions_size;
+    d_initial_conditions_r_data = initial_conditions_r_data;
+    d_initial_conditions_ioniz_data = initial_conditions_ioniz_data;
+    d_initial_conditions_Te_data = initial_conditions_Te_data;
+    // Copy vectors
+    std::copy(r.begin(), r.end(), initial_conditions_r.begin());
+    std::copy(ioniz.begin(), ioniz.end(), initial_conditions_ioniz.begin());
+    std::copy(Te.begin(), Te.end(), initial_conditions_Te.begin());
+#endif
+}
+
+AMREX_GPU_DEVICE AMREX_INLINE
 void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& state, const GeometryData& geomdata)
 {
     int coord_type = geomdata.Coord();
@@ -12,26 +130,27 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     const Real* dx = geomdata.CellSize();
     const Real* problo = geomdata.ProbLo();
 
-    Real x = 0.0;
-    Real y = 0.0;
-    Real z = 0.0;
-
+    // Get radius for this cell
+    Real x = 0;
+    Real y = 0;
+    Real z = 0;
     x = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
 #if AMREX_SPACEDIM >= 2
     y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
 #endif
-#if AMREX_SPACEDIM == 3
+#if AMREX_SPACEDIM >= 3
     z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
 #endif
+    Real r = sqrt(x*x + y*y + z*z);
 
+    // Linear interpolation to find ionization fraction and electron temperature
+    int const idx = amrex::bisect( d_initial_conditions_r_data, 0, d_initial_conditions_size-1, r );
+    AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
+    Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
+    Real ioniz_fraction = d_initial_conditions_ioniz_data[idx] + frac * (d_initial_conditions_ioniz_data[idx+1] - d_initial_conditions_ioniz_data[idx]);
+    Real Te = d_initial_conditions_Te_data[idx] + frac * (d_initial_conditions_Te_data[idx+1] - d_initial_conditions_Te_data[idx]);
 
-    Real sigma1 = 38e-4; // in cm
-    Real ioniz_fraction = (1. - 1.e-3)*std::exp( -std::pow((x*x + y*y + z*z)/(2*sigma1*sigma1), 12) ) + 1.e-3;
-    Real sigma2 = 35e-4; // in cm
-    Real Te_max = 313322.; // 27 eV, in Kelvins
     Real Ta = 348.; // 0.03 eV, in Kelvins
-    Real Te = (Te_max - Ta)*std::exp( -std::pow((x*x + y*y + z*z)/(2*sigma2*sigma2), 3) ) + Ta;
-
     Real rho_e_electrons = problem::dens_ambient * ioniz_fraction * 3./2 * C::k_B * Te / C::m_u;
     Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * Ta / C::m_u;
 
