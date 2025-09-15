@@ -147,15 +147,12 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     int const idx = amrex::bisect( d_initial_conditions_r_data, 0, d_initial_conditions_size-1, r );
     AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
-    Real read_ioniz_fraction = d_initial_conditions_ioniz_data[idx] + frac * (d_initial_conditions_ioniz_data[idx+1] - d_initial_conditions_ioniz_data[idx]);
+    Real ioniz_fraction = d_initial_conditions_ioniz_data[idx] + frac * (d_initial_conditions_ioniz_data[idx+1] - d_initial_conditions_ioniz_data[idx]);
     Real Te = d_initial_conditions_Te_data[idx] + frac * (d_initial_conditions_Te_data[idx+1] - d_initial_conditions_Te_data[idx]);
 
-    // For the electron temperature to be well-defined everywhere, there needs to be a non-zero ionization fraction.
-    // Thus, whenever read_ioniz_fraction is less than min_ioniz_fraction, artificially add electrons so that the ionization fraction is at least min_ioniz_fraction.
-    // The added electrons are at the ambient temperature.
-    Real added_ioniz_fraction = std::max(problem::min_ioniz_fraction - read_ioniz_fraction, 0.0);
-    Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * problem::temp_ambient / C::m_u;
-    Real rho_e_electrons = problem::dens_ambient * 3./2 * C::k_B * (read_ioniz_fraction * Te + added_ioniz_fraction * problem::temp_ambient) / C::m_u;
+    Real Ta = 348.; // 0.03 eV, in Kelvins
+    Real rho_e_electrons = problem::dens_ambient * ioniz_fraction * 3./2 * C::k_B * Te / C::m_u;
+    Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * Ta / C::m_u;
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
@@ -168,7 +165,6 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
 
     state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
-    Real ioniz_fraction = read_ioniz_fraction + added_ioniz_fraction;
     state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
     state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
     // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
