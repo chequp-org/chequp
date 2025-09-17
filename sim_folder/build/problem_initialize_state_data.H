@@ -151,8 +151,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real Te = d_initial_conditions_Te_data[idx] + frac * (d_initial_conditions_Te_data[idx+1] - d_initial_conditions_Te_data[idx]);
 
     Real Ta = 348.; // 0.03 eV, in Kelvins
-    Real rho_e_electrons = problem::dens_ambient * ioniz_fraction * 3./2 * C::k_B * Te / C::m_u;
-    Real rho_e_heavies =  problem::dens_ambient * 3./2 * C::k_B * Ta / C::m_u;
+    Real rho_e_electrons = problem::dens_ambient * ioniz_fraction * C::k_B * Te / ( C::m_u * (eos_rp::eos_gamma - 1.0) );
+    Real rho_e_heavies =  problem::dens_ambient * C::k_B * Ta / ( C::m_u * (eos_rp::eos_gamma - 1.0) );
 
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.e0_rt;
