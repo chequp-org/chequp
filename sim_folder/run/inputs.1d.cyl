@@ -20,8 +20,12 @@ castro.hi_bc       =  2
 # WHICH PHYSICS
 castro.do_hydro = 1
 castro.do_react = 0 // Here, reactions (ionization) are included as ext_src
-castro.add_ext_src = 1
-castro.diffuse_temp = 1
+castro.add_ext_src = 0
+castro.diffuse_temp = 0
+
+# Get correct geometric terms in cylindrical
+# (See https://github.com/AMReX-Astro/Castro/issues/3099)
+castro.diffuse_use_amrex_mlmg = 0
 
 # TIME STEP CONTROL
 castro.cfl            = 0.5     # cfl number for hyperbolic system
@@ -56,11 +60,9 @@ amr.plot_int        = 10
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
-problem.r_init = 50e-4
+problem.initial_conditions_file = "example_initial_conditions.csv"
 problem.p_ambient = 1.e-6
-problem.exp_energy = 4400 # 44 mJ/m, converted to ergs/cm
 problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
-problem.nsub = 10
 
 # PARAMETERS OF ARRHENIUS LAW FOR DIRECT IONIZATION
 problem.a_direct_ioniz = 7.1e-9 // cm^3.s-1

@@ -6,7 +6,7 @@ To setup the folders:
 ```
 git clone git@github.com:RemiLehe/castro_sim.git
 cd castro_sim
-git clone --recursive https://github.com/AMReX-Astro/Castro.git
+git clone --recursive https://github.com/RemiLehe/Castro.git --branch 2Temp_new
 ```
 
 On Linux, I used the same compilation environment as for WarpX i.e.
@@ -27,6 +27,21 @@ brew install --build-from-source open-mpi --cc=gcc-11
 and used `gmake` instead of `make` in the instructions below.
 
 In order to analyze the results, create a Python environment with `numpy`, `scipy`, `Jupyter` and `yt`.
+
+## Switch between two-temperature and single-temperature model
+
+The choice of a single-temperature model or two-temperature model is done before compiling,
+by changing the flag `EOS_DIR` in `sim_folder/build/GNUmakefile`.
+
+- For a two-temperature model (default), use
+```
+EOS_DIR     := gamma_law_2T
+```
+
+- For a single-temperature model, use
+```
+EOS_DIR     := gamma_law
+```
 
 ## For 2D Cartesian sims
 
