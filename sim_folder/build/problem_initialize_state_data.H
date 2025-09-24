@@ -136,7 +136,11 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real z = 0;
     x = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
 #if AMREX_SPACEDIM >= 2
-    y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
+    if (coord_type == 0) {  // Cartesian
+        y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
+    } else if (coord_type == 1) {  // Cylindrical
+        y = 0;
+    }
 #endif
 #if AMREX_SPACEDIM >= 3
     z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
