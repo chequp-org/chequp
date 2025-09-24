@@ -74,8 +74,8 @@ inline void read_initial_conditions()
         num_rows++;
     }
     file.close();
-    
-    // +++ ADD THIS BLOCK FOR VERIFICATION +++
+
+    // print state to verify that the csv was read properly
     if (amrex::ParallelDescriptor::IOProcessor()) {
         amrex::Print() << "\n[Initial Conditions] Successfully read file: "
                        << problem::initial_conditions_file << "\n";
