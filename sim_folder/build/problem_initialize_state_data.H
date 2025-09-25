@@ -182,7 +182,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real temp_heavy = 348.0;
     Real avg_E_per_heavy = (3.0/2.0) * C::k_B * (electrons_per_heavy * te_kelvin + 1.0 * temp_heavy);
     Real avg_mass_grams = avg_mass * C::m_u;
-    Real eint = (avg_mass_grams > 1.e-12) ? avg_E_per_heavy / avg_mass_grams : 0.0;
+    Real eint = avg_E_per_heavy / avg_mass_grams;
     state(i,j,k,UEINT) = eint;
     state(i,j,k,UEDEN) = state(i,j,k,URHO) * eint;
 
