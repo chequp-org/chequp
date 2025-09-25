@@ -149,19 +149,12 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     for (int s = 0; s < num_species; ++s) {
         number_fractions[s] = interp_values[s + 1];
     }
-    Real mass_H = 1.0;
-    Real mass_N = 14.0;
+    // Convert from number fraction to mass fraction
+    Real avg_mass = 0;
+    for (int s = 0; s < NumSpec; ++s) { avg_mass += number_fractions[s] * aion[s]; }
     Real mass_fractions[num_species];
-    Real avg_mass = (number_fractions[0] + number_fractions[1]) * mass_H;
-    for (int s = 2; s < num_species; ++s) { avg_mass += number_fractions[s] * mass_N; }
-    if (avg_mass > 1.e-12) {
-        mass_fractions[0] = (number_fractions[0] * mass_H) / avg_mass;
-        mass_fractions[1] = (number_fractions[1] * mass_H) / avg_mass;
-        for (int s = 2; s < num_species; ++s) {
-            mass_fractions[s] = (number_fractions[s] * mass_N) / avg_mass;
-        }
-    } else {
-        for (int s = 0; s < num_species; ++s) mass_fractions[s] = 0.0;
+    for (int s = 0; s < num_species; ++s) {
+        mass_fractions[s] = (number_fractions[s] * aion[s]) / avg_mass;
     }
     // --- State Variable Assignment ---
     state(i,j,k,URHO) = problem::dens_ambient;
