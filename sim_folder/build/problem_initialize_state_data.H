@@ -23,7 +23,7 @@ static amrex::Gpu::DeviceVector<Real> initial_conditions_table; // fraction of a
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
 AMREX_GPU_DEVICE static Real* d_initial_conditions_table_data = nullptr;
-AMREX_GPU_DEVICE static int d_num_rows = 0;
+AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 AMREX_GPU_DEVICE static int d_num_cols = 0; // Number of columns excluding radius
 
 inline void read_initial_conditions()
@@ -74,7 +74,10 @@ inline void read_initial_conditions()
         num_rows++;
     }
     file.close();
-
+    if (num_cols != NumSpec + 1) {
+        amrex::Abort("The number of data columns in the CSV (" + std::to_string(num_cols) +
+                     ") does not match the expected number (" + std::to_string(NumSpec + 1) + ").");
+    }
     // print state to verify that the csv was read properly
     if (amrex::ParallelDescriptor::IOProcessor()) {
         amrex::Print() << "\n[Initial Conditions] Successfully read file: "
@@ -92,8 +95,7 @@ inline void read_initial_conditions()
 
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
-    cudaMemcpyToSymbol(d_num_rows, &num_rows, sizeof(int));
-    cudaMemcpyToSymbol(d_num_cols, &num_cols, sizeof(int));
+    cudaMemcpyToSymbol(d_initial_conditions_size, &num_rows, sizeof(int));
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &d_r_ptr, sizeof(Real*));
     cudaMemcpyToSymbol(d_initial_conditions_table_data, &d_table_ptr, sizeof(Real*));
 
@@ -103,8 +105,7 @@ inline void read_initial_conditions()
                           initial_conditions_table.begin());
     amrex::Gpu::streamSynchronize();
 #else
-    d_num_rows = num_rows;
-    d_num_cols = num_cols;
+    d_initial_conditions_size = num_rows;
     d_initial_conditions_r_data = d_r_ptr;
     d_initial_conditions_table_data = d_table_ptr;
     std::copy(r_host.begin(), r_host.end(), initial_conditions_r.begin());
@@ -134,26 +135,26 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
-    int const idx = amrex::bisect(d_initial_conditions_r_data, 0, d_num_rows - 1, r);
+    int const idx = amrex::bisect(d_initial_conditions_r_data, 0, d_initial_conditions_size - 1, r);
     AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
-    Real interp_values[d_num_cols];
-    for (int col = 0; col < d_num_cols; ++col) {
-        Real val_low = d_initial_conditions_table_data[idx * d_num_cols + col];
-        Real val_high = d_initial_conditions_table_data[(idx + 1) * d_num_cols + col];
+    Real interp_values[NumSpec+1];
+    for (int col = 0; col < NumSpec+1; ++col) {
+        Real val_low = d_initial_conditions_table_data[idx * NumSpec+1 + col];
+        Real val_high = d_initial_conditions_table_data[(idx + 1) * NumSpec+1 + col];
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
-    const int num_species = 8; // Hn, Hp, Nn, N1, N2, N3, N4
+    
     Real te_kelvin = interp_values[0];
-    Real number_fractions[num_species];
-    for (int s = 0; s < num_species; ++s) {
+    Real number_fractions[NumSpec];
+    for (int s = 0; s < NumSpec; ++s) {
         number_fractions[s] = interp_values[s + 1];
     }
     // Convert from number fraction to mass fraction
     Real avg_mass = 0;
     for (int s = 0; s < NumSpec; ++s) { avg_mass += number_fractions[s] * aion[s]; }
-    Real mass_fractions[num_species];
-    for (int s = 0; s < num_species; ++s) {
+    Real mass_fractions[NumSpec];
+    for (int s = 0; s < NumSpec; ++s) {
         mass_fractions[s] = (number_fractions[s] * aion[s]) / avg_mass;
     }
     // --- State Variable Assignment ---
@@ -161,16 +162,14 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     state(i,j,k,UMX) = 0.0;
     state(i,j,k,UMY) = 0.0;
     state(i,j,k,UMZ) = 0.0;
-    for (int s = 0; s < num_species; ++s) {
+    for (int s = 0; s < NumSpec; ++s) {
         state(i,j,k,UFS+s) = state(i,j,k,URHO) * mass_fractions[s];
     }
     // Calculate internal energy
-    Real electrons_per_heavy = number_fractions[1] * 1.0 +   // H+
-                               number_fractions[3] * 1.0 +   // N+
-                               number_fractions[4] * 2.0 +   // N2+
-                               number_fractions[5] * 3.0 +   // N3+
-                               number_fractions[6] * 4.0 +   // N4+
-                               number_fractions[7] * 5.0;    // N5+
+    Real electrons_per_heavy = 0.0;
+    for (int s = 0; s < NumSpec; ++s) {
+        electrons_per_heavy += number_fractions[s] * zion[s];
+    }
 
     Real temp_heavy = 348.0;
     Real avg_E_per_heavy = (3.0/2.0) * C::k_B * (electrons_per_heavy * te_kelvin + 1.0 * temp_heavy);
