@@ -7,6 +7,6 @@
   N_ion_2    N2        14.0      2.0
   N_ion_3    N3        14.0      3.0
   N_ion_4    N4        14.0      4.0
-  N_ion_5    N5	       14.0	 5.0
+  N_ion_5    N5	       14.0	     5.0
 # auxiliary variables
 __aux_f_heavies
