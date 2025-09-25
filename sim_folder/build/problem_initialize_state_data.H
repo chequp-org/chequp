@@ -172,11 +172,16 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     }
 
     Real temp_heavy = 348.0;
-    Real avg_E_per_heavy = (3.0/2.0) * C::k_B * (electrons_per_heavy * te_kelvin + 1.0 * temp_heavy);
     Real avg_mass_grams = avg_mass * C::m_u;
-    Real eint = avg_E_per_heavy / avg_mass_grams;
-    state(i,j,k,UEINT) = eint;
-    state(i,j,k,UEDEN) = state(i,j,k,URHO) * eint;
+    Real rho_e_heavies = state(i,j,k,URHO) * (3.0/2.0) * C::k_B * temp_heavy / avg_mass_grams;
+    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * (3.0/2.0) * C::k_B * te_kelvin / avg_mass_grams;
+    state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons + 
+                         0.5 * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) + 
+                               state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) + 
+                               state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
+    
+    // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
+    state(i,j,k,UFX) = state(i,j,k,URHO) * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
 
 
     // The temperature initialization will be done later
