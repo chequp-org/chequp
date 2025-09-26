@@ -21,7 +21,7 @@ spack env activate warpx-cuda-dev
 On MacOS, I followed the instruction here:
 https://github.com/AMReX-Astro/Castro/issues/2195
 ```
-brew install gcc make
+brew install gcc@11 make
 brew install --build-from-source open-mpi --cc=gcc-11
 ```
 and used `gmake` instead of `make` in the instructions below.

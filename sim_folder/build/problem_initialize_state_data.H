@@ -35,7 +35,7 @@ inline void read_initial_conditions()
 
     // Host-side vectors to temporarily store data from the file
     static std::vector<Real> r_host; // radius in cm
-    static std::vector<Real> table_host_flat; 
+    static std::vector<Real> table_host_flat;
     int num_rows = 0;
     int num_cols = 0;
 
@@ -127,7 +127,11 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real z = 0;
     x = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
 #if AMREX_SPACEDIM >= 2
-    y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
+    if (coord_type == 0) {  // Cartesian
+        y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
+    } else if (coord_type == 1) {  // Cylindrical
+        y = 0;
+    }
 #endif
 #if AMREX_SPACEDIM >= 3
     z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
@@ -144,45 +148,43 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
         Real val_high = d_initial_conditions_table_data[(idx + 1) * NumSpec+1 + col];
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
-    
-    Real te_kelvin = interp_values[0];
+    Real Te = interp_values[0];
     Real number_fractions[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
         number_fractions[s] = interp_values[s + 1];
     }
-    // Convert from number fraction to mass fraction
-    Real avg_mass = 0;
-    for (int s = 0; s < NumSpec; ++s) { avg_mass += number_fractions[s] * aion[s]; }
-    Real mass_fractions[NumSpec];
-    for (int s = 0; s < NumSpec; ++s) {
-        mass_fractions[s] = (number_fractions[s] * aion[s]) / avg_mass;
-    }
-    // --- State Variable Assignment ---
+
+    // Assume uniform plasma with 0 velocity initially
     state(i,j,k,URHO) = problem::dens_ambient;
     state(i,j,k,UMX) = 0.0;
     state(i,j,k,UMY) = 0.0;
     state(i,j,k,UMZ) = 0.0;
+
+    // Convert from number fraction to mass fraction
+    Real avg_mass = 0;
+    for (int s = 0; s < NumSpec; ++s) { avg_mass += number_fractions[s] * aion[s]; }
     for (int s = 0; s < NumSpec; ++s) {
-        state(i,j,k,UFS+s) = state(i,j,k,URHO) * mass_fractions[s];
+        state(i,j,k,UFS+s) = state(i,j,k,URHO) * (number_fractions[s] * aion[s]) / avg_mass;
     }
-    // Calculate internal energy
+
+    // Set the initial internal energy and total energy
+    Real Ta = 348.; // 0.03 eV, in Kelvins
+    Real avg_mass_grams = avg_mass * C::m_u;
     Real electrons_per_heavy = 0.0;
+    Real rho_e_heavies =  state(i,j,k,URHO) * C::k_B * Ta / ( avg_mass_grams * (eos_rp::eos_gamma - 1.0) );
     for (int s = 0; s < NumSpec; ++s) {
         electrons_per_heavy += number_fractions[s] * zion[s];
     }
+    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * Te / ( avg_mass_grams * (eos_rp::eos_gamma - 1.0) );
 
-    Real temp_heavy = 348.0;
-    Real avg_mass_grams = avg_mass * C::m_u;
-    Real rho_e_heavies = state(i,j,k,URHO) * (3.0/2.0) * C::k_B * temp_heavy / avg_mass_grams;
-    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * (3.0/2.0) * C::k_B * te_kelvin / avg_mass_grams;
-    state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons + 
-                         0.5 * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) + 
-                               state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) + 
-                               state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
-    
+    state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
+    state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
+                         0.5e0_rt * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) +
+                                     state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) +
+                                     state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
+
     // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
     state(i,j,k,UFX) = state(i,j,k,URHO) * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
-
 
     // The temperature initialization will be done later
     // in the call to clean_state. We want to avoid
