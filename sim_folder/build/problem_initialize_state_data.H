@@ -24,7 +24,6 @@ static amrex::Gpu::DeviceVector<Real> initial_conditions_table; // fraction of a
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
 AMREX_GPU_DEVICE static Real* d_initial_conditions_table_data = nullptr;
 AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
-AMREX_GPU_DEVICE static int d_num_cols = 0; // Number of columns excluding radius
 
 inline void read_initial_conditions()
 {
@@ -37,7 +36,6 @@ inline void read_initial_conditions()
     static std::vector<Real> r_host; // radius in cm
     static std::vector<Real> table_host_flat;
     int num_rows = 0;
-    int num_cols = 0;
 
     std::string line;
 
@@ -66,37 +64,32 @@ inline void read_initial_conditions()
             current_cols++;
         }
 
-        if (num_rows == 0) {
-            num_cols = current_cols;
-        } else if (current_cols != num_cols) {
-            amrex::Abort("Inconsistent number of columns in CSV file.");
+        if (current_cols != NumSpec + 1) {
+                    amrex::Abort("Inconsistent number of columns in CSV file");
         }
         num_rows++;
     }
     file.close();
-    if (num_cols != NumSpec + 1) {
-        amrex::Abort("The number of data columns in the CSV (" + std::to_string(num_cols) +
-                     ") does not match the expected number (" + std::to_string(NumSpec + 1) + ").");
-    }
+    
     // print state to verify that the csv was read properly
     if (amrex::ParallelDescriptor::IOProcessor()) {
         amrex::Print() << "\n[Initial Conditions] Successfully read file: "
                        << problem::initial_conditions_file << "\n";
         amrex::Print() << "    - Found " << num_rows << " data points (rows).\n";
-        amrex::Print() << "    - Found " << num_cols << " data columns (Te + species).\n";
+        amrex::Print() << "    - Found " << NumSpec + 1 << " data columns (Te + species).\n";
         amrex::Print() << "    - First radius: " << r_host.front() << " cm, Last radius: " << r_host.back() << " cm.\n";
     }
     // Resize the device vectors
     initial_conditions_r.resize(num_rows);
     initial_conditions_table.resize(table_host_flat.size());
     // Get raw pointers for GPU copy
-    Real* d_r_ptr = initial_conditions_r.data();
+    Real* initial_conditions_r_data = initial_conditions_r.data();
     Real* d_table_ptr = initial_conditions_table.data();
 
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
     cudaMemcpyToSymbol(d_initial_conditions_size, &num_rows, sizeof(int));
-    cudaMemcpyToSymbol(d_initial_conditions_r_data, &d_r_ptr, sizeof(Real*));
+    cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
     cudaMemcpyToSymbol(d_initial_conditions_table_data, &d_table_ptr, sizeof(Real*));
 
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r_host.begin(), r_host.end(),
@@ -106,7 +99,7 @@ inline void read_initial_conditions()
     amrex::Gpu::streamSynchronize();
 #else
     d_initial_conditions_size = num_rows;
-    d_initial_conditions_r_data = d_r_ptr;
+    d_initial_conditions_r_data = initial_conditions_r_data;
     d_initial_conditions_table_data = d_table_ptr;
     std::copy(r_host.begin(), r_host.end(), initial_conditions_r.begin());
     std::copy(table_host_flat.begin(), table_host_flat.end(), initial_conditions_table.begin());
