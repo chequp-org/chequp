@@ -57,7 +57,7 @@ inline void read_initial_conditions()
             amrex::Abort("Missing radius value");
         }
 
-        // 2. Read the rest of the columns into the flattened table
+        // Read the rest of the columns into the flattened table
         int current_cols = 0;
         while (std::getline(ss, value, ',')) {
             table_host_flat.push_back(std::stod(value));
