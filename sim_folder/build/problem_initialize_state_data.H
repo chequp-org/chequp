@@ -71,14 +71,6 @@ inline void read_initial_conditions()
     }
     file.close();
     
-    // print state to verify that the csv was read properly
-    if (amrex::ParallelDescriptor::IOProcessor()) {
-        amrex::Print() << "\n[Initial Conditions] Successfully read file: "
-                       << problem::initial_conditions_file << "\n";
-        amrex::Print() << "    - Found " << num_rows << " data points (rows).\n";
-        amrex::Print() << "    - Found " << NumSpec + 1 << " data columns (Te + species).\n";
-        amrex::Print() << "    - First radius: " << r_host.front() << " cm, Last radius: " << r_host.back() << " cm.\n";
-    }
     // Resize the device vectors
     initial_conditions_r.resize(num_rows);
     initial_conditions_table.resize(table_host_flat.size());
