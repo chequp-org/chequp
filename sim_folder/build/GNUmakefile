@@ -9,6 +9,7 @@ COMP	   = gnu
 
 USE_MPI    = TRUE
 USE_OMP    = FALSE
+USE_HDF5   = TRUE
 
 USE_MHD    = FALSE
 
