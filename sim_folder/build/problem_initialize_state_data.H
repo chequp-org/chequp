@@ -146,21 +146,21 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     state(i,j,k,UMZ) = 0.0;
 
     // Convert from number fraction to mass fraction
-    Real avg_mass = 0;
-    for (int s = 0; s < NumSpec; ++s) { avg_mass += number_fractions[s] * aion[s]; }
+    Real mean_aion = 0;
+    for (int s = 0; s < NumSpec; ++s) { mean_aion += number_fractions[s] * aion[s]; }
     for (int s = 0; s < NumSpec; ++s) {
-        state(i,j,k,UFS+s) = state(i,j,k,URHO) * (number_fractions[s] * aion[s]) / avg_mass;
+        state(i,j,k,UFS+s) = state(i,j,k,URHO) * (number_fractions[s] * aion[s]) / mean_aion;
     }
 
     // Set the initial internal energy and total energy
     Real Ta = 348.; // 0.03 eV, in Kelvins
-    Real avg_mass_grams = avg_mass * C::m_u;
+    Real avg_mass = mean_aion * C::m_u;
     Real electrons_per_heavy = 0.0;
-    Real rho_e_heavies =  state(i,j,k,URHO) * C::k_B * Ta / ( avg_mass_grams * (eos_rp::eos_gamma - 1.0) );
+    Real rho_e_heavies =  state(i,j,k,URHO) * C::k_B * Ta / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
     for (int s = 0; s < NumSpec; ++s) {
         electrons_per_heavy += number_fractions[s] * zion[s];
     }
-    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * Te / ( avg_mass_grams * (eos_rp::eos_gamma - 1.0) );
+    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * Te / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
 
     state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
     state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
