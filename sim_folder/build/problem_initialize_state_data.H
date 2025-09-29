@@ -144,8 +144,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
-        Real val_low = d_initial_conditions_table_data[idx * NumSpec+1 + col];
-        Real val_high = d_initial_conditions_table_data[(idx + 1) * NumSpec+1 + col];
+        Real val_low = d_initial_conditions_table_data[idx * (NumSpec+1) + col];
+        Real val_high = d_initial_conditions_table_data[(idx + 1) * (NumSpec+1) + col];
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
     Real Te = interp_values[0];
