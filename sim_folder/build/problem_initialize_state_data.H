@@ -1,6 +1,8 @@
 #ifndef problem_initialize_state_data_H
 #define problem_initialize_state_data_H
 
+#include <hdf5.h>
+
 #include <prob_parameters.H>
 #include <eos.H>
 #include <AMReX_Math.H>
