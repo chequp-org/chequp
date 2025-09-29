@@ -66,9 +66,7 @@ inline void read_initial_conditions()
             current_cols++;
         }
 
-        if (num_rows == 0) {
-            num_cols = current_cols;
-        } else if (current_cols != num_cols) {
+        if (current_cols != NumSpec+1) {
             amrex::Abort("Inconsistent number of columns in CSV file.");
         }
         num_rows++;
