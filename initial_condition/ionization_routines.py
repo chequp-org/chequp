@@ -4,6 +4,8 @@ import math
 import tqdm
 from scipy.constants import m_e, c, e, hbar, physical_constants, epsilon_0
 import pandas as pd
+import openpmd_api as io
+
 
 @numba.njit
 def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
@@ -69,19 +71,32 @@ def save_radial_csv(r_coords, all_populations, T_eV, output_file, species_keys):
     """
     Save radial data with all species populations to CSV file
     """
-    # Create dictionary starting with radius and temperature
-    data_dict = {
-        'Radius (cm)': r_coords * 100,  # Convert m to cm
-        'Electron Temperature (K)': T_eV * 11604  # Convert eV to K
-    }
+    # Get spatial resolution
+    dr = np.diff(r_coords).mean() * 100 # Convert m to cm
+    rmin = r_coords.min() * 100 # Convert m to cm
 
     # Add a column for each species population
     for i, species_key in enumerate(species_keys):
         data_dict[species_key] = all_populations[:, i]
 
-    df = pd.DataFrame(data_dict)
-    df.to_csv(output_file, index=False, float_format='%.4e')
-    print(f"Radial profile data saved to {output_file}")
+    # create openpmd file
+    series = io.Series("initial_conditions.h5",io.Access.create)
+    # only 1 iteratiion needed
+    it = series.iterations[1]
+
+    # set meta information
+    T = it.meshes["T"]
+    T.grid_spacing = np.array([dr])
+    T.grid_global_offset = [rmin]
+    T.axis_labels = ['r']
+    T.position = [0,0,0]
+    T.unit_dimension = {
+        io.Unit_Dimension.K:  1,
+    }
+    dataset = io.Dataset(T_eV.dtype,T_eV.shape)
+    T.reset_dataset(dataset)
+
+    series.flush()
 
 def load_intensity_profile(filename):
     """
