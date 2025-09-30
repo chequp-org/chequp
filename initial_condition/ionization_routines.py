@@ -3,6 +3,7 @@ import numba
 import math
 import tqdm
 from scipy.constants import m_e, c, e, hbar, physical_constants, epsilon_0
+import pandas as pd
 
 @numba.njit
 def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
@@ -64,7 +65,7 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
 
     return ioniz_frac, T, t
 
-def save_radial_csv(r_coords, all_populations, T_eV, output_file):
+def save_radial_csv(r_coords, all_populations, T_eV, output_file, species_keys):
     """
     Save radial data with all species populations to CSV file
     """
@@ -103,7 +104,7 @@ def load_intensity_profile(filename):
 
 def process_intensity_array_multispecies(intensity_1d, lambd, tau, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
-            source_indices, target_indices, charges,
+            source_indices, target_indices, charges, species_keys,
             initial_populations, output_file=None, r_coords=None):
     """
     Process 1D intensity array for multi-species plasma
@@ -153,6 +154,6 @@ def process_intensity_array_multispecies(intensity_1d, lambd, tau, ell,
 
     # Save detailed CSV output with all species
     if output_file and r_coords is not None:
-        save_radial_csv(r_coords, all_populations, T_array, output_file)
+        save_radial_csv(r_coords, all_populations, T_array, output_file, species_keys)
 
     return all_populations, T_array
