@@ -15,7 +15,22 @@ void problem_source (int i, int j, int k,
                      const Real dt, const Real time)
 {
     using namespace problem;
-
+    // Nitrogen ionization energies and rate coefficients
+    // Fitted to ADAS ADF07 data
+    const Real e_ioniz_N0_to_N1_eV = 14.53;
+    const Real a_ioniz_N0_to_N1 = 9.985e-09;
+    
+    const Real e_ioniz_N1_to_N2_eV = 29.60;
+    const Real a_ioniz_N1_to_N2 = 3.012e-09;
+    
+    const Real e_ioniz_N2_to_N3_eV = 47.45;
+    const Real a_ioniz_N2_to_N3 = 9.451e-10;
+    
+    const Real e_ioniz_N3_to_N4_eV = 77.47;
+    const Real a_ioniz_N3_to_N4 = 2.596e-10;
+    
+    const Real e_ioniz_N4_to_N5_eV = 97.89;
+    const Real a_ioniz_N4_to_N5 = 9.606e-11;
     auto coord = geomdata.Coord();
     const Real* prob_lo = geomdata.ProbLo();
     const Real* dx = geomdata.CellSize();
@@ -31,7 +46,11 @@ void problem_source (int i, int j, int k,
     // Abundance of neutral and ionized H
     Real X_Hn = state(i,j,k,UFS) / rho;
     Real X_Hp = state(i,j,k,UFS+1) / rho;
-
+    Real X_Nn = state(i,j,k,UFS+2) / rho; // N_neutral
+    Real X_N1 = state(i,j,k,UFS+3) / rho; // N+
+    Real X_N2 = state(i,j,k,UFS+4) / rho; // N2+
+    Real X_N3 = state(i,j,k,UFS+5) / rho; // N3+
+    Real X_N4 = state(i,j,k,UFS+6) / rho; // N4+
     // Electron and heavy temperatures
     Real f = state(i,j,k,UFX)/rho;  // fraction of energy in heavy ions
     Real e = state(i,j,k,UEINT)/rho;  // internal energy per unit mass
@@ -55,8 +74,8 @@ void problem_source (int i, int j, int k,
 
     // In order to calculate the energy transfer between electrons and heavy particles,
     // compute the collision frequency between electrons and ions (using SI units)
-    const amrex::Real n_e = rho * X_Hp / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
-    const amrex::Real n_n = rho * X_Hn / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
+    const amrex::Real n_e = rho * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4) / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
+    const amrex::Real n_n = rho * (X_Hn + X_Nn) / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
     // Get collision frequencies
     amrex::Real v_ei, v_en;
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
@@ -67,6 +86,53 @@ void problem_source (int i, int j, int k,
 
     // Update fraction of internal energy stored in ions
     src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN) + rho * v_e_E * ( 1 - (1+X_Hp)*f );
+    // Initialize nitrogen species source terms
+    src(i,j,k,UFS+2) = 0.0; // N_neutral
+    src(i,j,k,UFS+3) = 0.0; // N+
+    src(i,j,k,UFS+4) = 0.0; // N2+
+    src(i,j,k,UFS+5) = 0.0; // N3+
+    src(i,j,k,UFS+6) = 0.0; // N4+
+    
+    // Nitrogen ionization reactions
+    // N0 -> N+
+    Real R_N0_to_N1 = rho * rho / C::m_n * (
+        a_ioniz_N0_to_N1 * std::sqrt(C::k_B*T_e/C::ev2erg) * 
+        std::exp(-e_ioniz_N0_to_N1_eV*C::ev2erg/(C::k_B*T_e)) * X_Nn * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4)
+    );
+    src(i,j,k,UFS+2) -= R_N0_to_N1;
+    src(i,j,k,UFS+3) += R_N0_to_N1;
+    src(i,j,k,UEDEN) -= R_N0_to_N1 * (e_ioniz_N0_to_N1_eV*C::ev2erg / C::m_n);
+    src(i,j,k,UEINT) -= R_N0_to_N1 * (e_ioniz_N0_to_N1_eV*C::ev2erg / C::m_n);
+    
+    // N+ -> N2+
+    Real R_N1_to_N2 = rho * rho / C::m_n * (
+        a_ioniz_N1_to_N2 * std::sqrt(C::k_B*T_e/C::ev2erg) * 
+        std::exp(-e_ioniz_N1_to_N2_eV*C::ev2erg/(C::k_B*T_e)) * X_N1 * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4)
+    );
+    src(i,j,k,UFS+3) -= R_N1_to_N2;
+    src(i,j,k,UFS+4) += R_N1_to_N2;
+    src(i,j,k,UEDEN) -= R_N1_to_N2 * (e_ioniz_N1_to_N2_eV*C::ev2erg / C::m_n);
+    src(i,j,k,UEINT) -= R_N1_to_N2 * (e_ioniz_N1_to_N2_eV*C::ev2erg / C::m_n);
+    
+    // N2+ -> N3+
+    Real R_N2_to_N3 = rho * rho / C::m_n * (
+        a_ioniz_N2_to_N3 * std::sqrt(C::k_B*T_e/C::ev2erg) * 
+        std::exp(-e_ioniz_N2_to_N3_eV*C::ev2erg/(C::k_B*T_e)) * X_N2 * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4)
+    );
+    src(i,j,k,UFS+4) -= R_N2_to_N3;
+    src(i,j,k,UFS+5) += R_N2_to_N3;
+    src(i,j,k,UEDEN) -= R_N2_to_N3 * (e_ioniz_N2_to_N3_eV*C::ev2erg / C::m_n);
+    src(i,j,k,UEINT) -= R_N2_to_N3 * (e_ioniz_N2_to_N3_eV*C::ev2erg / C::m_n);
+    
+    // N3+ -> N4+
+    Real R_N3_to_N4 = rho * rho / C::m_n * (
+        a_ioniz_N3_to_N4 * std::sqrt(C::k_B*T_e/C::ev2erg) * 
+        std::exp(-e_ioniz_N3_to_N4_eV*C::ev2erg/(C::k_B*T_e)) * X_N3 * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4)
+    );
+    src(i,j,k,UFS+5) -= R_N3_to_N4;
+    src(i,j,k,UFS+6) += R_N3_to_N4;
+    src(i,j,k,UEDEN) -= R_N3_to_N4 * (e_ioniz_N3_to_N4_eV*C::ev2erg / C::m_n);
+    src(i,j,k,UEINT) -= R_N3_to_N4 * (e_ioniz_N3_to_N4_eV*C::ev2erg / C::m_n);
 }
 
 #endif
