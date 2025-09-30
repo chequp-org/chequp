@@ -1,0 +1,118 @@
+   4    /N + 5  IONISATION RATE COEFFICIENTS   /
+N + 5/N + 6/   21/I.P. =          4452758.0/ICODE =  1/FCODE =  0/ISEL=   1
+ 5.000E+00 7.000E+00 1.000E+01 1.500E+01 2.000E+01 3.000E+01 
+ 4.000E+01 5.000E+01 7.000E+01 1.000E+02 1.500E+02 2.000E+02 
+ 3.000E+02 4.000E+02 5.000E+02 7.000E+02 1.000E+03 2.000E+03 
+ 5.000E+03 7.000E+03 1.000E+04    
+ 1.740E-59 1.050E-45 2.425E-35 3.031E-27 3.591E-23 4.619E-19 
+ 5.563E-17 1.021E-15 2.997E-14 4.030E-13 3.258E-12 9.620E-12 
+ 2.960E-11 5.307E-11 7.601E-11 1.155E-10 1.592E-10 2.284E-10 
+ 2.620E-10 2.655E-10 2.581E-10    
+N + 5/N + 6/   21/I.P. =          4452758.0/ICODE =  1/FCODE =  1/ISEL=   2
+ 5.000E+00 7.000E+00 1.000E+01 1.500E+01 2.000E+01 3.000E+01 
+ 4.000E+01 5.000E+01 7.000E+01 1.000E+02 1.500E+02 2.000E+02 
+ 3.000E+02 4.000E+02 5.000E+02 7.000E+02 1.000E+03 2.000E+03 
+ 5.000E+03 7.000E+03 1.000E+04    
+ 1.740E-59 1.050E-45 2.425E-35 3.031E-27 3.591E-23 4.619E-19 
+ 5.563E-17 1.021E-15 2.997E-14 4.030E-13 3.258E-12 9.620E-12 
+ 2.960E-11 5.307E-11 7.601E-11 1.155E-10 1.592E-10 2.284E-10 
+ 2.620E-10 2.655E-10 2.581E-10    
+N + 5/N + 6/   21/I.P. =          1066868.0/ICODE =  2/FCODE =  0/ISEL=   3
+ 5.000E+00 7.000E+00 1.000E+01 1.500E+01 2.000E+01 3.000E+01 
+ 4.000E+01 5.000E+01 7.000E+01 1.000E+02 1.500E+02 2.000E+02 
+ 3.000E+02 4.000E+02 5.000E+02 7.000E+02 1.000E+03 2.000E+03 
+ 5.000E+03 7.000E+03 1.000E+04    
+ 4.266E-22 9.746E-19 3.413E-16 3.498E-14 3.720E-13 4.230E-12 
+ 1.495E-11 3.275E-11 8.345E-11 1.758E-10 3.279E-10 4.581E-10 
+ 6.540E-10 7.888E-10 8.847E-10 1.007E-09 1.102E-09 1.175E-09 
+ 1.078E-09 1.035E-09 9.598E-10    
+N + 5/N + 6/   21/I.P. =          1066868.0/ICODE =  2/FCODE =  1/ISEL=   4
+ 5.000E+00 7.000E+00 1.000E+01 1.500E+01 2.000E+01 3.000E+01 
+ 4.000E+01 5.000E+01 7.000E+01 1.000E+02 1.500E+02 2.000E+02 
+ 3.000E+02 4.000E+02 5.000E+02 7.000E+02 1.000E+03 2.000E+03 
+ 5.000E+03 7.000E+03 1.000E+04    
+ 4.266E-22 9.746E-19 3.413E-16 3.498E-14 3.720E-13 4.230E-12 
+ 1.495E-11 3.275E-11 8.345E-11 1.758E-10 3.279E-10 4.581E-10 
+ 6.540E-10 7.888E-10 8.847E-10 1.007E-09 1.102E-09 1.175E-09 
+ 1.078E-09 1.035E-09 9.598E-10    
+C----------------------------------------------------------------------------
+C
+C  ELECTRON IMPACT IONISATION RATE COEFFICIENT LIST:
+C
+C   ISEL  INITIAL MET.    FINAL  MET.           SOURCE
+C           ION   CODE     ION   CODE
+C   ----  ------- ----   ------- ----     -----------------------------------
+C     1   N + 5    1     N + 6    0       *BELL ET AL. (1982) CLM-R216
+C     2   N + 5    1     N + 6    1       *SUMMERS/HOOPER split BELL et al.
+C     3   N + 5    2     N + 6    0       *SUMMERS/HOOPER split BELL et al.
+C     4   N + 5    2     N + 6    1       *SUMMERS/HOOPER split BELL et al.
+C
+C
+C         PREFERRED DATA INDICATED BY *
+C
+C
+C
+C  NOTES.
+C ------
+C
+C   ISEL  INITIAL MET.    DESIG.             FINAL  MET.    DESIG.
+C           ION   CODE                        ION   CODE
+C   ----  ------- ---- ---------------      ------- ---- ---------------
+C     1   N + 5    1     1S2(1S)             N + 6    0     Total
+C     2   N + 5    1     1S2(1S)             N + 6    1     1s1(2S)
+C     3   N + 5    1     1S1 2s1(3S)         N + 6    0     Total
+C     4   N + 5    1     1S1 2s2(3S)         N + 6    1     1s1(2S)
+C
+C
+C
+C
+C  Compiler:  H. P. Summers
+C  Date:      13 June 1996
+C----------------------------------------------------------------------------
+
+ 
+C---------------------------------------------------------------------------------
+C ADAS ADF07 DATA - SCCS info: @(#)$Header: /home/adascvs/adas/adf07/szd96#n/szd96#n_n5.dat,v 2.1 2004/07/06 22:02:21 whitefor Exp $ Date $Date: 2004/07/06 22:02:21 $
+C---------------------------------------------------------------------------------
+
+C-----------------------------------------------------------------------
+C                               OPEN-ADAS
+C                               +++++++++
+C
+C This file has been downloaded from OPEN-ADAS (http://open.adas.ac.uk)
+C on 02-Sep-2025.
+C
+C TERMS AND CONDITIONS
+C --------------------
+C
+C The user of the OPEN-ADAS system and data (hereinafter "the User")
+C accepts the following terms and conditions:
+C
+C   1. The University of Strathclyde uses all reasonable endeavours to
+C      ensure the accuracy of the data provided and any information
+C      given, but the University makes no warranty, expressed or implied
+C      as to its accuracy, integrity, fitness for purpose and shall not
+C      be responsible for the use to which the data is put by the User
+C      and/or any consequences arising out of any inaccuracies or
+C      omissions.
+C
+C   2. Any downloaded OPEN-ADAS file is made available for the
+C      personal use of the User only.  It must not be used for any
+C      commercial application, incorporated into any web site or in
+C      any form re-distributed without express prior written permission
+C      from the ADAS Project. In particular, but not by way of
+C      limitation, it must not be:
+C        *  inserted into a managed database structure,
+C        *  redistributed along with a modelling or analysis code,
+C        *  made available on a public website.
+C
+C Permission for OPEN-ADAS data incorporation in non-commercial
+C code/system development for scientific advance will not be
+C unreasonably withheld, but will be subject to written agreement
+C on a case by case basis.
+C
+C The User will indemnify the University of Strathclyde and keep it
+C fully and effectively indemnified against each and every claim made
+C against the University as a result of the User's use of the data.
+C
+C-----------------------------------------------------------------------

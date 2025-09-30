@@ -1,0 +1,206 @@
+  12    /N + 1  IONISATION RATE COEFFICIENTS   /
+N + 1/N + 2/   24/I.P. =           238661.6/ICODE =  1/FCODE =  0/ISEL=   1
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 3.300E-22 1.452E-15 2.735E-13 4.015E-12 2.091E-11 1.461E-10 
+ 6.709E-10 2.352E-09 4.565E-09 9.190E-09 1.327E-08 1.665E-08 
+ 2.166E-08 2.632E-08 3.028E-08 3.209E-08 3.321E-08 3.318E-08 
+ 3.276E-08 3.161E-08 2.989E-08 2.573E-08 1.988E-08 1.588E-08 
+N + 1/N + 2/   24/I.P. =           238661.6/ICODE =  1/FCODE =  1/ISEL=   2
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 3.299E-22 1.443E-15 2.678E-13 3.865E-12 1.979E-11 1.343E-10 
+ 5.966E-10 2.019E-09 3.831E-09 7.508E-09 1.067E-08 1.325E-08 
+ 1.701E-08 2.044E-08 2.327E-08 2.451E-08 2.519E-08 2.506E-08 
+ 2.467E-08 2.370E-08 2.232E-08 1.910E-08 1.467E-08 1.168E-08 
+N + 1/N + 2/   24/I.P. =           295939.0/ICODE =  1/FCODE =  2/ISEL=   3
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 5.935E-26 9.143E-18 5.650E-15 1.505E-13 1.122E-12 1.184E-11 
+ 7.426E-11 3.332E-10 7.337E-10 1.682E-09 2.598E-09 3.399E-09 
+ 4.651E-09 5.885E-09 7.010E-09 7.574E-09 8.024E-09 8.127E-09 
+ 8.097E-09 7.911E-09 7.567E-09 6.632E-09 5.213E-09 4.204E-09 
+N + 1/N + 2/   24/I.P. =           223434.3/ICODE =  2/FCODE =  0/ISEL=   4
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 2.480E-21 4.239E-15 5.824E-13 7.294E-12 3.452E-11 2.161E-10 
+ 9.125E-10 2.995E-09 5.621E-09 1.093E-08 1.549E-08 1.921E-08 
+ 2.466E-08 2.963E-08 3.377E-08 3.558E-08 3.663E-08 3.647E-08 
+ 3.591E-08 3.456E-08 3.260E-08 2.795E-08 2.151E-08 1.715E-08 
+N + 1/N + 2/   24/I.P. =           223434.3/ICODE =  2/FCODE =  1/ISEL=   5
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 2.480E-21 4.239E-15 5.824E-13 7.294E-12 3.452E-11 2.161E-10 
+ 9.125E-10 2.995E-09 5.621E-09 1.093E-08 1.549E-08 1.921E-08 
+ 2.466E-08 2.963E-08 3.377E-08 3.558E-08 3.663E-08 3.647E-08 
+ 3.591E-08 3.456E-08 3.260E-08 2.795E-08 2.151E-08 1.715E-08 
+N + 1/N + 2/   24/I.P. =           223434.3/ICODE =  2/FCODE =  2/ISEL=   6
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 
+ 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 
+ 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 
+ 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 
+N + 1/N + 2/   24/I.P. =           206178.0/ICODE =  3/FCODE =  0/ISEL=   7
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 2.468E-20 1.444E-14 1.385E-12 1.450E-11 6.157E-11 3.401E-10 
+ 1.307E-09 3.978E-09 7.180E-09 1.341E-08 1.862E-08 2.279E-08 
+ 2.879E-08 3.416E-08 3.851E-08 4.033E-08 4.123E-08 4.090E-08 
+ 4.017E-08 3.850E-08 3.621E-08 3.090E-08 2.370E-08 1.884E-08 
+N + 1/N + 2/   24/I.P. =           206178.0/ICODE =  3/FCODE =  1/ISEL=   8
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 2.468E-20 1.444E-14 1.385E-12 1.450E-11 6.157E-11 3.401E-10 
+ 1.307E-09 3.978E-09 7.180E-09 1.341E-08 1.862E-08 2.279E-08 
+ 2.879E-08 3.416E-08 3.851E-08 4.033E-08 4.123E-08 4.090E-08 
+ 4.017E-08 3.850E-08 3.621E-08 3.090E-08 2.370E-08 1.884E-08 
+N + 1/N + 2/   24/I.P. =           206178.0/ICODE =  3/FCODE =  2/ISEL=   9
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 
+ 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 
+ 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 
+ 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 1.000E-70 
+N + 1/N + 2/   24/I.P. =           192085.3/ICODE =  4/FCODE =  0/ISEL=  10
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 1.221E-19 2.977E-14 2.135E-12 1.937E-11 7.575E-11 3.830E-10 
+ 1.387E-09 4.063E-09 7.219E-09 1.332E-08 1.840E-08 2.247E-08 
+ 2.831E-08 3.356E-08 3.780E-08 3.959E-08 4.046E-08 4.013E-08 
+ 3.942E-08 3.780E-08 3.554E-08 3.034E-08 2.326E-08 1.851E-08 
+N + 1/N + 2/   24/I.P. =           192085.3/ICODE =  4/FCODE =  1/ISEL=  11
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 1.220E-19 2.926E-14 2.013E-12 1.737E-11 6.457E-11 2.979E-10 
+ 9.668E-10 2.485E-09 4.032E-09 6.596E-09 8.433E-09 9.745E-09 
+ 1.140E-08 1.261E-08 1.330E-08 1.338E-08 1.304E-08 1.256E-08 
+ 1.209E-08 1.128E-08 1.034E-08 8.492E-09 6.263E-09 4.876E-09 
+N + 1/N + 2/   24/I.P. =           249243.3/ICODE =  4/FCODE =  2/ISEL=  12
+ 1.000E+00 2.000E+00 3.000E+00 4.000E+00 5.000E+00 7.000E+00 
+ 1.000E+01 1.500E+01 2.000E+01 3.000E+01 4.000E+01 5.000E+01 
+ 7.000E+01 1.000E+02 1.500E+02 2.000E+02 3.000E+02 4.000E+02 
+ 5.000E+02 7.000E+02 1.000E+03 2.000E+03 5.000E+03 1.000E+04 
+ 6.112E-23 5.192E-16 1.219E-13 2.002E-12 1.118E-11 8.511E-11 
+ 4.204E-10 1.577E-09 3.187E-09 6.720E-09 9.962E-09 1.272E-08 
+ 1.692E-08 2.095E-08 2.450E-08 2.620E-08 2.742E-08 2.757E-08 
+ 2.733E-08 2.652E-08 2.520E-08 2.185E-08 1.700E-08 1.363E-08 
+C----------------------------------------------------------------------------
+C
+C  ELECTRON IMPACT IONISATION RATE COEFFICIENT LIST:
+C
+C   ISEL  INITIAL MET.    FINAL  MET.           SOURCE
+C           ION   CODE     ION   CODE
+C   ----  ------- ----   ------- ----     -----------------------------------
+C     1   N + 1    1     N + 2    0       *BELL ET AL. (1982) CLM-R216
+C     2   N + 1    1     N + 2    1       *SUMMERS/HOOPER split ELL et al.
+C     3   N + 1    1     N + 2    2       *SUMMERS/HOOPER split BELL et al.
+C     4   N + 1    2     N + 2    0       *SUMMERS/HOOPER split BELL et al.
+C     5   N + 1    2     N + 2    1       *SUMMERS/HOOPER split BELL et al.
+C     6   N + 1    2     N + 2    2       *SUMMERS/HOOPER split BELL et al.
+C     7   N + 1    3     N + 2    0       *SUMMERS/HOOPER split BELL et al.
+C     8   N + 1    3     N + 2    1       *SUMMERS/HOOPER split BELL et al.
+C     9   N + 1    3     N + 2    2       *SUMMERS/HOOPER split BELL et al.
+C    10   N + 1    4     N + 2    0       *SUMMERS/HOOPER split BELL et al.
+C    11   N + 1    4     N + 2    1       *SUMMERS/HOOPER split BELL et al.
+C    12   N + 1    4     N + 2    2       *SUMMERS/HOOPER split BELL et al.
+C
+C
+C         PREFERRED DATA INDICATED BY *
+C
+C
+C
+C  NOTES.
+C ------
+C
+C   ISEL  INITIAL MET.    DESIG.             FINAL  MET.    DESIG.
+C           ION   CODE                        ION   CODE
+C   ----  ------- ---- ---------------      ------- ---- ---------------
+C     1   N + 1    1     2S2 2P2(3P)         N + 2    0     Total
+C     2   N + 1    1     2S2 2P2(3P)         N + 2    1     2S2 2P1(2P)
+C     3   N + 1    1     2S2 2P2(3P)         N + 2    2     2S1 2P2(4P)
+C     4   N + 1    2     2S2 2P2(1D)         N + 2    0     Total
+C     5   N + 1    2     2S2 2P2(1D)         N + 2    1     2S2 2P1(2P)
+C     6   N + 1    2     2S2 2P2(1D)         N + 2    2     2S1 2P2(4P)
+C     7   N + 1    3     2S2 2P2(1S)         N + 2    0     Total
+C     8   N + 1    3     2S2 2P2(1S)         N + 2    1     2S2 2P1(2P)
+C     9   N + 1    3     2S2 2P2(1S)         N + 2    2     2S1 2P2(4P)
+C    10   N + 1    4     2S1 2P3(5S)         N + 2    0     Total
+C    11   N + 1    4     2S1 2P3(5S)         N + 2    1     2S2 2P1(2P)
+C    12   N + 1    4     2S1 2P3(5S)         N + 2    2     2S1 2P2(4P)
+C
+C
+C
+C
+C  Compiler:  H. P. Summers
+C  Date:      13 June 1996
+C----------------------------------------------------------------------------
+
+ 
+C---------------------------------------------------------------------------------
+C ADAS ADF07 DATA - SCCS info: @(#)$Header: /home/adascvs/adas/adf07/szd96#n/szd96#n_n1.dat,v 2.1 2004/07/06 22:02:14 whitefor Exp $ Date $Date: 2004/07/06 22:02:14 $
+C---------------------------------------------------------------------------------
+
+C-----------------------------------------------------------------------
+C                               OPEN-ADAS
+C                               +++++++++
+C
+C This file has been downloaded from OPEN-ADAS (http://open.adas.ac.uk)
+C on 02-Sep-2025.
+C
+C TERMS AND CONDITIONS
+C --------------------
+C
+C The user of the OPEN-ADAS system and data (hereinafter "the User")
+C accepts the following terms and conditions:
+C
+C   1. The University of Strathclyde uses all reasonable endeavours to
+C      ensure the accuracy of the data provided and any information
+C      given, but the University makes no warranty, expressed or implied
+C      as to its accuracy, integrity, fitness for purpose and shall not
+C      be responsible for the use to which the data is put by the User
+C      and/or any consequences arising out of any inaccuracies or
+C      omissions.
+C
+C   2. Any downloaded OPEN-ADAS file is made available for the
+C      personal use of the User only.  It must not be used for any
+C      commercial application, incorporated into any web site or in
+C      any form re-distributed without express prior written permission
+C      from the ADAS Project. In particular, but not by way of
+C      limitation, it must not be:
+C        *  inserted into a managed database structure,
+C        *  redistributed along with a modelling or analysis code,
+C        *  made available on a public website.
+C
+C Permission for OPEN-ADAS data incorporation in non-commercial
+C code/system development for scientific advance will not be
+C unreasonably withheld, but will be subject to written agreement
+C on a case by case basis.
+C
+C The User will indemnify the University of Strathclyde and keep it
+C fully and effectively indemnified against each and every claim made
+C against the University as a result of the User's use of the data.
+C
+C-----------------------------------------------------------------------
