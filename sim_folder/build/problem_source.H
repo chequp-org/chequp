@@ -84,9 +84,7 @@ void problem_source (int i, int j, int k,
     // Calculate the collision frequency for energy transfer between electrons and heavies
     const amrex::Real v_e_E = 2*SI::m_e/SI::m_H * (v_ei + v_en);
 
-    // Update fraction of internal energy stored in ions
-    src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN) + rho * v_e_E * ( 1 - (1+X_Hp)*f );
-    // Initialize nitrogen species source terms
+        // Initialize nitrogen species source terms
     src(i,j,k,UFS+2) = 0.0; // N_neutral
     src(i,j,k,UFS+3) = 0.0; // N+
     src(i,j,k,UFS+4) = 0.0; // N2+
@@ -95,44 +93,47 @@ void problem_source (int i, int j, int k,
     
     // Nitrogen ionization reactions
     // N0 -> N+
-    Real R_N0_to_N1 = rho * rho / C::m_n * (
+    Real R_N0_to_N1 = rho * rho / (14 * C::m_u) * (
         a_ioniz_N0_to_N1 * std::sqrt(C::k_B*T_e/C::ev2erg) * 
-        std::exp(-e_ioniz_N0_to_N1_eV*C::ev2erg/(C::k_B*T_e)) * X_Nn * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4)
+        std::exp(-e_ioniz_N0_to_N1_eV*C::ev2erg/(C::k_B*T_e)) * X_Nn * (X_Hp + X_N1 + 2.0*X_N2 + 3.0*X_N3 + 4.0*X_N4)
     );
     src(i,j,k,UFS+2) -= R_N0_to_N1;
     src(i,j,k,UFS+3) += R_N0_to_N1;
-    src(i,j,k,UEDEN) -= R_N0_to_N1 * (e_ioniz_N0_to_N1_eV*C::ev2erg / C::m_n);
-    src(i,j,k,UEINT) -= R_N0_to_N1 * (e_ioniz_N0_to_N1_eV*C::ev2erg / C::m_n);
+    src(i,j,k,UEDEN) -= R_N0_to_N1 * (e_ioniz_N0_to_N1_eV*C::ev2erg / (14 * C::m_u));
+    src(i,j,k,UEINT) -= R_N0_to_N1 * (e_ioniz_N0_to_N1_eV*C::ev2erg / (14 * C::m_u));
     
     // N+ -> N2+
-    Real R_N1_to_N2 = rho * rho / C::m_n * (
+    Real R_N1_to_N2 = rho * rho / (14 * C::m_u) * (
         a_ioniz_N1_to_N2 * std::sqrt(C::k_B*T_e/C::ev2erg) * 
-        std::exp(-e_ioniz_N1_to_N2_eV*C::ev2erg/(C::k_B*T_e)) * X_N1 * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4)
+        std::exp(-e_ioniz_N1_to_N2_eV*C::ev2erg/(C::k_B*T_e)) * X_N1 * (X_Hp + X_N1 + 2.0*X_N2 + 3.0*X_N3 + 4.0*X_N4)
     );
     src(i,j,k,UFS+3) -= R_N1_to_N2;
     src(i,j,k,UFS+4) += R_N1_to_N2;
-    src(i,j,k,UEDEN) -= R_N1_to_N2 * (e_ioniz_N1_to_N2_eV*C::ev2erg / C::m_n);
-    src(i,j,k,UEINT) -= R_N1_to_N2 * (e_ioniz_N1_to_N2_eV*C::ev2erg / C::m_n);
+    src(i,j,k,UEDEN) -= R_N1_to_N2 * (e_ioniz_N1_to_N2_eV*C::ev2erg / (14 * C::m_u));
+    src(i,j,k,UEINT) -= R_N1_to_N2 * (e_ioniz_N1_to_N2_eV*C::ev2erg / (14 * C::m_u));
     
     // N2+ -> N3+
-    Real R_N2_to_N3 = rho * rho / C::m_n * (
+    Real R_N2_to_N3 = rho * rho / (14 * C::m_u) * (
         a_ioniz_N2_to_N3 * std::sqrt(C::k_B*T_e/C::ev2erg) * 
-        std::exp(-e_ioniz_N2_to_N3_eV*C::ev2erg/(C::k_B*T_e)) * X_N2 * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4)
+        std::exp(-e_ioniz_N2_to_N3_eV*C::ev2erg/(C::k_B*T_e)) * X_N2 * (X_Hp + X_N1 + 2.0*X_N2 + 3.0*X_N3 + 4.0*X_N4)
     );
     src(i,j,k,UFS+4) -= R_N2_to_N3;
     src(i,j,k,UFS+5) += R_N2_to_N3;
-    src(i,j,k,UEDEN) -= R_N2_to_N3 * (e_ioniz_N2_to_N3_eV*C::ev2erg / C::m_n);
-    src(i,j,k,UEINT) -= R_N2_to_N3 * (e_ioniz_N2_to_N3_eV*C::ev2erg / C::m_n);
+    src(i,j,k,UEDEN) -= R_N2_to_N3 * (e_ioniz_N2_to_N3_eV*C::ev2erg / (14 * C::m_u));
+    src(i,j,k,UEINT) -= R_N2_to_N3 * (e_ioniz_N2_to_N3_eV*C::ev2erg / (14 * C::m_u));
     
     // N3+ -> N4+
-    Real R_N3_to_N4 = rho * rho / C::m_n * (
+    Real R_N3_to_N4 = rho * rho / (14 * C::m_u) * (
         a_ioniz_N3_to_N4 * std::sqrt(C::k_B*T_e/C::ev2erg) * 
-        std::exp(-e_ioniz_N3_to_N4_eV*C::ev2erg/(C::k_B*T_e)) * X_N3 * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4)
+        std::exp(-e_ioniz_N3_to_N4_eV*C::ev2erg/(C::k_B*T_e)) * X_N3 * (X_Hp + X_N1 + 2.0*X_N2 + 3.0*X_N3 + 4.0*X_N4)
     );
     src(i,j,k,UFS+5) -= R_N3_to_N4;
     src(i,j,k,UFS+6) += R_N3_to_N4;
-    src(i,j,k,UEDEN) -= R_N3_to_N4 * (e_ioniz_N3_to_N4_eV*C::ev2erg / C::m_n);
-    src(i,j,k,UEINT) -= R_N3_to_N4 * (e_ioniz_N3_to_N4_eV*C::ev2erg / C::m_n);
+    src(i,j,k,UEDEN) -= R_N3_to_N4 * (e_ioniz_N3_to_N4_eV*C::ev2erg / (14 * C::m_u));
+    src(i,j,k,UEINT) -= R_N3_to_N4 * (e_ioniz_N3_to_N4_eV*C::ev2erg / (14 * C::m_u));
+    // Update fraction of internal energy stored in ions
+    src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN) + rho * v_e_E * ( 1 - (1+X_Hp)*f );
+
 }
 
 #endif
