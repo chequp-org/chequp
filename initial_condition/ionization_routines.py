@@ -75,7 +75,10 @@ def save_radial_csv(r_coords, all_populations, T_eV, output_file, species_keys):
     dr = np.diff(r_coords).mean() * 100 # Convert m to cm
     rmin = r_coords.min() * 100 # Convert m to cm
 
+
+
     # Add a column for each species population
+    data_dict = {}
     for i, species_key in enumerate(species_keys):
         data_dict[species_key] = all_populations[:, i]
 
@@ -91,10 +94,11 @@ def save_radial_csv(r_coords, all_populations, T_eV, output_file, species_keys):
     T.axis_labels = ['r']
     T.position = [0,0,0]
     T.unit_dimension = {
-        io.Unit_Dimension.K:  1,
+        io.Unit_Dimension.theta:  1,
     }
     dataset = io.Dataset(T_eV.dtype,T_eV.shape)
     T.reset_dataset(dataset)
+    T.store_chunk( T_eV * 11604 ) # Convert eV to K
 
     series.flush()
 
