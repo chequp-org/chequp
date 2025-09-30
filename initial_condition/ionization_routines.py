@@ -72,33 +72,35 @@ def save_radial_csv(r_coords, all_populations, T_eV, output_file, species_keys):
     Save radial data with all species populations to CSV file
     """
     # Get spatial resolution
-    dr = np.diff(r_coords).mean() * 100 # Convert m to cm
-    rmin = r_coords.min() * 100 # Convert m to cm
-
-
-
-    # Add a column for each species population
-    data_dict = {}
-    for i, species_key in enumerate(species_keys):
-        data_dict[species_key] = all_populations[:, i]
+    dr = np.diff(r_coords).mean()
+    rmin = r_coords.min()
 
     # create openpmd file
     series = io.Series("initial_conditions.h5",io.Access.create)
     # only 1 iteratiion needed
-    it = series.iterations[1]
+    it = series.iterations[0]
 
-    # set meta information
+    # Save the temperature
     T = it.meshes["T"]
     T.grid_spacing = np.array([dr])
     T.grid_global_offset = [rmin]
     T.axis_labels = ['r']
     T.position = [0,0,0]
-    T.unit_dimension = {
-        io.Unit_Dimension.theta:  1,
-    }
+    T.unit_dimension = {io.Unit_Dimension.theta:1}
     dataset = io.Dataset(T_eV.dtype,T_eV.shape)
     T.reset_dataset(dataset)
     T.store_chunk( T_eV * 11604 ) # Convert eV to K
+
+    # Save the species fractions
+    for i, species_key in enumerate(species_keys):
+        pop = it.meshes[species_key + "_fraction"]
+        pop.grid_spacing = np.array([dr])
+        pop.grid_global_offset = [rmin]
+        pop.axis_labels = ['r']
+        pop.position = [0,0,0]
+        dataset = io.Dataset(all_populations[:, i].dtype, all_populations[:, i].shape)
+        pop.reset_dataset(dataset)
+        pop.store_chunk( all_populations[:, i].copy() )
 
     series.flush()
 
