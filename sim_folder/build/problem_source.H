@@ -65,26 +65,7 @@ void problem_source (int i, int j, int k,
         std::pow( C::k_B*T_e/C::ev2erg, problem::q_twostep_ioniz ) *
         std::exp(-problem::e_twostep_ioniz_eV*C::ev2erg/(C::k_B*T_e)) * X_Hn * X_Hp
     );
-
-    // Update state
-    src(i,j,k,UFS) = -R_Hp;
-    src(i,j,k,UFS+1) = R_Hp;
-    src(i,j,k,UEDEN) = -R_Hp * (problem::e_loss_ioniz_eV*C::ev2erg / C::m_p);
-    src(i,j,k,UEINT) = src(i,j,k,UEDEN);
-
-    // In order to calculate the energy transfer between electrons and heavy particles,
-    // compute the collision frequency between electrons and ions (using SI units)
-    const amrex::Real n_e = rho * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4) / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
-    const amrex::Real n_n = rho * (X_Hn + X_Nn) / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
-    // Get collision frequencies
-    amrex::Real v_ei, v_en;
-    const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
-    get_collision_frequencies(n_e, n_n, T_e, T_h, v_ei, v_en);
-
-    // Calculate the collision frequency for energy transfer between electrons and heavies
-    const amrex::Real v_e_E = 2*SI::m_e/SI::m_H * (v_ei + v_en);
-
-        // Initialize nitrogen species source terms
+    // Initialize nitrogen species source terms
     src(i,j,k,UFS+2) = 0.0; // N_neutral
     src(i,j,k,UFS+3) = 0.0; // N+
     src(i,j,k,UFS+4) = 0.0; // N2+
@@ -131,6 +112,25 @@ void problem_source (int i, int j, int k,
     src(i,j,k,UFS+6) += R_N3_to_N4;
     src(i,j,k,UEDEN) -= R_N3_to_N4 * (e_ioniz_N3_to_N4_eV*C::ev2erg / (14 * C::m_u));
     src(i,j,k,UEINT) -= R_N3_to_N4 * (e_ioniz_N3_to_N4_eV*C::ev2erg / (14 * C::m_u));
+    // Update state
+    src(i,j,k,UFS) = -R_Hp;
+    src(i,j,k,UFS+1) = R_Hp;
+    src(i,j,k,UEDEN) = -R_Hp * (problem::e_loss_ioniz_eV*C::ev2erg / C::m_p);
+    src(i,j,k,UEINT) = src(i,j,k,UEDEN);
+
+    // In order to calculate the energy transfer between electrons and heavy particles,
+    // compute the collision frequency between electrons and ions (using SI units)
+    const amrex::Real n_e = rho * (X_Hp + X_N1 + X_N2 + X_N3 + X_N4) / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
+    const amrex::Real n_n = rho * (X_Hn + X_Nn) / C::m_u * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
+    // Get collision frequencies
+    amrex::Real v_ei, v_en;
+    const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
+    get_collision_frequencies(n_e, n_n, T_e, T_h, v_ei, v_en);
+
+    // Calculate the collision frequency for energy transfer between electrons and heavies
+    const amrex::Real v_e_E = 2*SI::m_e/SI::m_H * (v_ei + v_en);
+
+
     // Update fraction of internal energy stored in ions
     src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN) + rho * v_e_E * ( 1 - (1+X_Hp)*f );
 
