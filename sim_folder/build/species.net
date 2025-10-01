@@ -1,8 +1,8 @@
 
 # name   short name    aion     zion
-  H_neutral  Hn         1.0      0.0
-  H_ion      Hp         1.0      1.0
-  N_neutral  Nn        14.0      0.0
+  H_neutral  H0         1.0      0.0
+  H_ion      H1         1.0      1.0
+  N_neutral  N0        14.0      0.0
   N_ion_1    N1        14.0      1.0
   N_ion_2    N2        14.0      2.0
   N_ion_3    N3        14.0      3.0
