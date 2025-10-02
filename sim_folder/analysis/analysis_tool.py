@@ -39,7 +39,7 @@ class CastroSimulation(object):
         -----------
         t: float
             time at which to extract the quantity
-        quantity: possible values: 'density', 'rho_Hn', 'rho_Hp', 'pressure', 'Temp', 'T_e', 'T_h'
+        quantity: possible values: 'density', 'rho_H0', 'rho_H1', 'pressure', 'Temp', 'T_e', 'T_h'
             quantity to extract
         level: int
             refinement level at which to extract the quantity
@@ -49,7 +49,7 @@ class CastroSimulation(object):
         if quantity in ['T_e', 'T_h']:
             r, f = _extract_radius_and_quantity( ds, 'f_heavies', level )
             r, e = _extract_radius_and_quantity( ds, 'eint_e', level )
-            r, X_H = _extract_radius_and_quantity( ds, 'X(Hp)', level )
+            r, X_H = _extract_radius_and_quantity( ds, 'X(H1)', level )
             if quantity == 'T_e':
                 q = 2*m_H*e*(1-f)/(3*X_H*kB)
             else:

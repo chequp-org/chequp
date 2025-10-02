@@ -21,15 +21,12 @@
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
-static amrex::Gpu::DeviceVector<Real> initial_conditions_ioniz; // fraction of atoms that are ionized
-static amrex::Gpu::DeviceVector<Real> initial_conditions_Te; // electron temperature in K
+static amrex::Gpu::DeviceVector<Real> initial_conditions_table; // fraction of atoms that are ionized
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
-AMREX_GPU_DEVICE static Real* d_initial_conditions_ioniz_data = nullptr;
-AMREX_GPU_DEVICE static Real* d_initial_conditions_Te_data = nullptr;
+AMREX_GPU_DEVICE static Real* d_initial_conditions_table_data = nullptr;
 AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 
-// Function to fill out initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
 {
     std::ifstream file(problem::initial_conditions_file);
@@ -37,10 +34,10 @@ inline void read_initial_conditions()
         amrex::Abort("Failed to open " + problem::initial_conditions_file);
     }
 
-    // Vector to fill when reading the file
-    static std::vector<Real> r; // radius in cm
-    static std::vector<Real> ioniz; // fraction of atoms that are ionized
-    static std::vector<Real> Te; // electron temperature in K
+    // Host-side vectors to temporarily store data from the file
+    static std::vector<Real> r_host; // radius in cm
+    static std::vector<Real> table_host_flat;
+    int num_rows = 0;
 
     std::string line;
 
@@ -54,7 +51,7 @@ inline void read_initial_conditions()
         // Read radius
         if (std::getline(ss, value, ',')) {
             try {
-                r.push_back(std::stod(value));
+                r_host.push_back(std::stod(value));
             } catch (const std::invalid_argument&) {
                 amrex::Abort("Invalid radius value: " + value);
             }
@@ -62,65 +59,44 @@ inline void read_initial_conditions()
             amrex::Abort("Missing radius value");
         }
 
-        // Read ionization fraction
-        if (std::getline(ss, value, ',')) {
-            try {
-                ioniz.push_back(std::stod(value));
-            } catch (const std::invalid_argument&) {
-                amrex::Abort("Invalid ionization fraction value: " + value);
-            }
-        } else {
-            amrex::Abort("Missing ionization fraction value");
+        // Read the rest of the columns into the flattened table
+        int current_cols = 0;
+        while (std::getline(ss, value, ',')) {
+            table_host_flat.push_back(std::stod(value));
+            current_cols++;
         }
 
-        // Read electron temperature
-        if (std::getline(ss, value)) {
-            try {
-                Te.push_back(std::stod(value));
-            } catch (const std::invalid_argument&) {
-                amrex::Abort("Invalid electron temperature value: " + value);
-            }
-        } else {
-            amrex::Abort("Missing electron temperature value");
+        if (current_cols != NumSpec+1) {
+            amrex::Abort("Inconsistent number of columns in CSV file.");
         }
+        num_rows++;
     }
     file.close();
 
-    // Resize the static vectors
-    int initial_conditions_size = r.size();
-    initial_conditions_r.resize(initial_conditions_size);
-    initial_conditions_ioniz.resize(initial_conditions_size);
-    initial_conditions_Te.resize(initial_conditions_size);
-    // Initialize pointers to be copied into static variables
+    // Resize the device vectors
+    initial_conditions_r.resize(num_rows);
+    initial_conditions_table.resize(table_host_flat.size());
+    // Get raw pointers for GPU copy
     Real* initial_conditions_r_data = initial_conditions_r.data();
-    Real* initial_conditions_ioniz_data = initial_conditions_ioniz.data();
-    Real* initial_conditions_Te_data = initial_conditions_Te.data();
+    Real* initial_conditions_table_data = initial_conditions_table.data();
 
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
-    // Copy simple variables
-    cudaMemcpyToSymbol(d_initial_conditions_size, &initial_conditions_size, sizeof(int));
+    cudaMemcpyToSymbol(d_initial_conditions_size, &num_rows, sizeof(int));
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
-    cudaMemcpyToSymbol(d_initial_conditions_ioniz_data, &initial_conditions_ioniz_data, sizeof(Real*));
-    cudaMemcpyToSymbol(d_initial_conditions_Te_data, &initial_conditions_Te_data, sizeof(Real*));
-    // Copy vectors
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
+    cudaMemcpyToSymbol(d_initial_conditions_table_data, &initial_conditions_table_data, sizeof(Real*));
+
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r_host.begin(), r_host.end(),
                           initial_conditions_r.begin());
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, ioniz.begin(), ioniz.end(),
-                          initial_conditions_ioniz.begin());
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, Te.begin(), Te.end(),
-                          initial_conditions_Te.begin());
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, table_host_flat.begin(), table_host_flat.end(),
+                          initial_conditions_table.begin());
     amrex::Gpu::streamSynchronize();
 #else
-    // Copy simple variables
-    d_initial_conditions_size = initial_conditions_size;
+    d_initial_conditions_size = num_rows;
     d_initial_conditions_r_data = initial_conditions_r_data;
-    d_initial_conditions_ioniz_data = initial_conditions_ioniz_data;
-    d_initial_conditions_Te_data = initial_conditions_Te_data;
-    // Copy vectors
-    std::copy(r.begin(), r.end(), initial_conditions_r.begin());
-    std::copy(ioniz.begin(), ioniz.end(), initial_conditions_ioniz.begin());
-    std::copy(Te.begin(), Te.end(), initial_conditions_Te.begin());
+    d_initial_conditions_table_data = initial_conditions_table_data;
+    std::copy(r_host.begin(), r_host.end(), initial_conditions_r.begin());
+    std::copy(table_host_flat.begin(), table_host_flat.end(), initial_conditions_table.begin());
 #endif
 }
 
@@ -150,31 +126,49 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
-    int const idx = amrex::bisect( d_initial_conditions_r_data, 0, d_initial_conditions_size-1, r );
+    int const idx = amrex::bisect(d_initial_conditions_r_data, 0, d_initial_conditions_size - 1, r);
     AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
-    Real ioniz_fraction = d_initial_conditions_ioniz_data[idx] + frac * (d_initial_conditions_ioniz_data[idx+1] - d_initial_conditions_ioniz_data[idx]);
-    Real Te = d_initial_conditions_Te_data[idx] + frac * (d_initial_conditions_Te_data[idx+1] - d_initial_conditions_Te_data[idx]);
-    Real Ta = 348.; // 0.03 eV, in Kelvins
+    Real interp_values[NumSpec+1];
+    for (int col = 0; col < NumSpec+1; ++col) {
+        Real val_low = d_initial_conditions_table_data[idx * (NumSpec+1) + col];
+        Real val_high = d_initial_conditions_table_data[(idx + 1) * (NumSpec+1) + col];
+        interp_values[col] = val_low + frac * (val_high - val_low);
+    }
+    Real Te = interp_values[0];
+    Real number_fractions[NumSpec];
+    for (int s = 0; s < NumSpec; ++s) {
+        number_fractions[s] = interp_values[s + 1];
+    }
 
     // Assume uniform plasma with 0 velocity initially
     state(i,j,k,URHO) = problem::dens_ambient;
-    state(i,j,k,UMX) = 0.e0_rt;
-    state(i,j,k,UMY) = 0.e0_rt;
-    state(i,j,k,UMZ) = 0.e0_rt;
+    state(i,j,k,UMX) = 0.0;
+    state(i,j,k,UMY) = 0.0;
+    state(i,j,k,UMZ) = 0.0;
+
+    // Convert from number fraction to mass fraction
+    Real mean_aion = 0;
+    for (int s = 0; s < NumSpec; ++s) { mean_aion += number_fractions[s] * aion[s]; }
+    for (int s = 0; s < NumSpec; ++s) {
+        state(i,j,k,UFS+s) = state(i,j,k,URHO) * (number_fractions[s] * aion[s]) / mean_aion;
+    }
 
     // Set the initial internal energy and total energy
-    Real rho_e_electrons = state(i,j,k,URHO) * ioniz_fraction * C::k_B * Te / ( C::m_u * (eos_rp::eos_gamma - 1.0) );
-    Real rho_e_heavies =  state(i,j,k,URHO) * C::k_B * Ta / ( C::m_u * (eos_rp::eos_gamma - 1.0) );
+    Real Ta = 348.; // 0.03 eV, in Kelvins
+    Real avg_mass = mean_aion * C::m_u;
+    Real electrons_per_heavy = 0.0;
+    Real rho_e_heavies =  state(i,j,k,URHO) * C::k_B * Ta / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
+    for (int s = 0; s < NumSpec; ++s) {
+        electrons_per_heavy += number_fractions[s] * zion[s];
+    }
+    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * Te / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
+
     state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
     state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
                          0.5e0_rt * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) +
                                      state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) +
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
-
-    // Set the initial mass fractions
-    state(i,j,k,UFS) = state(i,j,k,URHO)*(1-ioniz_fraction);
-    state(i,j,k,UFS+1) = state(i,j,k,URHO)*ioniz_fraction;
 
     // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
     state(i,j,k,UFX) = state(i,j,k,URHO) * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
