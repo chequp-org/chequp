@@ -8,15 +8,12 @@
 #include <AMReX_Math.H>
 #include <AMReX_Print.H>
 #include <fundamental_constants.H>
-#include <fstream>
 #include <vector>
-#include <string>
-#include <sstream>
 #ifdef AMREX_USE_GPU
 #include <cuda_runtime.h>
 #endif
 
-// Static arrays for initial conditions that are read from a CSV file
+// Static arrays for initial conditions that are read from an HDF5 file
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
@@ -32,59 +29,53 @@ AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 // Function to fill out initial_conditions_r, initial_conditions_ioniz, initial_conditions_Te
 inline void read_initial_conditions()
 {
-    std::ifstream file(problem::initial_conditions_file);
-    if (!file.is_open()) {
-        amrex::Abort("Failed to open " + problem::initial_conditions_file);
-    }
-
+    // Open HDF5 file
+    hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    
     // Vector to fill when reading the file
     static std::vector<Real> r; // radius in cm
     static std::vector<Real> ioniz; // fraction of atoms that are ionized
     static std::vector<Real> Te; // electron temperature in K
 
-    std::string line;
+    // Read H_1_fraction (ionization fraction)
+    hid_t dataset_ioniz = H5Dopen(file_id, "data/0/meshes/H_1_fraction", H5P_DEFAULT);
+    hid_t dataspace_ioniz = H5Dget_space(dataset_ioniz);
+    hsize_t dims_ioniz;
+    H5Sget_simple_extent_dims(dataspace_ioniz, &dims_ioniz, NULL);
+    ioniz.resize(dims_ioniz);
+    H5Dread(dataset_ioniz, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, ioniz.data());
+    
+    // Read grid attributes from H_1_fraction dataset
+    hid_t attr_spacing = H5Aopen(dataset_ioniz, "gridSpacing", H5P_DEFAULT);
+    Real grid_spacing;
+    H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, &grid_spacing);
+    H5Aclose(attr_spacing);
+    
+    hid_t attr_offset = H5Aopen(dataset_ioniz, "gridGlobalOffset", H5P_DEFAULT);
+    Real grid_offset;
+    H5Aread(attr_offset, H5T_NATIVE_DOUBLE, &grid_offset);
+    H5Aclose(attr_offset);
+    
+    H5Sclose(dataspace_ioniz);
+    H5Dclose(dataset_ioniz);
 
-    // Skip the header line
-    std::getline(file, line);
+    // Read T (electron temperature)
+    hid_t dataset_Te = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
+    hid_t dataspace_Te = H5Dget_space(dataset_Te);
+    hsize_t dims_Te;
+    H5Sget_simple_extent_dims(dataspace_Te, &dims_Te, NULL);
+    Te.resize(dims_Te);
+    H5Dread(dataset_Te, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, Te.data());
+    H5Sclose(dataspace_Te);
+    H5Dclose(dataset_Te);
 
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string value;
+    H5Fclose(file_id);
 
-        // Read radius
-        if (std::getline(ss, value, ',')) {
-            try {
-                r.push_back(std::stod(value));
-            } catch (const std::invalid_argument&) {
-                amrex::Abort("Invalid radius value: " + value);
-            }
-        } else {
-            amrex::Abort("Missing radius value");
-        }
-
-        // Read ionization fraction
-        if (std::getline(ss, value, ',')) {
-            try {
-                ioniz.push_back(std::stod(value));
-            } catch (const std::invalid_argument&) {
-                amrex::Abort("Invalid ionization fraction value: " + value);
-            }
-        } else {
-            amrex::Abort("Missing ionization fraction value");
-        }
-
-        // Read electron temperature
-        if (std::getline(ss, value)) {
-            try {
-                Te.push_back(std::stod(value));
-            } catch (const std::invalid_argument&) {
-                amrex::Abort("Invalid electron temperature value: " + value);
-            }
-        } else {
-            amrex::Abort("Missing electron temperature value");
-        }
+    // Compute radius array from grid spacing (convert from m to cm)
+    r.resize(ioniz.size());
+    for (size_t i = 0; i < r.size(); ++i) {
+        r[i] = (grid_offset + i * grid_spacing) * 100.0; // Convert m to cm
     }
-    file.close();
 
     // Resize the static vectors
     int initial_conditions_size = r.size();
