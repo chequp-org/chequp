@@ -8,15 +8,12 @@
 #include <AMReX_Math.H>
 #include <AMReX_Print.H>
 #include <fundamental_constants.H>
-#include <fstream>
 #include <vector>
-#include <string>
-#include <sstream>
 #ifdef AMREX_USE_GPU
 #include <cuda_runtime.h>
 #endif
 
-// Static arrays for initial conditions that are read from a CSV file
+// Static arrays for initial conditions that are read from an HDF5 file
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
@@ -29,49 +26,42 @@ AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 
 inline void read_initial_conditions()
 {
-    std::ifstream file(problem::initial_conditions_file);
-    if (!file.is_open()) {
-        amrex::Abort("Failed to open " + problem::initial_conditions_file);
-    }
+    // Open HDF5 file
+    hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
     // Host-side vectors to temporarily store data from the file
-    static std::vector<Real> r_host; // radius in cm
+    static std::vector<Real> r; // radius in cm
     static std::vector<Real> table_host_flat;
-    int num_rows = 0;
+    static std::vector<Real> Te; // electron temperature in K
 
-    std::string line;
+    // Read T (electron temperature)
+    hid_t dataset_Te = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
+    hid_t dataspace_Te = H5Dget_space(dataset_Te);
+    hsize_t dims_Te;
+    H5Sget_simple_extent_dims(dataspace_Te, &dims_Te, NULL);
+    Te.resize(dims_Te);
+    H5Dread(dataset_Te, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, Te.data());
 
-    // Skip the header line
-    std::getline(file, line);
-
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string value;
-
-        // Read radius
-        if (std::getline(ss, value, ',')) {
-            try {
-                r_host.push_back(std::stod(value));
-            } catch (const std::invalid_argument&) {
-                amrex::Abort("Invalid radius value: " + value);
-            }
-        } else {
-            amrex::Abort("Missing radius value");
-        }
-
-        // Read the rest of the columns into the flattened table
-        int current_cols = 0;
-        while (std::getline(ss, value, ',')) {
-            table_host_flat.push_back(std::stod(value));
-            current_cols++;
-        }
-
-        if (current_cols != NumSpec+1) {
-            amrex::Abort("Inconsistent number of columns in CSV file.");
-        }
-        num_rows++;
+    // Read grid attributes from T dataset
+    hid_t attr_spacing = H5Aopen(dataset_Te, "gridSpacing", H5P_DEFAULT);
+    Real grid_spacing;
+    H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, &grid_spacing);
+    H5Aclose(attr_spacing);
+    hid_t attr_offset = H5Aopen(dataset_Te, "gridGlobalOffset", H5P_DEFAULT);
+    Real grid_offset;
+    H5Aread(attr_offset, H5T_NATIVE_DOUBLE, &grid_offset);
+    H5Aclose(attr_offset);
+    // Compute radius array from grid spacing (convert from m to cm)
+    r.resize(dims_Te);
+    for (size_t i = 0; i < r.size(); ++i) {
+        r[i] = (grid_offset + i * grid_spacing) * 100.0; // Convert m to cm
     }
-    file.close();
+    int num_rows = r.size();
+
+    H5Sclose(dataspace_Te);
+    H5Dclose(dataset_Te);
+
+    H5Fclose(file_id);
 
     // Resize the device vectors
     initial_conditions_r.resize(num_rows);
@@ -86,7 +76,7 @@ inline void read_initial_conditions()
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
     cudaMemcpyToSymbol(d_initial_conditions_table_data, &initial_conditions_table_data, sizeof(Real*));
 
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r_host.begin(), r_host.end(),
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
                           initial_conditions_r.begin());
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, table_host_flat.begin(), table_host_flat.end(),
                           initial_conditions_table.begin());
@@ -95,7 +85,7 @@ inline void read_initial_conditions()
     d_initial_conditions_size = num_rows;
     d_initial_conditions_r_data = initial_conditions_r_data;
     d_initial_conditions_table_data = initial_conditions_table_data;
-    std::copy(r_host.begin(), r_host.end(), initial_conditions_r.begin());
+    std::copy(r.begin(), r.end(), initial_conditions_r.begin());
     std::copy(table_host_flat.begin(), table_host_flat.end(), initial_conditions_table.begin());
 #endif
 }
