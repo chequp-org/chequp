@@ -2,7 +2,7 @@ import numpy as np
 import numba
 import math
 import tqdm
-from scipy.constants import m_e, c, e, hbar, physical_constants, epsilon_0
+from scipy.constants import m_e, c, e, hbar, physical_constants, epsilon_0, k
 import pandas as pd
 import openpmd_api as io
 
@@ -67,16 +67,16 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
 
     return ioniz_frac, T, t
 
-def save_radial_csv(r_coords, all_populations, T_eV, output_file, species_keys):
+def save_to_openpmd(r_coords, all_populations, T_eV, output_file, species_keys):
     """
-    Save radial data with all species populations to CSV file
+    Save with all species populations to an openPMD file
     """
     # Get spatial resolution
     dr = np.diff(r_coords).mean()
     rmin = r_coords.min()
 
     # create openpmd file
-    series = io.Series("initial_conditions.h5",io.Access.create)
+    series = io.Series(output_file, io.Access.create)
     # only 1 iteratiion needed
     it = series.iterations[0]
 
@@ -89,7 +89,7 @@ def save_radial_csv(r_coords, all_populations, T_eV, output_file, species_keys):
     T.unit_dimension = {io.Unit_Dimension.theta:1}
     dataset = io.Dataset(T_eV.dtype,T_eV.shape)
     T.reset_dataset(dataset)
-    T.store_chunk( T_eV * 11604 ) # Convert eV to K
+    T.store_chunk( T_eV * (e/k) ) # Convert eV to K
 
     # Save the species fractions
     for i, species_key in enumerate(species_keys):
@@ -143,7 +143,7 @@ def process_intensity_array_multispecies(intensity_1d, lambd, tau, ell,
     initial_populations : array-like
         Initial population fractions [H_0, H_1, N_0, N_1, N_2, N_3, N_4, N_5]
     output_file : str, optional
-        Filename to save CSV output with radius, temperature and populations
+        Filename to save openPMD output with radius, temperature and populations
     r_coords : array-like, optional
         Radial coordinates (m). Required for 1D data if output_file is specified.
         For 2D data, used to determine radial sampling for CSV output.
@@ -175,6 +175,6 @@ def process_intensity_array_multispecies(intensity_1d, lambd, tau, ell,
 
     # Save detailed CSV output with all species
     if output_file and r_coords is not None:
-        save_radial_csv(r_coords, all_populations, T_array, output_file, species_keys)
+        save_to_openpmd(r_coords, all_populations, T_array, output_file, species_keys)
 
     return all_populations, T_array
