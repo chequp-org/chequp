@@ -5,6 +5,24 @@ import tqdm
 from scipy.constants import m_e, c, e, hbar, physical_constants, epsilon_0
 import pandas as pd
 
+@numba.njit(parallel=True)
+def get_fraction_and_temperature_multispecies_parallel(
+    a0_array, all_populations_array, T_array,
+    tau, lambd, ell,
+    adk_prefactors, adk_powers, adk_exp_prefactors,
+    source_indices, target_indices, charges,
+    initial_populations,
+    npts_per_wavelength=80):
+    for i in numba.prange(len(a0_array)):
+        final_populations, T, _ = get_fraction_and_temperature_multispecies(
+            a0_array[i], tau, lambd, ell,
+            adk_prefactors, adk_powers, adk_exp_prefactors,
+            source_indices, target_indices, charges,
+            initial_populations
+        )
+        all_populations_array[i, :] = final_populations
+        T_array[i] = T
+
 @numba.njit
 def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
                                              adk_prefactors, adk_powers, adk_exp_prefactors,
@@ -143,15 +161,12 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     all_populations_flat = np.zeros((len(a0_flat), len(initial_populations)))
 
     # Process nD profile
-    for i in tqdm.tqdm(range(len(a0_flat)), desc="Processing nD multi-species profile"):
-        final_populations, T, _ = get_fraction_and_temperature_multispecies(
-            a0_flat[i], tau, lambd, ell,
-            adk_prefactors, adk_powers, adk_exp_prefactors,
-            source_indices, target_indices, charges,
-            initial_populations
-        )
-        all_populations_flat[i, :] = final_populations
-        T_flat[i] = T
+    get_fraction_and_temperature_multispecies_parallel(a0_flat, all_populations_flat, T_flat,
+        tau, lambd, ell,
+        adk_prefactors, adk_powers, adk_exp_prefactors,
+        source_indices, target_indices, charges,
+        initial_populations
+    )
 
     # Reshape back to nD arrays
     all_populations = all_populations_flat.reshape(a0_array.shape + (len(initial_populations),))
