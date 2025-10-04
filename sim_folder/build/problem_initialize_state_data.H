@@ -33,7 +33,7 @@ inline void read_initial_conditions()
     }
 
     // Host-side vectors to temporarily store data from the file
-    static std::vector<Real> r_host; // radius in cm
+    static std::vector<Real> r; // radius in cm
     static std::vector<Real> table_host_flat;
     int num_rows = 0;
 
@@ -49,7 +49,7 @@ inline void read_initial_conditions()
         // Read radius
         if (std::getline(ss, value, ',')) {
             try {
-                r_host.push_back(std::stod(value));
+                r.push_back(std::stod(value));
             } catch (const std::invalid_argument&) {
                 amrex::Abort("Invalid radius value: " + value);
             }
@@ -84,7 +84,7 @@ inline void read_initial_conditions()
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
     cudaMemcpyToSymbol(d_initial_conditions_table_data, &initial_conditions_table_data, sizeof(Real*));
 
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r_host.begin(), r_host.end(),
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
                           initial_conditions_r.begin());
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, table_host_flat.begin(), table_host_flat.end(),
                           initial_conditions_table.begin());
@@ -93,7 +93,7 @@ inline void read_initial_conditions()
     d_initial_conditions_size = num_rows;
     d_initial_conditions_r_data = initial_conditions_r_data;
     d_initial_conditions_table_data = initial_conditions_table_data;
-    std::copy(r_host.begin(), r_host.end(), initial_conditions_r.begin());
+    std::copy(r.begin(), r.end(), initial_conditions_r.begin());
     std::copy(table_host_flat.begin(), table_host_flat.end(), initial_conditions_table.begin());
 #endif
 }
