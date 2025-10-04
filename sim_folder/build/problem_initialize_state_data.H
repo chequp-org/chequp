@@ -97,10 +97,10 @@ inline void read_initial_conditions()
 #ifdef AMREX_USE_GPU
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
 
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
-                          initial_conditions_r.begin());
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, table_host_flat.begin(), table_host_flat.end(),
-    table_device_flat.begin());
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice,
+        r.begin(), r.end(), initial_conditions_r.begin());
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice,
+        table_host_flat.begin(), table_host_flat.end(), table_device_flat.begin());
     amrex::Gpu::streamSynchronize();
 #else
     d_initial_conditions_r_data = initial_conditions_r_data;
