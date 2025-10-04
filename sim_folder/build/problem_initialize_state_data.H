@@ -40,8 +40,8 @@ inline void read_initial_conditions()
     hsize_t shape;
     H5Sget_simple_extent_dims(dataspace_T, &shape, NULL);
     hid_t attr_spacing = H5Aopen(dataset_T, "gridSpacing", H5P_DEFAULT);
-    Real grid_spacing;
-    H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, &grid_spacing);
+    Real grid_spacing[AMREX_SPACEDIM];
+    H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, grid_spacing);
     H5Aclose(attr_spacing);
     hid_t attr_offset = H5Aopen(dataset_T, "gridGlobalOffset", H5P_DEFAULT);
     Real grid_offset;
@@ -53,7 +53,7 @@ inline void read_initial_conditions()
     // Compute radius array from grid spacing (convert from m to cm)
     r.resize(shape);
     for (size_t i = 0; i < r.size(); ++i) {
-        r[i] = (grid_offset + i * grid_spacing) * 100.0; // Convert m to cm
+        r[i] = (grid_offset + i * grid_spacing[0]) * 100.0; // Convert m to cm
     }
     int num_rows = r.size();
 
