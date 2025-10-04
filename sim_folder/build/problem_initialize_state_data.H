@@ -23,7 +23,6 @@ amrex::Table2D<Real,amrex::Order::C> static ic_table;
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
-AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 
 inline void read_initial_conditions()
 {
