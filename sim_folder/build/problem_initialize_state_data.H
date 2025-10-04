@@ -85,15 +85,14 @@ inline void read_initial_conditions()
         H5Sclose(dataspace);
         H5Dclose(dataset);
     }
-
     H5Fclose(file_id);
+
     // Resize the device vectors
     initial_conditions_r.resize(num_rows);
-    amrex::Gpu::DeviceVector<Real> initial_conditions_table;
-    initial_conditions_table.resize(table_host_flat.size());
+    amrex::Gpu::DeviceVector<Real> table_device_flat;
+    table_device_flat.resize(table_host_flat.size());
     // Get raw pointers for GPU copy
     Real* initial_conditions_r_data = initial_conditions_r.data();
-    Real* initial_conditions_table_data = initial_conditions_table.data();
 
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
@@ -103,17 +102,17 @@ inline void read_initial_conditions()
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
                           initial_conditions_r.begin());
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, table_host_flat.begin(), table_host_flat.end(),
-                          initial_conditions_table.begin());
+    table_device_flat.begin());
     amrex::Gpu::streamSynchronize();
 #else
     d_initial_conditions_size = num_rows;
     d_initial_conditions_r_data = initial_conditions_r_data;
     std::copy(r.begin(), r.end(), initial_conditions_r.begin());
-    std::copy(table_host_flat.begin(), table_host_flat.end(), initial_conditions_table.begin());
+    std::copy(table_host_flat.begin(), table_host_flat.end(), table_device_flat.begin());
 #endif
 
-    ic_table = amrex::Table2D<double,amrex::Order::C>
-        (initial_conditions_table_data, {0, 0}, {NumSpec+1, num_rows});
+    ic_table = amrex::Table2D<Real,amrex::Order::C>
+        (table_device_flat.data(), {0, 0}, {NumSpec+1, num_rows});
 
 }
 
