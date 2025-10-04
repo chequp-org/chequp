@@ -23,6 +23,7 @@ https://github.com/AMReX-Astro/Castro/issues/2195
 ```
 brew install gcc@11 make
 brew install --build-from-source open-mpi --cc=gcc-11
+brew install hdf5-mpi
 ```
 and used `gmake` instead of `make` in the instructions below.
 
@@ -47,6 +48,7 @@ EOS_DIR     := gamma_law
 
 ```
 cd sim_folder/build
+export HDF5_DIR=$(pkg-config --variable=prefix hdf5)
 make -j 4
 ```
 (for GPU, use `make USE_CUDA=TRUE -j 4`)
@@ -65,6 +67,7 @@ jupyter notebook Analysis.ipynb
 
 ```
 cd sim_folder/build
+export HDF5_DIR=$(pkg-config --variable=prefix hdf5)
 make DIM=1 -j 4
 ```
 (for GPU, use `make DIM=1 USE_CUDA=TRUE -j 4`)
