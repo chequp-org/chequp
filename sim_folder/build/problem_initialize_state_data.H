@@ -19,12 +19,10 @@
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
+amrex::Table2D<Real,amrex::Order::C> static ic_table;
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
-static amrex::Gpu::DeviceVector<Real> initial_conditions_table; // fraction of atoms that are ionized
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
-amrex::Table2D<Real,amrex::Order::C> static ic_table;
-AMREX_GPU_DEVICE static Real* d_initial_conditions_table_data = nullptr;
 AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 
 inline void read_initial_conditions()
@@ -33,8 +31,7 @@ inline void read_initial_conditions()
     hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
     // Host-side vectors to temporarily store data from the file
-    static std::vector<Real> r; // radius in cm
-    static std::vector<Real> table_host_flat;
+    std::vector<Real> r; // radius in cm
 
     // Read grid shape and attributes from T dataset
     hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
@@ -61,6 +58,7 @@ inline void read_initial_conditions()
 
     // Allocate table_host_flat: each row has (NumSpec+1) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
+    std::vector<Real> table_host_flat;
     table_host_flat.resize((NumSpec + 1) * num_rows);
     // Create list of dataset names: "T" first, then species fractions
     std::vector<std::string> dataset_names;
@@ -91,6 +89,7 @@ inline void read_initial_conditions()
     H5Fclose(file_id);
     // Resize the device vectors
     initial_conditions_r.resize(num_rows);
+    amrex::Gpu::DeviceVector<Real> initial_conditions_table;
     initial_conditions_table.resize(table_host_flat.size());
     // Get raw pointers for GPU copy
     Real* initial_conditions_r_data = initial_conditions_r.data();
@@ -100,7 +99,6 @@ inline void read_initial_conditions()
 #ifdef AMREX_USE_GPU
     cudaMemcpyToSymbol(d_initial_conditions_size, &num_rows, sizeof(int));
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
-    cudaMemcpyToSymbol(d_initial_conditions_table_data, &initial_conditions_table_data, sizeof(Real*));
 
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
                           initial_conditions_r.begin());
@@ -110,7 +108,6 @@ inline void read_initial_conditions()
 #else
     d_initial_conditions_size = num_rows;
     d_initial_conditions_r_data = initial_conditions_r_data;
-    d_initial_conditions_table_data = initial_conditions_table_data;
     std::copy(r.begin(), r.end(), initial_conditions_r.begin());
     std::copy(table_host_flat.begin(), table_host_flat.end(), initial_conditions_table.begin());
 #endif
