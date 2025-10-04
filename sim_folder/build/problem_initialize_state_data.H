@@ -1,20 +1,20 @@
 #ifndef problem_initialize_state_data_H
 #define problem_initialize_state_data_H
 
+#include <hdf5.h>
+
 #include <prob_parameters.H>
 #include <eos.H>
+#include <network.H>
 #include <AMReX_Math.H>
 #include <AMReX_Print.H>
 #include <fundamental_constants.H>
-#include <fstream>
 #include <vector>
-#include <string>
-#include <sstream>
 #ifdef AMREX_USE_GPU
 #include <cuda_runtime.h>
 #endif
 
-// Static arrays for initial conditions that are read from a CSV file
+// Static arrays for initial conditions that are read from an HDF5 file
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
@@ -27,50 +27,71 @@ AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 
 inline void read_initial_conditions()
 {
-    std::ifstream file(problem::initial_conditions_file);
-    if (!file.is_open()) {
-        amrex::Abort("Failed to open " + problem::initial_conditions_file);
-    }
+    // Open HDF5 file
+    hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
     // Host-side vectors to temporarily store data from the file
     static std::vector<Real> r; // radius in cm
     static std::vector<Real> table_host_flat;
-    int num_rows = 0;
 
-    std::string line;
+    // Read grid shape and attributes from T dataset
+    hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
+    hid_t dataspace_T = H5Dget_space(dataset_T);
+    hsize_t shape;
+    H5Sget_simple_extent_dims(dataspace_T, &shape, NULL);
+    hid_t attr_spacing = H5Aopen(dataset_T, "gridSpacing", H5P_DEFAULT);
+    Real grid_spacing;
+    H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, &grid_spacing);
+    H5Aclose(attr_spacing);
+    hid_t attr_offset = H5Aopen(dataset_T, "gridGlobalOffset", H5P_DEFAULT);
+    Real grid_offset;
+    H5Aread(attr_offset, H5T_NATIVE_DOUBLE, &grid_offset);
+    H5Aclose(attr_offset);
+    H5Sclose(dataspace_T);
+    H5Dclose(dataset_T);
 
-    // Skip the header line
-    std::getline(file, line);
-
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string value;
-
-        // Read radius
-        if (std::getline(ss, value, ',')) {
-            try {
-                r.push_back(std::stod(value));
-            } catch (const std::invalid_argument&) {
-                amrex::Abort("Invalid radius value: " + value);
-            }
-        } else {
-            amrex::Abort("Missing radius value");
-        }
-
-        // Read the rest of the columns into the flattened table
-        int current_cols = 0;
-        while (std::getline(ss, value, ',')) {
-            table_host_flat.push_back(std::stod(value));
-            current_cols++;
-        }
-
-        if (current_cols != NumSpec+1) {
-            amrex::Abort("Inconsistent number of columns in CSV file.");
-        }
-        num_rows++;
+    // Compute radius array from grid spacing (convert from m to cm)
+    r.resize(shape);
+    for (size_t i = 0; i < r.size(); ++i) {
+        r[i] = (grid_offset + i * grid_spacing) * 100.0; // Convert m to cm
     }
-    file.close();
+    int num_rows = r.size();
 
+    // Allocate table_host_flat: each row has (NumSpec+1) columns
+    // Column 0: electron temperature, Columns 1 to NumSpec: species fractions
+    table_host_flat.resize(num_rows * (NumSpec + 1));
+    // Create list of dataset names: "T" first, then species fractions
+    std::vector<std::string> dataset_names;
+    dataset_names.push_back("T");
+    for (int s = 0; s < NumSpec; ++s) {
+        dataset_names.push_back(short_spec_names_cxx[s] + "_fraction");
+    }
+
+    // Loop over dataset names and fill table_host_flat
+    for (int col = 0; col < dataset_names.size(); ++col) {
+        std::string dataset_name = dataset_names[col];
+        std::string dataset_path = std::string("data/0/meshes/") + dataset_name;
+
+        // Open and read the dataset
+        hid_t dataset = H5Dopen(file_id, dataset_path.c_str(), H5P_DEFAULT);
+        hid_t dataspace = H5Dget_space(dataset);
+        hsize_t dims;
+        H5Sget_simple_extent_dims(dataspace, &dims, NULL);
+
+        // Read data
+        std::vector<Real> data(dims);
+        H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, data.data());
+
+        // Fill in the table (column col)
+        for (int row = 0; row < num_rows; ++row) {
+            table_host_flat[row * (NumSpec + 1) + col] = data[row];
+        }
+
+        H5Sclose(dataspace);
+        H5Dclose(dataset);
+    }
+
+    H5Fclose(file_id);
     // Resize the device vectors
     initial_conditions_r.resize(num_rows);
     initial_conditions_table.resize(table_host_flat.size());
