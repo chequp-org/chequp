@@ -60,7 +60,6 @@ inline void read_initial_conditions()
     // Allocate table_host_flat: each row has (NumSpec+1) columns
     // Column 0: electron temperature, Columns 1 to NumSpec: species fractions
     table_host_flat.resize(num_rows * (NumSpec + 1));
-
     // Create list of dataset names: "T" first, then species fractions
     std::vector<std::string> dataset_names;
     dataset_names.push_back("T");
@@ -155,7 +154,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
         Real val_high = d_initial_conditions_table_data[(idx + 1) * (NumSpec+1) + col];
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
-    Real T = interp_values[0];
+    Real Te = interp_values[0];
     Real number_fractions[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
         number_fractions[s] = interp_values[s + 1];
@@ -182,7 +181,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     for (int s = 0; s < NumSpec; ++s) {
         electrons_per_heavy += number_fractions[s] * zion[s];
     }
-    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * T / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
+    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * Te / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
 
     state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
     state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
