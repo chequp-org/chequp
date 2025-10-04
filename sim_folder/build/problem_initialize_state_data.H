@@ -20,10 +20,10 @@
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
 static amrex::Table2D<Real,amrex::Order::C> initial_conditions_table;
-static AMREX_GPU_DEVICE amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
+AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 
 inline void read_initial_conditions()
 {
@@ -108,11 +108,12 @@ inline void read_initial_conditions()
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
-
+    cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table2D<Real,amrex::Order::C>));
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice,
         r.begin(), r.end(), initial_conditions_r.begin());
     amrex::Gpu::streamSynchronize();
 #else
+    d_initial_conditions_table = initial_conditions_table;
     d_initial_conditions_r_data = initial_conditions_r_data;
     std::copy(r.begin(), r.end(), initial_conditions_r.begin());
 #endif
