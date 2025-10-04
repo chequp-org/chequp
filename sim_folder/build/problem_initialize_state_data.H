@@ -8,6 +8,7 @@
 #include <network.H>
 #include <AMReX_Math.H>
 #include <AMReX_Print.H>
+#include <AMReX_TableData.H>
 #include <fundamental_constants.H>
 #include <vector>
 #ifdef AMREX_USE_GPU
@@ -22,6 +23,7 @@ static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 static amrex::Gpu::DeviceVector<Real> initial_conditions_table; // fraction of atoms that are ionized
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
+amrex::Table2D<double,amrex::Order::C> table;
 AMREX_GPU_DEVICE static Real* d_initial_conditions_table_data = nullptr;
 AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 
@@ -57,9 +59,9 @@ inline void read_initial_conditions()
     }
     int num_rows = r.size();
 
-    // Allocate table_host_flat: each row has (NumSpec+1) columns
-    // Column 0: electron temperature, Columns 1 to NumSpec: species fractions
-    table_host_flat.resize(num_rows * (NumSpec + 1));
+    // Allocate table_host_flat: each row has (NumSpec+1) datasets stored contiguously
+    // First dataset: electron temperature, next NumSpec datasets: species fractions
+    table_host_flat.resize((NumSpec + 1) * num_rows);
     // Create list of dataset names: "T" first, then species fractions
     std::vector<std::string> dataset_names;
     dataset_names.push_back("T");
@@ -78,14 +80,9 @@ inline void read_initial_conditions()
         hsize_t dims;
         H5Sget_simple_extent_dims(dataspace, &dims, NULL);
 
-        // Read data
-        std::vector<Real> data(dims);
-        H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, data.data());
-
-        // Fill in the table (column col)
-        for (int row = 0; row < num_rows; ++row) {
-            table_host_flat[row * (NumSpec + 1) + col] = data[row];
-        }
+        // Read data directly into the table column
+        H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                table_host_flat.data() + col*num_rows);
 
         H5Sclose(dataspace);
         H5Dclose(dataset);
@@ -117,6 +114,10 @@ inline void read_initial_conditions()
     std::copy(r.begin(), r.end(), initial_conditions_r.begin());
     std::copy(table_host_flat.begin(), table_host_flat.end(), initial_conditions_table.begin());
 #endif
+
+    table = amrex::Table2D<double,amrex::Order::C>
+        (initial_conditions_table_data, {0, 0}, {NumSpec+1, num_rows});
+
 }
 
 AMREX_GPU_DEVICE AMREX_INLINE
@@ -150,8 +151,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
-        Real val_low = d_initial_conditions_table_data[idx * (NumSpec+1) + col];
-        Real val_high = d_initial_conditions_table_data[(idx + 1) * (NumSpec+1) + col];
+        Real val_low = table(col, idx);
+        Real val_high = table(col, (idx + 1));
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
     Real Te = interp_values[0];
