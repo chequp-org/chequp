@@ -96,7 +96,6 @@ inline void read_initial_conditions()
 
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
-    cudaMemcpyToSymbol(d_initial_conditions_size, &num_rows, sizeof(int));
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
 
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, r.begin(), r.end(),
@@ -105,7 +104,6 @@ inline void read_initial_conditions()
     table_device_flat.begin());
     amrex::Gpu::streamSynchronize();
 #else
-    d_initial_conditions_size = num_rows;
     d_initial_conditions_r_data = initial_conditions_r_data;
     std::copy(r.begin(), r.end(), initial_conditions_r.begin());
     std::copy(table_host_flat.begin(), table_host_flat.end(), table_device_flat.begin());
@@ -142,7 +140,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
-    int const idx = amrex::bisect(d_initial_conditions_r_data, 0, d_initial_conditions_size - 1, r);
+    int const idx = amrex::bisect(d_initial_conditions_r_data, ic_table.begin[0], ic_table.end[0], r);
     AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
     Real interp_values[NumSpec+1];
