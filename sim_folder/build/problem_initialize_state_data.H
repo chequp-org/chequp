@@ -23,7 +23,7 @@ static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 static amrex::Gpu::DeviceVector<Real> initial_conditions_table; // fraction of atoms that are ionized
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
-amrex::Table2D<double,amrex::Order::C> table;
+amrex::Table2D<Real,amrex::Order::C> static ic_table;
 AMREX_GPU_DEVICE static Real* d_initial_conditions_table_data = nullptr;
 AMREX_GPU_DEVICE static int d_initial_conditions_size = 0;
 
@@ -115,7 +115,7 @@ inline void read_initial_conditions()
     std::copy(table_host_flat.begin(), table_host_flat.end(), initial_conditions_table.begin());
 #endif
 
-    table = amrex::Table2D<double,amrex::Order::C>
+    ic_table = amrex::Table2D<double,amrex::Order::C>
         (initial_conditions_table_data, {0, 0}, {NumSpec+1, num_rows});
 
 }
@@ -151,8 +151,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
-        Real val_low = table(col, idx);
-        Real val_high = table(col, (idx + 1));
+        Real val_low = ic_table(col, idx);
+        Real val_high = ic_table(col, (idx + 1));
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
     Real Te = interp_values[0];
