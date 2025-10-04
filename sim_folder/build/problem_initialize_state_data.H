@@ -20,6 +20,7 @@
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
 static amrex::Table2D<Real,amrex::Order::C> initial_conditions_table;
+static AMREX_GPU_DEVICE amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
@@ -144,13 +145,13 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
-    int const idx = amrex::bisect(d_initial_conditions_r_data, initial_conditions_table.begin[1], initial_conditions_table.end[1], r);
+    int const idx = amrex::bisect(d_initial_conditions_r_data, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1], r);
     AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
-        Real val_low = initial_conditions_table(col, idx);
-        Real val_high = initial_conditions_table(col, (idx + 1));
+        Real val_low = d_initial_conditions_table(col, idx);
+        Real val_high = d_initial_conditions_table(col, (idx + 1));
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
     Real Te = interp_values[0];
