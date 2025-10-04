@@ -137,7 +137,7 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     # Convert intensity to normalized vector potential a0
     a0_array = e * lambd / (np.pi * m_e * c) * np.sqrt(intensity_nd / (2 * epsilon_0 * c**3))
 
-    # Flatten and prepare arrays for population
+    # Flatten, and prepare arrays for temperature and population
     a0_flat = a0_array.flatten()
     T_flat = np.zeros_like(a0_flat)
     all_populations_flat = np.zeros((len(a0_flat), len(initial_populations)))
