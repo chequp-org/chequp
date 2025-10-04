@@ -33,66 +33,63 @@ inline void read_initial_conditions()
     // Host-side vectors to temporarily store data from the file
     static std::vector<Real> r; // radius in cm
     static std::vector<Real> table_host_flat;
-    static std::vector<Real> Te; // electron temperature in K
 
-    // Read T (electron temperature)
-    hid_t dataset_Te = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
-    hid_t dataspace_Te = H5Dget_space(dataset_Te);
-    hsize_t dims_Te;
-    H5Sget_simple_extent_dims(dataspace_Te, &dims_Te, NULL);
-    Te.resize(dims_Te);
-    H5Dread(dataset_Te, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, Te.data());
-
-    // Read grid attributes from T dataset
-    hid_t attr_spacing = H5Aopen(dataset_Te, "gridSpacing", H5P_DEFAULT);
+    // Read grid shape and attributes from T dataset
+    hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
+    hid_t dataspace_T = H5Dget_space(dataset_T);
+    hsize_t shape;
+    H5Sget_simple_extent_dims(dataspace_T, &shape, NULL);
+    hid_t attr_spacing = H5Aopen(dataset_T, "gridSpacing", H5P_DEFAULT);
     Real grid_spacing;
     H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, &grid_spacing);
     H5Aclose(attr_spacing);
-    hid_t attr_offset = H5Aopen(dataset_Te, "gridGlobalOffset", H5P_DEFAULT);
+    hid_t attr_offset = H5Aopen(dataset_T, "gridGlobalOffset", H5P_DEFAULT);
     Real grid_offset;
     H5Aread(attr_offset, H5T_NATIVE_DOUBLE, &grid_offset);
     H5Aclose(attr_offset);
+    H5Sclose(dataspace_T);
+    H5Dclose(dataset_T);
+
     // Compute radius array from grid spacing (convert from m to cm)
-    r.resize(dims_Te);
+    r.resize(shape);
     for (size_t i = 0; i < r.size(); ++i) {
         r[i] = (grid_offset + i * grid_spacing) * 100.0; // Convert m to cm
     }
     int num_rows = r.size();
 
-    H5Sclose(dataspace_Te);
-    H5Dclose(dataset_Te);
-
     // Allocate table_host_flat: each row has (NumSpec+1) columns
     // Column 0: electron temperature, Columns 1 to NumSpec: species fractions
     table_host_flat.resize(num_rows * (NumSpec + 1));
 
-    // Fill in electron temperature (column 0)
-    for (int row = 0; row < num_rows; ++row) {
-        table_host_flat[row * (NumSpec + 1) + 0] = Te[row];
+    // Create list of dataset names: "T" first, then species fractions
+    std::vector<std::string> dataset_names;
+    dataset_names.push_back("T");
+    for (int s = 0; s < NumSpec; ++s) {
+        dataset_names.push_back(short_spec_names_cxx[s] + "_fraction");
     }
 
-    // Loop over species and read their fractions
-    for (int s = 0; s < NumSpec; ++s) {
-        std::string dataset_name = short_spec_names_cxx[s].substr(0, 1) + "_" + short_spec_names_cxx[s].substr(1) + "_fraction";
+    // Loop over dataset names and fill table_host_flat
+    for (int col = 0; col < dataset_names.size(); ++col) {
+        std::string dataset_name = dataset_names[col];
         std::string dataset_path = std::string("data/0/meshes/") + dataset_name;
 
         // Open and read the dataset
-        hid_t dataset_spec = H5Dopen(file_id, dataset_path.c_str(), H5P_DEFAULT);
-        hid_t dataspace_spec = H5Dget_space(dataset_spec);
-        hsize_t dims_spec;
-        H5Sget_simple_extent_dims(dataspace_spec, &dims_spec, NULL);
+        hid_t dataset = H5Dopen(file_id, dataset_path.c_str(), H5P_DEFAULT);
+        hid_t dataspace = H5Dget_space(dataset);
+        hsize_t dims;
+        H5Sget_simple_extent_dims(dataspace, &dims, NULL);
 
-        // Read species fraction data
-        std::vector<Real> spec_fraction(dims_spec);
-        H5Dread(dataset_spec, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, spec_fraction.data());
+        // Read data
+        std::vector<Real> data(dims);
+        H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, data.data());
 
-        // Fill in the table (column s+1)
+        // Fill in the table (column col)
         for (int row = 0; row < num_rows; ++row) {
-            table_host_flat[row * (NumSpec + 1) + (s + 1)] = spec_fraction[row];
+            table_host_flat[row * (NumSpec + 1) + col] = data[row];
         }
 
-        H5Sclose(dataspace_spec);
-        H5Dclose(dataset_spec);
+        H5Sclose(dataspace);
+        H5Dclose(dataset);
     }
 
     H5Fclose(file_id);
@@ -158,7 +155,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
         Real val_high = d_initial_conditions_table_data[(idx + 1) * (NumSpec+1) + col];
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
-    Real Te = interp_values[0];
+    Real T = interp_values[0];
     Real number_fractions[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
         number_fractions[s] = interp_values[s + 1];
@@ -185,7 +182,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     for (int s = 0; s < NumSpec; ++s) {
         electrons_per_heavy += number_fractions[s] * zion[s];
     }
-    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * Te / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
+    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * T / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
 
     state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
     state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
