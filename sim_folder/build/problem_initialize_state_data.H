@@ -65,36 +65,36 @@ inline void read_initial_conditions()
     // Allocate table_host_flat: each row has (NumSpec+1) columns
     // Column 0: electron temperature, Columns 1 to NumSpec: species fractions
     table_host_flat.resize(num_rows * (NumSpec + 1));
-    
+
     // Fill in electron temperature (column 0)
     for (int row = 0; row < num_rows; ++row) {
         table_host_flat[row * (NumSpec + 1) + 0] = Te[row];
     }
-    
+
     // Loop over species and read their fractions
     for (int s = 0; s < NumSpec; ++s) {
         std::string dataset_name = short_spec_names_cxx[s].substr(0, 1) + "_" + short_spec_names_cxx[s].substr(1) + "_fraction";
         std::string dataset_path = std::string("data/0/meshes/") + dataset_name;
-        
+
         // Open and read the dataset
         hid_t dataset_spec = H5Dopen(file_id, dataset_path.c_str(), H5P_DEFAULT);
         hid_t dataspace_spec = H5Dget_space(dataset_spec);
         hsize_t dims_spec;
         H5Sget_simple_extent_dims(dataspace_spec, &dims_spec, NULL);
-        
+
         // Read species fraction data
         std::vector<Real> spec_fraction(dims_spec);
         H5Dread(dataset_spec, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, spec_fraction.data());
-        
+
         // Fill in the table (column s+1)
         for (int row = 0; row < num_rows; ++row) {
             table_host_flat[row * (NumSpec + 1) + (s + 1)] = spec_fraction[row];
         }
-        
+
         H5Sclose(dataspace_spec);
         H5Dclose(dataset_spec);
     }
-    
+
     H5Fclose(file_id);
     // Resize the device vectors
     initial_conditions_r.resize(num_rows);
