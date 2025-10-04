@@ -51,7 +51,8 @@ cd sim_folder/build
 export HDF5_DIR=$(pkg-config --variable=prefix hdf5)
 make -j 4
 ```
-(for GPU, use `make USE_CUDA=TRUE -j 4`)
+(for GPU, use `make USE_CUDA=TRUE -j 4` ; on NERSC, use:
+`export HDF5_DIR=/opt/cray/pe/hdf5-parallel/1.12.2.9/`)
 
 ```
 cd ../run
