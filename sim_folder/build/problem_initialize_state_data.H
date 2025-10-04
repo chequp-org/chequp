@@ -35,23 +35,23 @@ inline void read_initial_conditions()
     // Read grid shape and attributes from T dataset
     hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
     hid_t dataspace_T = H5Dget_space(dataset_T);
-    hsize_t shape;
-    H5Sget_simple_extent_dims(dataspace_T, &shape, NULL);
+    hsize_t shape[AMREX_SPACEDIM];
+    H5Sget_simple_extent_dims(dataspace_T, shape, NULL);
     hid_t attr_spacing = H5Aopen(dataset_T, "gridSpacing", H5P_DEFAULT);
     Real grid_spacing[AMREX_SPACEDIM];
     H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, grid_spacing);
     H5Aclose(attr_spacing);
     hid_t attr_offset = H5Aopen(dataset_T, "gridGlobalOffset", H5P_DEFAULT);
-    Real grid_offset;
-    H5Aread(attr_offset, H5T_NATIVE_DOUBLE, &grid_offset);
+    Real grid_offset[AMREX_SPACEDIM];
+    H5Aread(attr_offset, H5T_NATIVE_DOUBLE, grid_offset);
     H5Aclose(attr_offset);
     H5Sclose(dataspace_T);
     H5Dclose(dataset_T);
 
     // Compute radius array from grid spacing (convert from m to cm)
-    r.resize(shape);
+    r.resize(shape[0]);
     for (size_t i = 0; i < r.size(); ++i) {
-        r[i] = (grid_offset + i * grid_spacing[0]) * 100.0; // Convert m to cm
+        r[i] = (grid_offset[0] + i * grid_spacing[0]) * 100.0; // Convert m to cm
     }
     int num_rows = r.size();
 
@@ -73,15 +73,11 @@ inline void read_initial_conditions()
 
         // Open and read the dataset
         hid_t dataset = H5Dopen(file_id, dataset_path.c_str(), H5P_DEFAULT);
-        hid_t dataspace = H5Dget_space(dataset);
-        hsize_t dims;
-        H5Sget_simple_extent_dims(dataspace, &dims, NULL);
 
         // Read data directly into the table column
         H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                 table_host_flat.data() + col*num_rows);
 
-        H5Sclose(dataspace);
         H5Dclose(dataset);
     }
     H5Fclose(file_id);
