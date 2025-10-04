@@ -102,17 +102,17 @@ def load_intensity_profile(filename):
 
     return intensity_array
 
-def process_intensity_array_multispecies(intensity_1d, lambd, tau, ell,
+def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges, species_keys,
             initial_populations, output_file=None, r_coords=None):
     """
-    Process 1D intensity array for multi-species plasma
+    Process nD intensity array for multi-species plasma
 
     Parameters:
     -----------
-    intensity_1d : 1D array
-        Radial laser intensity profile I(r) in W/m^2
+    intensity_nd : nD array
+        Laser intensity profile I in W/m^2
     lambd : float
         Laser wavelength (m)
     tau : float
@@ -129,28 +129,33 @@ def process_intensity_array_multispecies(intensity_1d, lambd, tau, ell,
 
     Returns:
     --------
-    all_populations : 2D array
-        Population fractions for all species (shape: [len(intensity_1d), len(species_keys)])
-    T_array : 1D array
-        Electron temperatures in eV
+    all_populations : nD array
+        Population fractions for all species (shape: [*intensity_nd.shape, len(species_keys)])
+    T_array : nD array
+        Electron temperatures in eV, same (shape: intensity_nd)
     """
     # Convert intensity to normalized vector potential a0
-    a0_array = e * lambd / (np.pi * m_e * c) * np.sqrt(intensity_1d / (2 * epsilon_0 * c**3))
+    a0_array = e * lambd / (np.pi * m_e * c) * np.sqrt(intensity_nd / (2 * epsilon_0 * c**3))
 
-    # Initialize output arrays
-    all_populations = np.zeros((len(a0_array), len(initial_populations)))
-    T_array = np.zeros_like(a0_array)
+    # Flatten and prepare arrays for population
+    a0_flat = a0_array.flatten()
+    T_flat = np.zeros_like(a0_flat)
+    all_populations_flat = np.zeros((len(a0_flat), len(initial_populations)))
 
-    # Process 1D profile
-    for i in tqdm.tqdm(range(len(a0_array)), desc="Processing 1D multi-species profile"):
+    # Process nD profile
+    for i in tqdm.tqdm(range(len(a0_flat)), desc="Processing nD multi-species profile"):
         final_populations, T, _ = get_fraction_and_temperature_multispecies(
-            a0_array[i], tau, lambd, ell,
+            a0_flat[i], tau, lambd, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges,
             initial_populations
         )
-        all_populations[i, :] = final_populations
-        T_array[i] = T
+        all_populations_flat[i, :] = final_populations
+        T_flat[i] = T
+
+    # Reshape back to nD arrays
+    all_populations = all_populations_flat.reshape(a0_array.shape + (len(initial_populations),))
+    T_array = T_flat.reshape(a0_array.shape)
 
     # Save detailed CSV output with all species
     if output_file and r_coords is not None:
