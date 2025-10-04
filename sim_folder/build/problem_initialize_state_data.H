@@ -37,6 +37,7 @@ inline void read_initial_conditions()
     hid_t dataspace_T = H5Dget_space(dataset_T);
     hsize_t shape[AMREX_SPACEDIM];
     H5Sget_simple_extent_dims(dataspace_T, shape, NULL);
+
     hid_t attr_spacing = H5Aopen(dataset_T, "gridSpacing", H5P_DEFAULT);
     Real grid_spacing[AMREX_SPACEDIM];
     H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, grid_spacing);
@@ -53,12 +54,16 @@ inline void read_initial_conditions()
     for (size_t i = 0; i < r.size(); ++i) {
         r[i] = (grid_offset[0] + i * grid_spacing[0]) * 100.0; // Convert m to cm
     }
-    int num_rows = r.size();
 
     // Allocate table_host_flat: each row has (NumSpec+1) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
+    // Calculate data_size as the product of shape from index 0 to AMREX_SPACEDIM-1
+    int data_set_size = 1;
+    for (int dim = 0; dim < AMREX_SPACEDIM; ++dim) {
+        data_set_size *= shape[dim];
+    }
     std::vector<Real> table_host_flat;
-    table_host_flat.resize((NumSpec + 1) * num_rows);
+    table_host_flat.resize((NumSpec + 1)*data_set_size);
     // Create list of dataset names: "T" first, then species fractions
     std::vector<std::string> dataset_names;
     dataset_names.push_back("T");
@@ -76,7 +81,7 @@ inline void read_initial_conditions()
 
         // Read data directly into the table column
         H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                table_host_flat.data() + col*num_rows);
+                table_host_flat.data() + col*data_set_size);
 
         H5Dclose(dataset);
     }
@@ -95,10 +100,10 @@ inline void read_initial_conditions()
 #endif
     // - Copy into the static table
     initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
-        (table_device_flat.data(), {0, 0}, {NumSpec+1, num_rows});
+        (table_device_flat.data(), {0, 0}, {NumSpec+1, data_set_size});
 
     // Handle radius coordinate
-    initial_conditions_r.resize(num_rows);
+    initial_conditions_r.resize(r.size());
     Real* initial_conditions_r_data = initial_conditions_r.data();
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
