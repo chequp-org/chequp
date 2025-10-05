@@ -20,6 +20,8 @@
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
 AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
+static RealVect grid_spacing;
+static RealVect grid_offset;
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
@@ -35,32 +37,32 @@ inline void read_initial_conditions()
     // Read grid shape and attributes from T dataset
     hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
     hid_t dataspace_T = H5Dget_space(dataset_T);
-    hsize_t shape[AMREX_SPACEDIM];
-    H5Sget_simple_extent_dims(dataspace_T, shape, NULL);
+    hsize_t shape_array[AMREX_SPACEDIM];
+    H5Sget_simple_extent_dims(dataspace_T, shape_array, NULL);
 
     hid_t attr_spacing = H5Aopen(dataset_T, "gridSpacing", H5P_DEFAULT);
-    Real grid_spacing[AMREX_SPACEDIM];
-    H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, grid_spacing);
+    Real grid_spacing_array[AMREX_SPACEDIM];
+    H5Aread(attr_spacing, H5T_NATIVE_DOUBLE, grid_spacing_array);
     H5Aclose(attr_spacing);
     hid_t attr_offset = H5Aopen(dataset_T, "gridGlobalOffset", H5P_DEFAULT);
-    Real grid_offset[AMREX_SPACEDIM];
-    H5Aread(attr_offset, H5T_NATIVE_DOUBLE, grid_offset);
+    Real grid_offset_array[AMREX_SPACEDIM];
+    H5Aread(attr_offset, H5T_NATIVE_DOUBLE, grid_offset_array);
     H5Aclose(attr_offset);
     H5Sclose(dataspace_T);
     H5Dclose(dataset_T);
 
     // Compute radius array from grid spacing (convert from m to cm)
-    r.resize(shape[0]);
+    r.resize(shape_array[0]);
     for (size_t i = 0; i < r.size(); ++i) {
-        r[i] = (grid_offset[0] + i * grid_spacing[0]) * 100.0; // Convert m to cm
+        r[i] = (grid_offset_array[0] + i * grid_spacing_array[0]) * 100.0; // Convert m to cm
     }
 
     // Allocate table_flat: each row has (NumSpec+1) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
-    // Calculate dataset_size as the product of shape from index 0 to AMREX_SPACEDIM-1
+    // Calculate dataset_size as the product of shape_array from index 0 to AMREX_SPACEDIM-1
     int dataset_size = 1;
     for (int dim = 0; dim < AMREX_SPACEDIM; ++dim) {
-        dataset_size *= shape[dim];
+        dataset_size *= shape_array[dim];
     }
     amrex::Gpu::ManagedVector<Real> table_flat;
     table_flat.resize((NumSpec + 1) * dataset_size);
@@ -91,6 +93,9 @@ inline void read_initial_conditions()
     // Copy data into Table object
     auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0}, {NumSpec+1, dataset_size});
+    // Copy grid spacing and offset into RealVect objects, and convert from m to cm
+    grid_spacing = RealVect(AMREX_D_DECL(1e2*grid_spacing_array[0], 1e2*grid_spacing_array[1], 1e2*grid_spacing_array[2]));
+    grid_offset = RealVect(AMREX_D_DECL(1e2*grid_offset_array[0], 1e2*grid_offset_array[1], 1e2*grid_offset_array[2]));
 
     // Handle radius coordinate
     initial_conditions_r.resize(r.size());
@@ -135,9 +140,10 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 #endif
 
     // Linear interpolation to find ionization fraction and electron temperature
-    int const idx = amrex::bisect(d_initial_conditions_r_data, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1], x);
+    Real x_norm = (x - grid_offset[0]) / grid_spacing[0];
+    int const idx = static_cast<int>(x_norm);
     AMREX_ASSERT( d_initial_conditions_r_data[idx] <= x && d_initial_conditions_r_data[idx+1] > x);
-    Real frac = (x - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
+    Real frac = x_norm - idx;
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
         Real val_low = d_initial_conditions_table(col, idx);
