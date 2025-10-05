@@ -133,12 +133,11 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 #if AMREX_SPACEDIM >= 3
     z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
 #endif
-    Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
-    int const idx = amrex::bisect(d_initial_conditions_r_data, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1], r);
-    AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
-    Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
+    int const idx = amrex::bisect(d_initial_conditions_r_data, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1], x);
+    AMREX_ASSERT( d_initial_conditions_r_data[idx] <= x && d_initial_conditions_r_data[idx+1] > x);
+    Real frac = (x - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
         Real val_low = d_initial_conditions_table(col, idx);
