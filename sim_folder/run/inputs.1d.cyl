@@ -60,7 +60,7 @@ amr.plot_int        = 10
 amr.derive_plot_vars=ALL
 
 # PROBLEM PARAMETERS
-problem.initial_conditions_file = "example_1D_initial_conditions.h5"
+problem.initial_conditions_file = "example_1d_initial_conditions.h5"
 problem.p_ambient = 1.e-6
 problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
 
