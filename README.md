@@ -27,6 +27,14 @@ brew install hdf5-mpi
 ```
 and used `gmake` instead of `make` in the instructions below.
 
+On NERSC, I had to do:
+```
+spack load ~/perlmutter_gpu_warpx.profile
+module unload cray-hdf5-parallel # Unloads version 1.12
+module load cray-hdf5-parallel # Loads version 1.14
+export HDF5_DIR=/opt/cray/pe/hdf5-parallel/1.14.3.1
+```
+
 In order to analyze the results, create a Python environment with `numpy`, `scipy`, `Jupyter` and `yt`.
 
 ## Switch between two-temperature and single-temperature model
@@ -51,8 +59,7 @@ cd sim_folder/build
 export HDF5_DIR=$(pkg-config --variable=prefix hdf5)
 make -j 4
 ```
-(for GPU, use `make USE_CUDA=TRUE -j 4` ; on NERSC, use:
-`export HDF5_DIR=/opt/cray/pe/hdf5-parallel/1.12.2.9/`)
+(for GPU, use `make USE_CUDA=TRUE -j 4`)
 
 ```
 cd ../run
