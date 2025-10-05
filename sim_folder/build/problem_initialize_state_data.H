@@ -56,10 +56,10 @@ inline void read_initial_conditions()
     }
     int num_rows = r.size();
 
-    // Allocate table_host_flat: each row has (NumSpec+1) datasets stored contiguously
+    // Allocate table_flat: each row has (NumSpec+1) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
-    std::vector<Real> table_host_flat;
-    table_host_flat.resize((NumSpec + 1) * num_rows);
+    amrex::Gpu::ManagedVector<Real> table_flat;
+    table_flat.resize((NumSpec + 1) * num_rows);
     // Create list of dataset names: "T" first, then species fractions
     std::vector<std::string> dataset_names;
     dataset_names.push_back("T");
@@ -67,7 +67,7 @@ inline void read_initial_conditions()
         dataset_names.push_back(short_spec_names_cxx[s] + "_fraction");
     }
 
-    // Loop over dataset names and fill table_host_flat
+    // Loop over dataset names and fill table_flat
     for (int col = 0; col < dataset_names.size(); ++col) {
         std::string dataset_name = dataset_names[col];
         std::string dataset_path = std::string("data/0/meshes/") + dataset_name;
@@ -80,27 +80,16 @@ inline void read_initial_conditions()
 
         // Read data directly into the table column
         H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                table_host_flat.data() + col*num_rows);
+                table_flat.data() + col*num_rows);
 
         H5Sclose(dataspace);
         H5Dclose(dataset);
     }
     H5Fclose(file_id);
 
-    // Copy data to the device, and then into the static table
-    amrex::Gpu::DeviceVector<Real> table_device_flat;
-    table_device_flat.resize(table_host_flat.size());
-    // - Copy to device
-#ifdef AMREX_USE_GPU
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice,
-        table_host_flat.begin(), table_host_flat.end(), table_device_flat.begin());
-    amrex::Gpu::streamSynchronize();
-#else
-    std::copy(table_host_flat.begin(), table_host_flat.end(), table_device_flat.begin());
-#endif
-    // - Copy into the static table
+    // Copy data into Table object
     initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
-        (table_device_flat.data(), {0, 0}, {NumSpec+1, num_rows});
+        (table_flat.data(), {0, 0}, {NumSpec+1, num_rows});
 
     // Handle radius coordinate
     initial_conditions_r.resize(num_rows);
