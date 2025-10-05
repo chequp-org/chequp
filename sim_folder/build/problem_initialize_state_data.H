@@ -19,7 +19,7 @@
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
-static amrex::Table2D<Real,amrex::Order::C> initial_conditions_table;
+AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
@@ -55,15 +55,16 @@ inline void read_initial_conditions()
         r[i] = (grid_offset[0] + i * grid_spacing[0]) * 100.0; // Convert m to cm
     }
 
-    // Allocate table_host_flat: each row has (NumSpec+1) datasets stored contiguously
+    // Allocate table_flat: each row has (NumSpec+1) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
-    // Calculate data_size as the product of shape from index 0 to AMREX_SPACEDIM-1
-    int data_set_size = 1;
+    // Calculate dataset_size as the product of shape from index 0 to AMREX_SPACEDIM-1
+    int dataset_size = 1;
     for (int dim = 0; dim < AMREX_SPACEDIM; ++dim) {
-        data_set_size *= shape[dim];
+        dataset_size *= shape[dim];
     }
-    std::vector<Real> table_host_flat;
-    table_host_flat.resize((NumSpec + 1)*data_set_size);
+    amrex::Gpu::ManagedVector<Real> table_flat;
+    table_flat.resize((NumSpec + 1) * dataset_size);
+
     // Create list of dataset names: "T" first, then species fractions
     std::vector<std::string> dataset_names;
     dataset_names.push_back("T");
@@ -71,7 +72,7 @@ inline void read_initial_conditions()
         dataset_names.push_back(short_spec_names_cxx[s] + "_fraction");
     }
 
-    // Loop over dataset names and fill table_host_flat
+    // Loop over dataset names and fill table_flat
     for (int col = 0; col < dataset_names.size(); ++col) {
         std::string dataset_name = dataset_names[col];
         std::string dataset_path = std::string("data/0/meshes/") + dataset_name;
@@ -81,26 +82,15 @@ inline void read_initial_conditions()
 
         // Read data directly into the table column
         H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
-                table_host_flat.data() + col*data_set_size);
+                table_flat.data() + col*dataset_size);
 
         H5Dclose(dataset);
     }
     H5Fclose(file_id);
 
-    // Copy data to the device, and then into the static table
-    amrex::Gpu::DeviceVector<Real> table_device_flat;
-    table_device_flat.resize(table_host_flat.size());
-    // - Copy to device
-#ifdef AMREX_USE_GPU
-    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice,
-        table_host_flat.begin(), table_host_flat.end(), table_device_flat.begin());
-    amrex::Gpu::streamSynchronize();
-#else
-    std::copy(table_host_flat.begin(), table_host_flat.end(), table_device_flat.begin());
-#endif
-    // - Copy into the static table
-    initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
-        (table_device_flat.data(), {0, 0}, {NumSpec+1, data_set_size});
+    // Copy data into Table object
+    auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
+        (table_flat.data(), {0, 0}, {NumSpec+1, dataset_size});
 
     // Handle radius coordinate
     initial_conditions_r.resize(r.size());
@@ -108,11 +98,12 @@ inline void read_initial_conditions()
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
     cudaMemcpyToSymbol(d_initial_conditions_r_data, &initial_conditions_r_data, sizeof(Real*));
-
+    cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table2D<Real,amrex::Order::C>));
     amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice,
         r.begin(), r.end(), initial_conditions_r.begin());
     amrex::Gpu::streamSynchronize();
 #else
+    d_initial_conditions_table = initial_conditions_table;
     d_initial_conditions_r_data = initial_conditions_r_data;
     std::copy(r.begin(), r.end(), initial_conditions_r.begin());
 #endif
@@ -145,13 +136,13 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real r = sqrt(x*x + y*y + z*z);
 
     // Linear interpolation to find ionization fraction and electron temperature
-    int const idx = amrex::bisect(d_initial_conditions_r_data, initial_conditions_table.begin[1], initial_conditions_table.end[1], r);
+    int const idx = amrex::bisect(d_initial_conditions_r_data, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1], r);
     AMREX_ASSERT( d_initial_conditions_r_data[idx] <= r && d_initial_conditions_r_data[idx+1] > r);
     Real frac = (r - d_initial_conditions_r_data[idx]) / (d_initial_conditions_r_data[idx+1] - d_initial_conditions_r_data[idx]);
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
-        Real val_low = initial_conditions_table(col, idx);
-        Real val_high = initial_conditions_table(col, (idx + 1));
+        Real val_low = d_initial_conditions_table(col, idx);
+        Real val_high = d_initial_conditions_table(col, (idx + 1));
         interp_values[col] = val_low + frac * (val_high - val_low);
     }
     Real Te = interp_values[0];
