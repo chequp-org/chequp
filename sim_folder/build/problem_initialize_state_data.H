@@ -19,11 +19,10 @@
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
-static amrex::Table2D<Real,amrex::Order::C> initial_conditions_table;
+AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 static amrex::Gpu::DeviceVector<Real> initial_conditions_r; // radius in cm
 // Device-accessible static variables
 AMREX_GPU_DEVICE static Real* d_initial_conditions_r_data = nullptr;
-AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 
 inline void read_initial_conditions()
 {
@@ -88,7 +87,7 @@ inline void read_initial_conditions()
     H5Fclose(file_id);
 
     // Copy data into Table object
-    initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
+    auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0}, {NumSpec+1, num_rows});
 
     // Handle radius coordinate
