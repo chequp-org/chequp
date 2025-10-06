@@ -82,7 +82,7 @@ inline void read_initial_conditions()
     // Copy data into Table object
     auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0}, {NumSpec+1, dataset_size});
-    // Copy grid spacing and offset into RealVect objects, and convert from m to cm
+    // Copy grid spacing and offset into static RealVect objects, and convert from m to cm
     auto grid_spacing = RealVect(AMREX_D_DECL(1e2*grid_spacing_array[0], 1e2*grid_spacing_array[1], 1e2*grid_spacing_array[2]));
     auto grid_offset = RealVect(AMREX_D_DECL(1e2*grid_offset_array[0], 1e2*grid_offset_array[1], 1e2*grid_offset_array[2]));
 
