@@ -65,7 +65,6 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
 
     return populations, T, t  # Return full populations array
 
-    return ioniz_frac, T, t
 
 def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
     """
