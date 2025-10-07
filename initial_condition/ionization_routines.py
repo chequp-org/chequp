@@ -81,18 +81,17 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
         for i, key in enumerate(grid_extent.keys()) ])
     grid_global_offset = [grid_extent[key][0] for key in grid_extent.keys()]
     axis_labels = list(grid_extent.keys())
-    position = [0]*len(grid_extent)
 
     # Save the temperature
     T = it.meshes["T"]
     T.grid_spacing = grid_spacing
     T.grid_global_offset = grid_global_offset
     T.axis_labels = axis_labels
-    T.position = position
     T.unit_dimension = {io.Unit_Dimension.theta:1}
-    dataset = io.Dataset(T_eV.dtype,T_eV.shape)
-    T.reset_dataset(dataset)
-    T.store_chunk( T_eV * (e/k) ) # Convert eV to K
+    dataset = io.Dataset(T_eV.dtype, T_eV.shape)
+    T_scalar = T[io.Mesh_Record_Component.SCALAR]
+    T_scalar.reset_dataset(dataset)
+    T_scalar.store_chunk(T_eV * (e/k))  # Convert eV to K
 
     # Save the species fractions
     for i, species_key in enumerate(species_keys):
@@ -100,10 +99,10 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
         pop.grid_spacing = grid_spacing
         pop.grid_global_offset = grid_global_offset
         pop.axis_labels = axis_labels
-        pop.position = position
         dataset = io.Dataset(all_populations[:, i].dtype, all_populations[:, i].shape)
-        pop.reset_dataset(dataset)
-        pop.store_chunk( all_populations[:, i].copy() )
+        pop_scalar = pop[io.Mesh_Record_Component.SCALAR]
+        pop_scalar.reset_dataset(dataset)
+        pop_scalar.store_chunk(all_populations[:, i].copy())
 
     series.flush()
 
@@ -129,7 +128,7 @@ def load_intensity_profile(filename):
 def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges, species_keys,
-            initial_populations, output_file=None, r_coords=None):
+            initial_populations, output_file=None, grid_extent=None):
     """
     Process nD intensity array for multi-species plasma
 
@@ -181,7 +180,7 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     T_array = T_flat.reshape(a0_array.shape)
 
     # Save detailed CSV output with all species
-    if output_file and r_coords is not None:
-        save_to_openpmd(r_coords, all_populations, T_array, output_file, species_keys)
+    if output_file and grid_extent is not None:
+        save_to_openpmd(grid_extent, all_populations, T_array, output_file, species_keys)
 
     return all_populations, T_array
