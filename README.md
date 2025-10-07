@@ -34,7 +34,7 @@ In order to analyze the results, create a Python environment with `numpy`, `scip
 The choice of a single-temperature model or two-temperature model is done before compiling,
 by changing the flag `EOS_DIR` in `sim_folder/build/GNUmakefile`.
 
-- For a two-temperature model (default), use
+- For a two-temperature model, use
 ```
 EOS_DIR     := gamma_law_2T
 ```
