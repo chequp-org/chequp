@@ -77,7 +77,8 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
     it = series.iterations[0]
 
     # Extract information about the grid for openPMD
-    grid_spacing = np.array([ (grid_extent[key][1] - grid_extent[key][0]) / all_populations.shape[i] for i, key in enumerate(grid_extent.keys()) ])
+    grid_spacing = np.array([ (grid_extent[key][1] - grid_extent[key][0]) / (all_populations.shape[i] - 1)
+        for i, key in enumerate(grid_extent.keys()) ])
     grid_global_offset = [grid_extent[key][0] for key in grid_extent.keys()]
     axis_labels = list(grid_extent.keys())
     position = [0]*len(grid_extent)
