@@ -67,25 +67,27 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
 
     return ioniz_frac, T, t
 
-def save_to_openpmd(r_coords, all_populations, T_eV, output_file, species_keys):
+def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
     """
     Save with all species populations to an openPMD file
     """
-    # Get spatial resolution
-    dr = np.diff(r_coords).mean()
-    rmin = r_coords.min()
-
     # create openpmd file
     series = io.Series(output_file, io.Access.create)
     # only 1 iteratiion needed
     it = series.iterations[0]
 
+    # Extract information about the grid for openPMD
+    grid_spacing = np.array([ (grid_extent[key][1] - grid_extent[key][0]) / all_populations.shape[i] for i, key in enumerate(grid_extent.keys()) ])
+    grid_global_offset = [grid_extent[key][0] for key in grid_extent.keys()]
+    axis_labels = list(grid_extent.keys())
+    position = [0]*len(grid_extent)
+
     # Save the temperature
     T = it.meshes["T"]
-    T.grid_spacing = np.array([dr])
-    T.grid_global_offset = [rmin]
-    T.axis_labels = ['r']
-    T.position = [0,0,0]
+    T.grid_spacing = grid_spacing
+    T.grid_global_offset = grid_global_offset
+    T.axis_labels = axis_labels
+    T.position = position
     T.unit_dimension = {io.Unit_Dimension.theta:1}
     dataset = io.Dataset(T_eV.dtype,T_eV.shape)
     T.reset_dataset(dataset)
@@ -94,10 +96,10 @@ def save_to_openpmd(r_coords, all_populations, T_eV, output_file, species_keys):
     # Save the species fractions
     for i, species_key in enumerate(species_keys):
         pop = it.meshes[species_key + "_fraction"]
-        pop.grid_spacing = np.array([dr])
-        pop.grid_global_offset = [rmin]
-        pop.axis_labels = ['r']
-        pop.position = [0,0,0]
+        pop.grid_spacing = grid_spacing
+        pop.grid_global_offset = grid_global_offset
+        pop.axis_labels = axis_labels
+        pop.position = position
         dataset = io.Dataset(all_populations[:, i].dtype, all_populations[:, i].shape)
         pop.reset_dataset(dataset)
         pop.store_chunk( all_populations[:, i].copy() )
