@@ -52,7 +52,6 @@ inline void read_initial_conditions()
     H5Aclose(attr_offset);
     H5Sclose(dataspace_T);
     H5Dclose(dataset_T);
-
     // Allocate table_flat: each row has (NumSpec+1) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
     // Calculate dataset_size as the product of shape_array from index 0 to AMREX_SPACEDIM-1
@@ -106,6 +105,7 @@ inline void read_initial_conditions()
     cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table2D<Real,amrex::Order::C>));
     cudaMemcpyToSymbol(d_grid_spacing, &grid_spacing, sizeof(RealVect));
     cudaMemcpyToSymbol(d_grid_offset, &grid_offset, sizeof(RealVect));
+
     amrex::Gpu::streamSynchronize();
 #else
     d_initial_conditions_table = initial_conditions_table;
@@ -148,12 +148,47 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 #endif
 
     // Interpolate the values
-    Real interp_values[NumSpec+1];
-    for (int col = 0; col < NumSpec+1; ++col) {
-        Real val_low = d_initial_conditions_table(col, idx);
-        Real val_high = d_initial_conditions_table(col, (idx + 1));
-        interp_values[col] = val_low + frac0 * (val_high - val_low);
-    }
+        Real interp_values[NumSpec+1];
+    #if AMREX_SPACEDIM == 1
+        // 1D linear interpolation
+        for (int col = 0; col < NumSpec+1; ++col) {
+            Real val_low = d_initial_conditions_table(col, idx);
+            Real val_high = d_initial_conditions_table(col, idx + 1);
+            interp_values[col] = val_low + frac0 * (val_high - val_low);
+        }
+    #elif AMREX_SPACEDIM == 2
+        // 2D bilinear interpolation
+        for (int col = 0; col < NumSpec+1; ++col) {            
+            Real val_00 = d_initial_conditions_table(col, idx, idx1);
+            Real val_10 = d_initial_conditions_table(col, idx + 1, idx1);
+            Real val_01 = d_initial_conditions_table(col, idx, idx1 + 1);
+            Real val_11 = d_initial_conditions_table(col, idx + 1, idx1 + 1);
+            Real val_0 = val_00 + frac0 * (val_10 - val_00);
+            Real val_1 = val_01 + frac0 * (val_11 - val_01);
+            interp_values[col] = val_0 + frac1 * (val_1 - val_0);
+        }
+    #elif AMREX_SPACEDIM == 3
+        // 3D trilinear interpolation
+        for (int col = 0; col < NumSpec+1; ++col) {
+            Real val_000 = d_initial_conditions_table(col, idx, idx1, idx2);
+            Real val_100 = d_initial_conditions_table(col, idx + 1, idx1, idx2);
+            Real val_010 = d_initial_conditions_table(col, idx, idx1 + 1, idx2);
+            Real val_110 = d_initial_conditions_table(col, idx + 1, idx1 + 1, idx2);
+            Real val_001 = d_initial_conditions_table(col, idx, idx1, idx2 + 1);
+            Real val_101 = d_initial_conditions_table(col, idx + 1, idx1, idx2 + 1);
+            Real val_011 = d_initial_conditions_table(col, idx, idx1 + 1, idx2 + 1);
+            Real val_111 = d_initial_conditions_table(col, idx + 1, idx1 + 1, idx2 + 1);
+            
+            Real val_00 = val_000 + frac0 * (val_100 - val_000);
+            Real val_10 = val_010 + frac0 * (val_110 - val_010);
+            Real val_01 = val_001 + frac0 * (val_101 - val_001);
+            Real val_11 = val_011 + frac0 * (val_111 - val_011);
+            
+            Real val_0 = val_00 + frac1 * (val_10 - val_00);
+            Real val_1 = val_01 + frac1 * (val_11 - val_01);
+            interp_values[col] = val_0 + frac2 * (val_1 - val_0);
+        }
+    #endif
     Real Te = interp_values[0];
     Real number_fractions[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
