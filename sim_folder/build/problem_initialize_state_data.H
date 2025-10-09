@@ -52,6 +52,7 @@ inline void read_initial_conditions()
     H5Aclose(attr_offset);
     H5Sclose(dataspace_T);
     H5Dclose(dataset_T);
+    
     // Allocate table_flat: each row has (NumSpec+1) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
     // Calculate dataset_size as the product of shape_array from index 0 to AMREX_SPACEDIM-1
@@ -148,7 +149,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 #endif
 
     // Interpolate the values
-        Real interp_values[NumSpec+1];
+    Real interp_values[NumSpec+1];
     #if AMREX_SPACEDIM == 1
         // 1D linear interpolation
         for (int col = 0; col < NumSpec+1; ++col) {
@@ -156,17 +157,17 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
             Real val_high = d_initial_conditions_table(col, idx + 1);
             interp_values[col] = val_low + frac0 * (val_high - val_low);
         }
-    #elif AMREX_SPACEDIM == 2
-        // 2D bilinear interpolation
-        for (int col = 0; col < NumSpec+1; ++col) {            
-            Real val_00 = d_initial_conditions_table(col, idx, idx1);
-            Real val_10 = d_initial_conditions_table(col, idx + 1, idx1);
-            Real val_01 = d_initial_conditions_table(col, idx, idx1 + 1);
-            Real val_11 = d_initial_conditions_table(col, idx + 1, idx1 + 1);
-            Real val_0 = val_00 + frac0 * (val_10 - val_00);
-            Real val_1 = val_01 + frac0 * (val_11 - val_01);
-            interp_values[col] = val_0 + frac1 * (val_1 - val_0);
-        }
+    #elif AMREX_SPACEDIM == 2
+        // 2D bilinear interpolation
+        for (int col = 0; col < NumSpec+1; ++col) {
+            Real val_00 = d_initial_conditions_table(col, idx, idx1);
+            Real val_10 = d_initial_conditions_table(col, idx + 1, idx1);
+            Real val_01 = d_initial_conditions_table(col, idx, idx1 + 1);
+            Real val_11 = d_initial_conditions_table(col, idx + 1, idx1 + 1);
+            Real val_0 = val_00 + frac0 * (val_10 - val_00);
+            Real val_1 = val_01 + frac0 * (val_11 - val_01);
+            interp_values[col] = val_0 + frac1 * (val_1 - val_0);
+        }
     #elif AMREX_SPACEDIM == 3
         // 3D trilinear interpolation
         for (int col = 0; col < NumSpec+1; ++col) {
