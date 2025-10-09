@@ -52,7 +52,7 @@ inline void read_initial_conditions()
     H5Aclose(attr_offset);
     H5Sclose(dataspace_T);
     H5Dclose(dataset_T);
-    
+
     // Allocate table_flat: each row has (NumSpec+1) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
     // Calculate dataset_size as the product of shape_array from index 0 to AMREX_SPACEDIM-1
@@ -135,16 +135,23 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     // Linear interpolation to find population and electron temperature
     Real x0_norm = (x0 - d_grid_offset[0]) / d_grid_spacing[0];
-    int const idx = static_cast<int>(x0_norm);
-    Real frac0 = x0_norm - idx;
+    int const idx0 = static_cast<int>(x0_norm);
+    // Find interpolation indices. If the coordinates are outside the table, clamp to the nearest edge.
+    int const idx0_lo = std::clamp( idx0, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1] );
+    int const idx0_hi = std::clamp( idx0 + 1, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1] );
+    Real frac0 = x0_norm - idx0;
 #if AMREX_SPACEDIM >= 2
     Real x1_norm = (x1 - d_grid_offset[1]) / d_grid_spacing[1];
     int const idx1 = static_cast<int>(x1_norm);
+    int const idx1_lo = std::clamp( idx1, d_initial_conditions_table.begin[2], d_initial_conditions_table.end[2] );
+    int const idx1_hi = std::clamp( idx1 + 1, d_initial_conditions_table.begin[2], d_initial_conditions_table.end[2] );
     Real frac1 = x1_norm - idx1;
 #endif
 #if AMREX_SPACEDIM >= 3
     Real x2_norm = (x2 - d_grid_offset[2]) / d_grid_spacing[2];
     int const idx2 = static_cast<int>(x2_norm);
+    int const idx2_lo = std::clamp( idx2, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3] );
+    int const idx2_hi = std::clamp( idx2 + 1, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3] );
     Real frac2 = x2_norm - idx2;
 #endif
 
@@ -153,17 +160,17 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     #if AMREX_SPACEDIM == 1
         // 1D linear interpolation
         for (int col = 0; col < NumSpec+1; ++col) {
-            Real val_low = d_initial_conditions_table(col, idx);
-            Real val_high = d_initial_conditions_table(col, idx + 1);
-            interp_values[col] = val_low + frac0 * (val_high - val_low);
+            Real val_0 = d_initial_conditions_table(col, idx0_lo);
+            Real val_1 = d_initial_conditions_table(col, idx0_hi);
+            interp_values[col] = val_0 + frac0 * (val_1 - val_0);
         }
     #elif AMREX_SPACEDIM == 2
         // 2D bilinear interpolation
         for (int col = 0; col < NumSpec+1; ++col) {
-            Real val_00 = d_initial_conditions_table(col, idx, idx1);
-            Real val_10 = d_initial_conditions_table(col, idx + 1, idx1);
-            Real val_01 = d_initial_conditions_table(col, idx, idx1 + 1);
-            Real val_11 = d_initial_conditions_table(col, idx + 1, idx1 + 1);
+            Real val_00 = d_initial_conditions_table(col, idx0_lo, idx1_lo);
+            Real val_10 = d_initial_conditions_table(col, idx0_hi, idx1_lo);
+            Real val_01 = d_initial_conditions_table(col, idx0_lo, idx1_hi);
+            Real val_11 = d_initial_conditions_table(col, idx0_hi, idx1_hi);
             Real val_0 = val_00 + frac0 * (val_10 - val_00);
             Real val_1 = val_01 + frac0 * (val_11 - val_01);
             interp_values[col] = val_0 + frac1 * (val_1 - val_0);
@@ -171,20 +178,20 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     #elif AMREX_SPACEDIM == 3
         // 3D trilinear interpolation
         for (int col = 0; col < NumSpec+1; ++col) {
-            Real val_000 = d_initial_conditions_table(col, idx, idx1, idx2);
-            Real val_100 = d_initial_conditions_table(col, idx + 1, idx1, idx2);
-            Real val_010 = d_initial_conditions_table(col, idx, idx1 + 1, idx2);
-            Real val_110 = d_initial_conditions_table(col, idx + 1, idx1 + 1, idx2);
-            Real val_001 = d_initial_conditions_table(col, idx, idx1, idx2 + 1);
-            Real val_101 = d_initial_conditions_table(col, idx + 1, idx1, idx2 + 1);
-            Real val_011 = d_initial_conditions_table(col, idx, idx1 + 1, idx2 + 1);
-            Real val_111 = d_initial_conditions_table(col, idx + 1, idx1 + 1, idx2 + 1);
-            
+            Real val_000 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_lo);
+            Real val_100 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_lo);
+            Real val_010 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_lo);
+            Real val_110 = d_initial_conditions_table(col, idx0_hi, idx1_hi, idx2_lo);
+            Real val_001 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_hi);
+            Real val_101 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_hi);
+            Real val_011 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_hi);
+            Real val_111 = d_initial_conditions_table(col, idx0_hi, idx1_hi, idx2_hi);
+
             Real val_00 = val_000 + frac0 * (val_100 - val_000);
             Real val_10 = val_010 + frac0 * (val_110 - val_010);
             Real val_01 = val_001 + frac0 * (val_101 - val_001);
             Real val_11 = val_011 + frac0 * (val_111 - val_011);
-            
+
             Real val_0 = val_00 + frac1 * (val_10 - val_00);
             Real val_1 = val_01 + frac1 * (val_11 - val_01);
             interp_values[col] = val_0 + frac2 * (val_1 - val_0);
