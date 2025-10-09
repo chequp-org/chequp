@@ -128,7 +128,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real x_norm = (x - d_grid_offset[0]) / d_grid_spacing[0];
     // Find index in the table. If the coordinates are outside the table, clamp to the nearest edge.
     int const idx = std::clamp( static_cast<int>(x_norm),
-        d_initial_conditions_table.begin[0], d_initial_conditions_table.end[0] );
+        d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1] );
     Real frac = x_norm - idx;
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
