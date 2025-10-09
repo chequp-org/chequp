@@ -98,10 +98,10 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
         pop.grid_spacing = grid_spacing
         pop.grid_global_offset = grid_global_offset
         pop.axis_labels = axis_labels
-        dataset = io.Dataset(all_populations[:, i].dtype, all_populations[:, i].shape)
+        dataset = io.Dataset(all_populations[..., i].dtype, all_populations[..., i].shape)
         pop_scalar = pop[io.Mesh_Record_Component.SCALAR]
         pop_scalar.reset_dataset(dataset)
-        pop_scalar.store_chunk(all_populations[:, i].copy())
+        pop_scalar.store_chunk(all_populations[..., i].copy())
 
     series.flush()
 
