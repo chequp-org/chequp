@@ -177,6 +177,7 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     # Reshape back to nD arrays
     all_populations = all_populations_flat.reshape(a0_array.shape + (len(initial_populations),))
     T_array = T_flat.reshape(a0_array.shape)
+    T_array = np.maximum(T_array, 300.0 * k / e)
 
     # Save detailed CSV output with all species
     if output_file and grid_extent is not None:
