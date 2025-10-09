@@ -126,7 +126,9 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     // Linear interpolation to find ionization fraction and electron temperature
     Real x_norm = (x - d_grid_offset[0]) / d_grid_spacing[0];
-    int const idx = static_cast<int>(x_norm);
+    // Find index in the table, if the coordinates are outside the table, clamp to the nearest edge.
+    int const idx = std::clamp( static_cast<int>(x_norm),
+        d_initial_conditions_table.begin[0], d_initial_conditions_table.end[0] );
     Real frac = x_norm - idx;
     Real interp_values[NumSpec+1];
     for (int col = 0; col < NumSpec+1; ++col) {
