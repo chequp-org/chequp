@@ -21,13 +21,10 @@
 // in the function problem_initialize_state_data (GPU kernel)
 static amrex::Gpu::ManagedVector<Real> table_flat;
 #if AMREX_SPACEDIM == 1
-static amrex::Table2D<Real,amrex::Order::C> initial_conditions_table;
 AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 #elif AMREX_SPACEDIM == 2
-static amrex::Table3D<Real,amrex::Order::C> initial_conditions_table;
 AMREX_GPU_DEVICE static amrex::Table3D<Real,amrex::Order::C> d_initial_conditions_table;
 #elif AMREX_SPACEDIM == 3
-static amrex::Table4D<Real,amrex::Order::C> initial_conditions_table;
 AMREX_GPU_DEVICE static amrex::Table4D<Real,amrex::Order::C> d_initial_conditions_table;
 #endif
 
@@ -96,13 +93,13 @@ inline void read_initial_conditions()
 
     // Copy data into Table object
 #if AMREX_SPACEDIM == 1
-    initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
+    auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0}, {NumSpec+1, shape_array[0]});
 #elif AMREX_SPACEDIM == 2
-    initial_conditions_table = amrex::Table3D<Real,amrex::Order::C>
+    auto initial_conditions_table = amrex::Table3D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0, 0}, {NumSpec+1, shape_array[0], shape_array[1]});
 #elif AMREX_SPACEDIM == 3
-    initial_conditions_table = amrex::Table4D<Real,amrex::Order::C>
+    auto initial_conditions_table = amrex::Table4D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0, 0, 0}, {NumSpec+1, shape_array[0], shape_array[1], shape_array[2]});
 #endif
     // Copy grid spacing and offset into RealVect objects, and convert from m to cm
