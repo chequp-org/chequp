@@ -114,7 +114,13 @@ inline void read_initial_conditions()
 
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
+#if AMREX_SPACEDIM == 1
     cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table2D<Real,amrex::Order::C>));
+#elif AMREX_SPACEDIM == 2
+    cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table3D<Real,amrex::Order::C>));
+#elif AMREX_SPACEDIM == 3
+    cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table4D<Real,amrex::Order::C>));
+#endif
     cudaMemcpyToSymbol(d_grid_spacing, &grid_spacing, sizeof(RealVect));
     cudaMemcpyToSymbol(d_grid_offset, &grid_offset, sizeof(RealVect));
 #else
