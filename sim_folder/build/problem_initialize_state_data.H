@@ -2,6 +2,7 @@
 #define problem_initialize_state_data_H
 
 #include <hdf5.h>
+#include <filesystem>
 
 #include <prob_parameters.H>
 #include <eos.H>
@@ -29,6 +30,11 @@ AMREX_GPU_DEVICE static RealVect d_grid_offset;
 
 inline void read_initial_conditions()
 {
+    // Check if the initial conditions file exists
+    if (!std::filesystem::exists(problem::initial_conditions_file)) {
+        amrex::Abort("Initial conditions file does not exist: " + problem::initial_conditions_file);
+    }
+
     // Open HDF5 file
     hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
