@@ -91,7 +91,7 @@ inline void read_initial_conditions()
     d_table_flat = table_flat;
 #endif
 
-    // Copy data into Table object
+    // Create multi-dimensional Table object that points to `d_table_flat`
     auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
         (d_table_flat.data(), {0, 0}, {NumSpec+1, dataset_size});
     // Copy grid spacing and offset into static RealVect objects, and convert from m to cm
