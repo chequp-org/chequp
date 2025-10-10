@@ -19,6 +19,9 @@
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
+// - Memory-owning object
+static amrex::Gpu::DeviceVector<Real> d_table_flat;
+// - Multi-dimensional view of the memory
 AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 // Meta-data about the grid point positions for the above table
 AMREX_GPU_DEVICE static RealVect d_grid_spacing;
@@ -53,7 +56,7 @@ inline void read_initial_conditions()
     for (int dim = 0; dim < AMREX_SPACEDIM; ++dim) {
         dataset_size *= shape_array[dim];
     }
-    amrex::Gpu::ManagedVector<Real> table_flat;
+    amrex::Gpu::HostVector<Real> table_flat;
     table_flat.resize((NumSpec + 1) * dataset_size);
 
     // Create list of dataset names: "T" first, then species fractions
@@ -79,9 +82,18 @@ inline void read_initial_conditions()
     }
     H5Fclose(file_id);
 
-    // Copy data into Table object
+    // Copy data on GPU, into static memory-owning object
+    d_table_flat.resize(table_flat.size());
+#ifdef AMREX_USE_GPU
+    amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice, table_flat.begin(), table_flat.end(), d_table_flat.begin());
+    amrex::Gpu::streamSynchronize();
+#else
+    d_table_flat = table_flat;
+#endif
+
+    // Create multi-dimensional Table object that points to `d_table_flat`
     auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
-        (table_flat.data(), {0, 0}, {NumSpec+1, dataset_size});
+        (d_table_flat.data(), {0, 0}, {NumSpec+1, dataset_size});
     // Copy grid spacing and offset into static RealVect objects, and convert from m to cm
     auto grid_spacing = RealVect(AMREX_D_DECL(1e2*grid_spacing_array[0], 1e2*grid_spacing_array[1], 1e2*grid_spacing_array[2]));
     auto grid_offset = RealVect(AMREX_D_DECL(1e2*grid_offset_array[0], 1e2*grid_offset_array[1], 1e2*grid_offset_array[2]));
