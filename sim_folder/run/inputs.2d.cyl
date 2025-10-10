@@ -24,6 +24,10 @@ castro.add_ext_src = 1
 castro.diffuse_temp = 1
 castro.diffuse_use_amrex_mlmg = 0
 
+# Get correct geometric terms in cylindrical
+# (See https://github.com/AMReX-Astro/Castro/issues/3099)
+castro.diffuse_use_amrex_mlmg = 0
+
 # TIME STEP CONTROL
 castro.cfl            = 0.5     # cfl number for hyperbolic system
 castro.init_shrink    = 0.01    # scale back initial timestep

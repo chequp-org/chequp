@@ -2,6 +2,7 @@
 #define problem_initialize_state_data_H
 
 #include <hdf5.h>
+#include <filesystem>
 
 #include <prob_parameters.H>
 #include <eos.H>
@@ -36,6 +37,11 @@ AMREX_GPU_DEVICE static RealVect d_grid_offset;
 
 inline void read_initial_conditions()
 {
+    // Check if the initial conditions file exists
+    if (!std::filesystem::exists(problem::initial_conditions_file)) {
+        amrex::Abort("Initial conditions file does not exist: " + problem::initial_conditions_file);
+    }
+
     // Open HDF5 file
     hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
@@ -108,7 +114,7 @@ inline void read_initial_conditions()
     auto initial_conditions_table = amrex::Table4D<Real,amrex::Order::C>
         (d_table_flat.data(), {0, 0, 0, 0}, {NumSpec+1, shape_array[0], shape_array[1], shape_array[2]});
 #endif
-    // Copy grid spacing and offset into RealVect objects, and convert from m to cm
+    // Copy grid spacing and offset into static RealVect objects, and convert from m to cm
     auto grid_spacing = RealVect(AMREX_D_DECL(1e2*grid_spacing_array[0], 1e2*grid_spacing_array[1], 1e2*grid_spacing_array[2]));
     auto grid_offset = RealVect(AMREX_D_DECL(1e2*grid_offset_array[0], 1e2*grid_offset_array[1], 1e2*grid_offset_array[2]));
 
