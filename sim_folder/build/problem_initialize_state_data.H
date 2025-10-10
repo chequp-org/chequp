@@ -166,46 +166,48 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     // Interpolate the values
     Real interp_values[NumSpec+1];
-    #if AMREX_SPACEDIM == 1
-        // 1D linear interpolation
-        for (int col = 0; col < NumSpec+1; ++col) {
-            Real val_0 = d_initial_conditions_table(col, idx0_lo);
-            Real val_1 = d_initial_conditions_table(col, idx0_hi);
-            interp_values[col] = val_0 + frac0 * (val_1 - val_0);
-        }
-    #elif AMREX_SPACEDIM == 2
-        // 2D bilinear interpolation
-        for (int col = 0; col < NumSpec+1; ++col) {
-            Real val_00 = d_initial_conditions_table(col, idx0_lo, idx1_lo);
-            Real val_10 = d_initial_conditions_table(col, idx0_hi, idx1_lo);
-            Real val_01 = d_initial_conditions_table(col, idx0_lo, idx1_hi);
-            Real val_11 = d_initial_conditions_table(col, idx0_hi, idx1_hi);
-            Real val_0 = val_00 + frac0 * (val_10 - val_00);
-            Real val_1 = val_01 + frac0 * (val_11 - val_01);
-            interp_values[col] = val_0 + frac1 * (val_1 - val_0);
-        }
-    #elif AMREX_SPACEDIM == 3
-        // 3D trilinear interpolation
-        for (int col = 0; col < NumSpec+1; ++col) {
-            Real val_000 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_lo);
-            Real val_100 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_lo);
-            Real val_010 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_lo);
-            Real val_110 = d_initial_conditions_table(col, idx0_hi, idx1_hi, idx2_lo);
-            Real val_001 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_hi);
-            Real val_101 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_hi);
-            Real val_011 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_hi);
-            Real val_111 = d_initial_conditions_table(col, idx0_hi, idx1_hi, idx2_hi);
+#if AMREX_SPACEDIM == 1
+    // 1D linear interpolation
+    for (int col = 0; col < NumSpec+1; ++col) {
+        Real val_0 = d_initial_conditions_table(col, idx0_lo);
+        Real val_1 = d_initial_conditions_table(col, idx0_hi);
+        interp_values[col] = val_0 + frac0 * (val_1 - val_0);
+    }
+#elif AMREX_SPACEDIM == 2
+    // 2D bilinear interpolation
+    for (int col = 0; col < NumSpec+1; ++col) {
+        Real val_00 = d_initial_conditions_table(col, idx0_lo, idx1_lo);
+        Real val_10 = d_initial_conditions_table(col, idx0_hi, idx1_lo);
+        Real val_01 = d_initial_conditions_table(col, idx0_lo, idx1_hi);
+        Real val_11 = d_initial_conditions_table(col, idx0_hi, idx1_hi);
+        Real val_0 = val_00 + frac0 * (val_10 - val_00);
+        Real val_1 = val_01 + frac0 * (val_11 - val_01);
+        interp_values[col] = val_0 + frac1 * (val_1 - val_0);
+    }
+#elif AMREX_SPACEDIM == 3
+    // 3D trilinear interpolation
+    for (int col = 0; col < NumSpec+1; ++col) {
+        Real val_000 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_lo);
+        Real val_100 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_lo);
+        Real val_010 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_lo);
+        Real val_110 = d_initial_conditions_table(col, idx0_hi, idx1_hi, idx2_lo);
+        Real val_001 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_hi);
+        Real val_101 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_hi);
+        Real val_011 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_hi);
+        Real val_111 = d_initial_conditions_table(col, idx0_hi, idx1_hi, idx2_hi);
 
-            Real val_00 = val_000 + frac0 * (val_100 - val_000);
-            Real val_10 = val_010 + frac0 * (val_110 - val_010);
-            Real val_01 = val_001 + frac0 * (val_101 - val_001);
-            Real val_11 = val_011 + frac0 * (val_111 - val_011);
+        Real val_00 = val_000 + frac0 * (val_100 - val_000);
+        Real val_10 = val_010 + frac0 * (val_110 - val_010);
+        Real val_01 = val_001 + frac0 * (val_101 - val_001);
+        Real val_11 = val_011 + frac0 * (val_111 - val_011);
 
-            Real val_0 = val_00 + frac1 * (val_10 - val_00);
-            Real val_1 = val_01 + frac1 * (val_11 - val_01);
-            interp_values[col] = val_0 + frac2 * (val_1 - val_0);
-        }
-    #endif
+        Real val_0 = val_00 + frac1 * (val_10 - val_00);
+        Real val_1 = val_01 + frac1 * (val_11 - val_01);
+        interp_values[col] = val_0 + frac2 * (val_1 - val_0);
+    }
+#endif
+
+    // Extract data from interpolated array
     Real Te = interp_values[0];
     Real number_fractions[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
