@@ -19,11 +19,15 @@
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
 // in the function problem_initialize_state_data (GPU kernel)
+static amrex::Gpu::ManagedVector<Real> table_flat;
 #if AMREX_SPACEDIM == 1
+static amrex::Table2D<Real,amrex::Order::C> initial_conditions_table;
 AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
 #elif AMREX_SPACEDIM == 2
+static amrex::Table3D<Real,amrex::Order::C> initial_conditions_table;
 AMREX_GPU_DEVICE static amrex::Table3D<Real,amrex::Order::C> d_initial_conditions_table;
 #elif AMREX_SPACEDIM == 3
+static amrex::Table4D<Real,amrex::Order::C> initial_conditions_table;
 AMREX_GPU_DEVICE static amrex::Table4D<Real,amrex::Order::C> d_initial_conditions_table;
 #endif
 
@@ -33,6 +37,8 @@ AMREX_GPU_DEVICE static RealVect d_grid_offset;
 
 inline void read_initial_conditions()
 {
+
+    amrex::Print() << "Reading initial conditions from " << problem::initial_conditions_file << std::endl;
     // Open HDF5 file
     hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
@@ -60,7 +66,6 @@ inline void read_initial_conditions()
     for (int dim = 0; dim < AMREX_SPACEDIM; ++dim) {
         dataset_size *= shape_array[dim];
     }
-    amrex::Gpu::ManagedVector<Real> table_flat;
     table_flat.resize((NumSpec + 1) * dataset_size);
 
     // Create list of dataset names: "T" first, then species fractions
@@ -81,6 +86,9 @@ inline void read_initial_conditions()
         // Read data directly into the table column
         H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                 table_flat.data() + col*dataset_size);
+        if (col == 0) {
+        amrex::Print() << "table_flat[0] " << table_flat[0] << std::endl;
+        }
 
         H5Dclose(dataset);
     }
@@ -88,13 +96,13 @@ inline void read_initial_conditions()
 
     // Copy data into Table object
 #if AMREX_SPACEDIM == 1
-    auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
+    initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0}, {NumSpec+1, shape_array[0]});
 #elif AMREX_SPACEDIM == 2
-    auto initial_conditions_table = amrex::Table3D<Real,amrex::Order::C>
+    initial_conditions_table = amrex::Table3D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0, 0}, {NumSpec+1, shape_array[0], shape_array[1]});
 #elif AMREX_SPACEDIM == 3
-    auto initial_conditions_table = amrex::Table4D<Real,amrex::Order::C>
+    initial_conditions_table = amrex::Table4D<Real,amrex::Order::C>
         (table_flat.data(), {0, 0, 0, 0}, {NumSpec+1, shape_array[0], shape_array[1], shape_array[2]});
 #endif
     // Copy grid spacing and offset into RealVect objects, and convert from m to cm
@@ -174,6 +182,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
             Real val_0 = val_00 + frac0 * (val_10 - val_00);
             Real val_1 = val_01 + frac0 * (val_11 - val_01);
             interp_values[col] = val_0 + frac1 * (val_1 - val_0);
+            amrex::Print() << val_00 << " " << val_10 << " " << val_01 << " " << val_11 << std::endl;
         }
     #elif AMREX_SPACEDIM == 3
         // 3D trilinear interpolation
@@ -212,6 +221,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     // Convert from number fraction to mass fraction
     Real mean_aion = 0;
     for (int s = 0; s < NumSpec; ++s) { mean_aion += number_fractions[s] * aion[s]; }
+    amrex::Print() << "mean_aion " << mean_aion << std::endl;
     for (int s = 0; s < NumSpec; ++s) {
         state(i,j,k,UFS+s) = state(i,j,k,URHO) * (number_fractions[s] * aion[s]) / mean_aion;
     }
