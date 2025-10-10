@@ -29,7 +29,7 @@ and used `gmake` instead of `make` in the instructions below.
 
 On NERSC, I had to do:
 ```
-spack load ~/perlmutter_gpu_warpx.profile
+source ~/perlmutter_gpu_warpx.profile
 module unload cray-hdf5-parallel # Unloads version 1.12
 module load cray-hdf5-parallel # Loads version 1.14
 export HDF5_DIR=/opt/cray/pe/hdf5-parallel/1.14.3.1
