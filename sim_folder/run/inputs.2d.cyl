@@ -22,7 +22,6 @@ castro.do_hydro = 1 #time-advance the fluid dynamical equations
 castro.do_react = 0 // Here, reactions (ionization) are included as ext_src
 castro.add_ext_src = 1
 castro.diffuse_temp = 1
-castro.diffuse_use_amrex_mlmg = 0
 
 # Get correct geometric terms in cylindrical
 # (See https://github.com/AMReX-Astro/Castro/issues/3099)
@@ -43,7 +42,7 @@ amr.max_level       = 3       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 5       # how often to regrid
 amr.blocking_factor = 8       # block factor in grid generation
-amr.max_grid_size   = 128
+amr.max_grid_size   = 256
 
 amr.refinement_indicators = dengrad pressgrad
 
