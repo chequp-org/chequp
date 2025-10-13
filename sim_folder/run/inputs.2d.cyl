@@ -7,7 +7,7 @@ geometry.is_periodic =  0 0 # Not periodic in either x or z
 geometry.coord_sys   =  1       # r-z coordinates
 geometry.prob_lo     =  0    0
 geometry.prob_hi     =  0.06 0.06
-amr.n_cell           =  32   32   #number of cells in each direction at the coarsest level
+amr.n_cell           = 32   32 #number of cells in each direction at the coarsest level
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
