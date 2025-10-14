@@ -82,6 +82,17 @@ cd ../analysis
 jupyter notebook Analysis.ipynb
 ```
 
+# Test the code
+
+To run the test suite:
+
+- Compile the code in 1D, in the folder `sim_folder/build`
+- From the root directory, run:
+```
+py.test -q tests
+```
+
+
 # More info on the simulations
 
 Castro documentation: https://amrex-astro.github.io/Castro/docs/
