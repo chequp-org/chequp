@@ -2,27 +2,42 @@ import numpy as np
 import numba
 import math
 import tqdm
+import os
 from scipy.special import gamma
 from scipy.constants import m_e, c, e, hbar, physical_constants, epsilon_0, k
 import pandas as pd
 import openpmd_api as io
+import re
 
 def get_adk_parameters():
     """
     Return arrays needed for calculation of ADK ionization rates
     """
-    # Define ionization levels for H and N species
-    ionization_levels = [
-        { 'species_name': 'H', 'initial_charge': 0, 'final_charge': 1, 'Uion_eV': 13.6 },
-        { 'species_name': 'N', 'initial_charge': 0, 'final_charge': 1, 'Uion_eV': 14.53 },
-        { 'species_name': 'N', 'initial_charge': 1, 'final_charge': 2, 'Uion_eV': 29.60 },
-        { 'species_name': 'N', 'initial_charge': 2, 'final_charge': 3, 'Uion_eV': 47.45 },
-        { 'species_name': 'N', 'initial_charge': 3, 'final_charge': 4, 'Uion_eV': 77.47 },
-        { 'species_name': 'N', 'initial_charge': 4, 'final_charge': 5, 'Uion_eV': 97.89 }
-    ]
+    from fbpic.particles.elementary_process.ionization.read_atomic_data import get_ionization_energies
 
-    # Species keys for population tracking
-    species_keys = ['H0', 'H1', 'N0', 'N1', 'N2', 'N3', 'N4', 'N5']
+    # Parse the name of the species that are used in Castro
+    build_dir = '../sim_folder/build'
+    with open(os.path.join(build_dir, 'species.net'), 'r') as f:
+        species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
+
+    # Automatically find information about each transition
+    ionization_levels = []
+    for species_key in species_keys:
+        # Parse the species name and initial charge
+        species_name = re.findall(r'[A-Z][a-z]*', species_key)[0]
+        initial_charge = int(re.findall(r'\d', species_key)[0])
+        # Only consider transitions if the final state is in species_keys
+        if species_name + str(initial_charge + 1) in species_keys:
+            # Get the ionization energy
+            Uion_eV = get_ionization_energies(species_name)[initial_charge] / e
+            # Add the transition to the list
+            ionization_levels.append( {
+                'species_name': species_name,
+                'initial_charge': initial_charge,
+                'final_charge': initial_charge + 1,
+                'Uion_eV': Uion_eV
+            } )
+
     num_species = len(species_keys)
     num_transitions = len(ionization_levels)
 
