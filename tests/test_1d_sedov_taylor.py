@@ -1,13 +1,14 @@
 """
 This script tests that the 1D code produce the correct Sedov-Taylor blast wave solution.
 
-It assumes that the code has already been compiled and that the executable
-is in ../sim_folder/build/Castro1d.gnu.MPI.ex
+It assumes that the code has already been compiled in ../sim_folder/build/
 """
 import subprocess
 import re
 import numpy as np
 import sys
+import glob
+import os
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
 
@@ -17,7 +18,19 @@ def run_castro_simulation(runtime_options):
 
     Raise an error and print stdout/stderr if the command fails.
     """
-    executable = "../sim_folder/build/Castro1d.gnu.MPI.ex"
+    # Find the Castro executable
+    build_dir = "../sim_folder/build"
+    executables = glob.glob( os.path.join(build_dir, "Castro1d*") )
+    if len(executables) == 0:
+        raise FileNotFoundError(f"No Castro1d executable found in {build_dir}")
+    elif len(executables) > 1:
+        raise RuntimeError(f"Multiple Castro1d executables found: {executables}")
+    executable = executables[0]
+
+    # Remove previously generated plotfiles and checkpoints
+    os.system(f"rm -rf plt_* chck* amr_diag.out species_diag.out grid_diag.out")
+
+    # Run the code
     inputs = "../sim_folder/run/inputs.1d.cyl"
     command = f"{executable} {inputs} {runtime_options}"
     try:
