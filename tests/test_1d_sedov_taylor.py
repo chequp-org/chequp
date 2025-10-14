@@ -53,9 +53,9 @@ def test_1d_sedov_taylor():
     Test that the 1D code produce the correct Sedov-Taylor blast wave solution.
     """
     # Generate openPMD inital conditions:
-    # High-temperature plasma in the first 5 microns, low-temperature plasma in the rest
-    r = np.linspace(0, 100e-6, 1024)
-    T_eV = np.ones_like(r) * 2000
+    # 1000eV plasma in the first 5 microns, low-temperature plasma in the rest
+    r = np.linspace(0, 10e-6, 1024)
+    T_eV = np.ones_like(r) * 1000
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
