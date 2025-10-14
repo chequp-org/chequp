@@ -42,13 +42,13 @@ def test_1d_sedov_taylor():
     # Generate openPMD inital conditions:
     # High-temperature plasma in the first 5 microns, low-temperature plasma in the rest
     r = np.linspace(0, 100e-6, 1024)
-    T_eV = np.where( r < 5e-6, 20, 0.01 )
+    T_eV = np.ones_like(r) * 2000
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
     populations = np.zeros((len(r), len(species_keys)))
-    # Set fraction to 1 for H neutral
-    populations[:, species_keys.index('H0')] = 1
+    # Set fraction to 1 for H+
+    populations[:, species_keys.index('H1')] = 1
     # Save file
     save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
         T_eV, '1d_sedov_taylor.h5', species_keys)
