@@ -88,7 +88,10 @@ To run the test suite:
 
     - In the folder `sim_folder/build`, compile the code in 1D
 
-    - In the folder `tests`, run `py.test`
+    - In the folder `tests`, run:
+    ```
+    py.test
+    ```
 
 # More info on the simulations
 
