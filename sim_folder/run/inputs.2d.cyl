@@ -16,6 +16,7 @@ amr.n_cell           = 32   32 #number of cells in each direction at the coarses
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 castro.lo_bc       =  3   3
 castro.hi_bc       =  2   2 #Outflow in all directions
+castro.allow_non_unit_aspect_zones = 1
 
 # WHICH PHYSICS
 castro.do_hydro = 1 #time-advance the fluid dynamical equations
