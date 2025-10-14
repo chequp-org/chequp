@@ -246,6 +246,8 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
 
     # Prepare array of initial populations
     initial_populations = np.array([initial_populations.get(key, 0) for key in species_keys])
+    # Check that the sum is 1 to machine precision
+    assert np.abs(np.sum(initial_populations) - 1) < 1.e-10
 
     # Flatten, and prepare arrays for temperature and population
     a0_flat = a0_array.flatten()
