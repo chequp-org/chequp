@@ -225,8 +225,9 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
         Laser pulse FWHM duration (s)
     ell : array-like
         Polarization vector [2-element array]
-    initial_populations : array-like
-        Initial population fractions [H_0, H_1, N_0, N_1, N_2, N_3, N_4, N_5]
+    initial_populations : dictionary
+        Dictionary with elements of species_keys as keys and initial population fractions as values
+        If an element from species_keys is not in the dictionary, it is assumed to be 0
     output_file : str, optional
         Filename to save openPMD output with radius, temperature and populations
     r_coords : array-like, optional
@@ -243,10 +244,13 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     # Convert intensity to normalized vector potential a0
     a0_array = e * lambd / (np.pi * m_e * c) * np.sqrt(intensity_nd / (2 * epsilon_0 * c**3))
 
+    # Prepare array of initial populations
+    initial_populations = np.array([initial_populations.get(key, 0) for key in species_keys])
+
     # Flatten, and prepare arrays for temperature and population
     a0_flat = a0_array.flatten()
     T_flat = np.zeros_like(a0_flat)
-    all_populations_flat = np.zeros((len(a0_flat), len(initial_populations)))
+    all_populations_flat = np.zeros((len(a0_flat), len(species_keys)))
 
     # Process nD profile
     for i in tqdm.tqdm(range(len(a0_flat)), desc=f"Processing {a0_array.ndim}D multi-species profile"):
@@ -259,7 +263,7 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
         )
 
     # Reshape back to nD arrays
-    all_populations = all_populations_flat.reshape(a0_array.shape + (len(initial_populations),))
+    all_populations = all_populations_flat.reshape(a0_array.shape + (len(species_keys),))
     T_array = T_flat.reshape(a0_array.shape)
 
     # Save detailed CSV output with all species
