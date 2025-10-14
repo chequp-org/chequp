@@ -86,12 +86,9 @@ jupyter notebook Analysis.ipynb
 
 To run the test suite:
 
-- Compile the code in 1D, in the folder `sim_folder/build`
-- From the root directory, run:
-```
-py.test -q tests
-```
+    - In the folder `sim_folder/build`, compile the code in 1D
 
+    - In the folder `tests`, run `py.test`
 
 # More info on the simulations
 
