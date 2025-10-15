@@ -70,6 +70,9 @@ def test_1d_sedov_taylor():
     # Run the code
     run_castro_simulation("castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
 
+    # Check the results
+    # TODO: Compare the results with Sedov-Taylor theory
+    # Evaluate checksum
     evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
 
 if __name__ == "__main__":
