@@ -2,9 +2,76 @@ import numpy as np
 import numba
 import math
 import tqdm
+from scipy.special import gamma
 from scipy.constants import m_e, c, e, hbar, physical_constants, epsilon_0, k
 import pandas as pd
 import openpmd_api as io
+
+def get_adk_parameters():
+    """
+    Return arrays needed for calculation of ADK ionization rates
+    """
+    # Define ionization levels for H and N species
+    ionization_levels = [
+        { 'species_name': 'H', 'initial_charge': 0, 'final_charge': 1, 'Uion_eV': 13.6 },
+        { 'species_name': 'N', 'initial_charge': 0, 'final_charge': 1, 'Uion_eV': 14.53 },
+        { 'species_name': 'N', 'initial_charge': 1, 'final_charge': 2, 'Uion_eV': 29.60 },
+        { 'species_name': 'N', 'initial_charge': 2, 'final_charge': 3, 'Uion_eV': 47.45 },
+        { 'species_name': 'N', 'initial_charge': 3, 'final_charge': 4, 'Uion_eV': 77.47 },
+        { 'species_name': 'N', 'initial_charge': 4, 'final_charge': 5, 'Uion_eV': 97.89 }
+    ]
+
+    # Species keys for population tracking
+    species_keys = ['H0', 'H1', 'N0', 'N1', 'N2', 'N3', 'N4', 'N5']
+    num_species = len(species_keys)
+    num_transitions = len(ionization_levels)
+
+    # Calculate ADK parameters for all transitions
+    UH = 13.6 * e
+    alpha = physical_constants['fine-structure constant'][0]
+    r_e = physical_constants['classical electron radius'][0]
+    wa = alpha**3 * c / r_e
+    Ea = m_e*c**2/e * alpha**4/r_e
+
+    # Calculate l_eff for each species based on their ground state. Generalized for future additions like helium
+    species_l_eff = {}
+    for transition_dict in ionization_levels:
+        species_name = transition_dict['species_name']
+        # Only calculate l_eff for ground state (initial_charge = 0)
+        if transition_dict['initial_charge'] == 0 and species_name not in species_l_eff:
+            ground_state_Uion = transition_dict['Uion_eV'] * e
+            ground_state_Z = transition_dict['final_charge']
+            ground_state_n_eff = ground_state_Z * np.sqrt(UH/ground_state_Uion)
+            species_l_eff[species_name] = ground_state_n_eff - 1
+
+    for transition_dict in ionization_levels:
+        transition_dict['Uion'] = transition_dict['Uion_eV'] * e
+        transition_dict['Z'] = transition_dict['final_charge']
+        transition_dict['n_eff'] = transition_dict['Z'] * np.sqrt( UH/transition_dict['Uion'] )
+        # Use the l_eff calculated from the ground state of this species
+        transition_dict['l_eff'] = species_l_eff[transition_dict['species_name']]
+        transition_dict['C2'] = 2**(2*transition_dict['n_eff']) / (transition_dict['n_eff'] * gamma(transition_dict['n_eff']+transition_dict['l_eff']+1) * gamma(transition_dict['n_eff']-transition_dict['l_eff']))
+        transition_dict['adk_power'] = -(2*transition_dict['n_eff'] - 1)
+        transition_dict['adk_prefactor'] = wa * transition_dict['C2'] * ( transition_dict['Uion']/(2*UH) ) \
+            * ( 2*(transition_dict['Uion']/UH)**(3./2)*Ea )**(2*transition_dict['n_eff'] - 1)
+        transition_dict['adk_exp_prefactor'] = -2./3 * ( transition_dict['Uion']/UH )**(3./2) * Ea
+    # Create numba-compatible arrays
+    adk_prefactors = np.array([d['adk_prefactor'] for d in ionization_levels])
+    adk_powers = np.array([d['adk_power'] for d in ionization_levels])
+    adk_exp_prefactors = np.array([d['adk_exp_prefactor'] for d in ionization_levels])
+
+    # Create arrays that map each transition to its source and target species index
+    source_indices = np.zeros(num_transitions, dtype=np.int64)
+    target_indices = np.zeros(num_transitions, dtype=np.int64)
+    for i, d in enumerate(ionization_levels):
+        source_key = f"{d['species_name']}{d['initial_charge']}"
+        target_key = f"{d['species_name']}{d['final_charge']}"
+        source_indices[i] = species_keys.index(source_key)
+        target_indices[i] = species_keys.index(target_key)
+
+    charges = np.array([float(key[-1]) for key in species_keys], dtype=np.float64)
+
+    return species_keys, adk_prefactors, adk_powers, adk_exp_prefactors, source_indices, target_indices, charges
 
 
 @numba.njit
