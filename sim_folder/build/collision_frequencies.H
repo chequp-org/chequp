@@ -22,7 +22,7 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real n_n, amrex::Real T_e
     const amrex::Real rawLambdaEi = std::log(
         amrex::Real(3.0 / (2.0 * std::sqrt(M_PI))) * std::sqrt(
             amrex::Math::powi<3>(4.0 * M_PI * SI::epsilon0 * SI::k_B * T_e) /
-            (namrex::Math::powi<6>(SI::q_e) * n_e * (1.0 + T_e / T_h))
+            (amrex::Math::powi<6>(SI::q_e) * n_e * (1.0 + T_e / T_h))
         )
     );
     // - Apply lower limit
