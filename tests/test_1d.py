@@ -116,3 +116,4 @@ def test_1d_desy_benchmark():
 
 if __name__ == "__main__":
     test_1d_sedov_taylor()
+    test_1d_desy_benchmark()
