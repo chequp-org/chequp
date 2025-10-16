@@ -2,9 +2,91 @@ import numpy as np
 import numba
 import math
 import tqdm
+import os
+from scipy.special import gamma
 from scipy.constants import m_e, c, e, hbar, physical_constants, epsilon_0, k
 import pandas as pd
 import openpmd_api as io
+import re
+
+def get_adk_parameters():
+    """
+    Return arrays needed for calculation of ADK ionization rates
+    """
+    from fbpic.particles.elementary_process.ionization.read_atomic_data import get_ionization_energies
+
+    # Parse the name of the species that are used in Castro
+    build_dir = '../sim_folder/build'
+    with open(os.path.join(build_dir, 'species.net'), 'r') as f:
+        species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
+
+    # Automatically find information about each transition
+    ionization_levels = []
+    for species_key in species_keys:
+        # Parse the species name and initial charge
+        species_name = re.findall(r'[A-Z][a-z]*', species_key)[0]
+        initial_charge = int(re.findall(r'\d', species_key)[0])
+        # Only consider transitions if the final state is in species_keys
+        if species_name + str(initial_charge + 1) in species_keys:
+            # Get the ionization energy
+            Uion_eV = get_ionization_energies(species_name)[initial_charge] / e
+            # Add the transition to the list
+            ionization_levels.append( {
+                'species_name': species_name,
+                'initial_charge': initial_charge,
+                'final_charge': initial_charge + 1,
+                'Uion_eV': Uion_eV
+            } )
+
+    num_species = len(species_keys)
+    num_transitions = len(ionization_levels)
+
+    # Calculate ADK parameters for all transitions
+    UH = 13.6 * e
+    alpha = physical_constants['fine-structure constant'][0]
+    r_e = physical_constants['classical electron radius'][0]
+    wa = alpha**3 * c / r_e
+    Ea = m_e*c**2/e * alpha**4/r_e
+
+    # Calculate l_eff for each species based on their ground state. Generalized for future additions like helium
+    species_l_eff = {}
+    for transition_dict in ionization_levels:
+        species_name = transition_dict['species_name']
+        # Only calculate l_eff for ground state (initial_charge = 0)
+        if transition_dict['initial_charge'] == 0 and species_name not in species_l_eff:
+            ground_state_Uion = transition_dict['Uion_eV'] * e
+            ground_state_Z = transition_dict['final_charge']
+            ground_state_n_eff = ground_state_Z * np.sqrt(UH/ground_state_Uion)
+            species_l_eff[species_name] = ground_state_n_eff - 1
+
+    for transition_dict in ionization_levels:
+        transition_dict['Uion'] = transition_dict['Uion_eV'] * e
+        transition_dict['Z'] = transition_dict['final_charge']
+        transition_dict['n_eff'] = transition_dict['Z'] * np.sqrt( UH/transition_dict['Uion'] )
+        # Use the l_eff calculated from the ground state of this species
+        transition_dict['l_eff'] = species_l_eff[transition_dict['species_name']]
+        transition_dict['C2'] = 2**(2*transition_dict['n_eff']) / (transition_dict['n_eff'] * gamma(transition_dict['n_eff']+transition_dict['l_eff']+1) * gamma(transition_dict['n_eff']-transition_dict['l_eff']))
+        transition_dict['adk_power'] = -(2*transition_dict['n_eff'] - 1)
+        transition_dict['adk_prefactor'] = wa * transition_dict['C2'] * ( transition_dict['Uion']/(2*UH) ) \
+            * ( 2*(transition_dict['Uion']/UH)**(3./2)*Ea )**(2*transition_dict['n_eff'] - 1)
+        transition_dict['adk_exp_prefactor'] = -2./3 * ( transition_dict['Uion']/UH )**(3./2) * Ea
+    # Create numba-compatible arrays
+    adk_prefactors = np.array([d['adk_prefactor'] for d in ionization_levels])
+    adk_powers = np.array([d['adk_power'] for d in ionization_levels])
+    adk_exp_prefactors = np.array([d['adk_exp_prefactor'] for d in ionization_levels])
+
+    # Create arrays that map each transition to its source and target species index
+    source_indices = np.zeros(num_transitions, dtype=np.int64)
+    target_indices = np.zeros(num_transitions, dtype=np.int64)
+    for i, d in enumerate(ionization_levels):
+        source_key = f"{d['species_name']}{d['initial_charge']}"
+        target_key = f"{d['species_name']}{d['final_charge']}"
+        source_indices[i] = species_keys.index(source_key)
+        target_indices[i] = species_keys.index(target_key)
+
+    charges = np.array([float(key[-1]) for key in species_keys], dtype=np.float64)
+
+    return species_keys, adk_prefactors, adk_powers, adk_exp_prefactors, source_indices, target_indices, charges
 
 
 @numba.njit
@@ -65,42 +147,45 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
 
     return populations, T, t  # Return full populations array
 
-    return ioniz_frac, T, t
 
-def save_to_openpmd(r_coords, all_populations, T_eV, output_file, species_keys):
+def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
     """
     Save with all species populations to an openPMD file
     """
-    # Get spatial resolution
-    dr = np.diff(r_coords).mean()
-    rmin = r_coords.min()
-
     # create openpmd file
     series = io.Series(output_file, io.Access.create)
     # only 1 iteratiion needed
     it = series.iterations[0]
 
+    # Extract information about the grid for openPMD
+    grid_spacing = np.array([ (grid_extent[key][1] - grid_extent[key][0]) / (all_populations.shape[i] - 1)
+        for i, key in enumerate(grid_extent.keys()) ])
+    grid_global_offset = [grid_extent[key][0] for key in grid_extent.keys()]
+    axis_labels = list(grid_extent.keys())
+
     # Save the temperature
     T = it.meshes["T"]
-    T.grid_spacing = np.array([dr])
-    T.grid_global_offset = [rmin]
-    T.axis_labels = ['r']
-    T.position = [0,0,0]
+    T.grid_spacing = grid_spacing
+    T.grid_global_offset = grid_global_offset
+    T.axis_labels = axis_labels
     T.unit_dimension = {io.Unit_Dimension.theta:1}
-    dataset = io.Dataset(T_eV.dtype,T_eV.shape)
-    T.reset_dataset(dataset)
-    T.store_chunk( T_eV * (e/k) ) # Convert eV to K
+    T.position = [0]*len(grid_extent)
+    dataset = io.Dataset(T_eV.dtype, T_eV.shape)
+    T_scalar = T[io.Mesh_Record_Component.SCALAR]
+    T_scalar.reset_dataset(dataset)
+    T_scalar.store_chunk(T_eV * (e/k))  # Convert eV to K
 
     # Save the species fractions
     for i, species_key in enumerate(species_keys):
         pop = it.meshes[species_key + "_fraction"]
-        pop.grid_spacing = np.array([dr])
-        pop.grid_global_offset = [rmin]
-        pop.axis_labels = ['r']
-        pop.position = [0,0,0]
-        dataset = io.Dataset(all_populations[:, i].dtype, all_populations[:, i].shape)
-        pop.reset_dataset(dataset)
-        pop.store_chunk( all_populations[:, i].copy() )
+        pop.grid_spacing = grid_spacing
+        pop.grid_global_offset = grid_global_offset
+        pop.axis_labels = axis_labels
+        pop.position = [0]*len(grid_extent)
+        dataset = io.Dataset(all_populations[..., i].dtype, all_populations[..., i].shape)
+        pop_scalar = pop[io.Mesh_Record_Component.SCALAR]
+        pop_scalar.reset_dataset(dataset)
+        pop_scalar.store_chunk(all_populations[..., i].copy())
 
     series.flush()
 
@@ -126,7 +211,7 @@ def load_intensity_profile(filename):
 def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges, species_keys,
-            initial_populations, output_file=None, r_coords=None):
+            initial_populations, output_file=None, grid_extent=None):
     """
     Process nD intensity array for multi-species plasma
 
@@ -140,8 +225,9 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
         Laser pulse FWHM duration (s)
     ell : array-like
         Polarization vector [2-element array]
-    initial_populations : array-like
-        Initial population fractions [H_0, H_1, N_0, N_1, N_2, N_3, N_4, N_5]
+    initial_populations : dictionary
+        Dictionary with elements of species_keys as keys and initial population fractions as values
+        If an element from species_keys is not in the dictionary, it is assumed to be 0
     output_file : str, optional
         Filename to save openPMD output with radius, temperature and populations
     r_coords : array-like, optional
@@ -158,10 +244,15 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     # Convert intensity to normalized vector potential a0
     a0_array = e * lambd / (np.pi * m_e * c) * np.sqrt(intensity_nd / (2 * epsilon_0 * c**3))
 
+    # Prepare array of initial populations
+    initial_populations = np.array([initial_populations.get(key, 0) for key in species_keys])
+    # Check that the sum is 1 to machine precision
+    assert np.abs(np.sum(initial_populations) - 1) < 1.e-10
+
     # Flatten, and prepare arrays for temperature and population
     a0_flat = a0_array.flatten()
     T_flat = np.zeros_like(a0_flat)
-    all_populations_flat = np.zeros((len(a0_flat), len(initial_populations)))
+    all_populations_flat = np.zeros((len(a0_flat), len(species_keys)))
 
     # Process nD profile
     for i in tqdm.tqdm(range(len(a0_flat)), desc=f"Processing {a0_array.ndim}D multi-species profile"):
@@ -174,11 +265,11 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
         )
 
     # Reshape back to nD arrays
-    all_populations = all_populations_flat.reshape(a0_array.shape + (len(initial_populations),))
+    all_populations = all_populations_flat.reshape(a0_array.shape + (len(species_keys),))
     T_array = T_flat.reshape(a0_array.shape)
 
     # Save detailed CSV output with all species
-    if output_file and r_coords is not None:
-        save_to_openpmd(r_coords, all_populations, T_array, output_file, species_keys)
+    if output_file and grid_extent is not None:
+        save_to_openpmd(grid_extent, all_populations, T_array, output_file, species_keys)
 
     return all_populations, T_array

@@ -23,7 +23,14 @@
 // - Memory-owning object
 static amrex::Gpu::DeviceVector<Real> d_table_flat;
 // - Multi-dimensional view of the memory
+#if AMREX_SPACEDIM == 1
 AMREX_GPU_DEVICE static amrex::Table2D<Real,amrex::Order::C> d_initial_conditions_table;
+#elif AMREX_SPACEDIM == 2
+AMREX_GPU_DEVICE static amrex::Table3D<Real,amrex::Order::C> d_initial_conditions_table;
+#elif AMREX_SPACEDIM == 3
+AMREX_GPU_DEVICE static amrex::Table4D<Real,amrex::Order::C> d_initial_conditions_table;
+#endif
+
 // Meta-data about the grid point positions for the above table
 AMREX_GPU_DEVICE static RealVect d_grid_spacing;
 AMREX_GPU_DEVICE static RealVect d_grid_offset;
@@ -83,7 +90,6 @@ inline void read_initial_conditions()
         // Read data directly into the table column
         H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                 table_flat.data() + col*dataset_size);
-
         H5Dclose(dataset);
     }
     H5Fclose(file_id);
@@ -97,19 +103,32 @@ inline void read_initial_conditions()
     d_table_flat = table_flat;
 #endif
 
-    // Create multi-dimensional Table object that points to `d_table_flat`
+    // Copy data into Table object
+#if AMREX_SPACEDIM == 1
     auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
-        (d_table_flat.data(), {0, 0}, {NumSpec+1, dataset_size});
+        (d_table_flat.data(), {0, 0}, {NumSpec+1, shape_array[0]});
+#elif AMREX_SPACEDIM == 2
+    auto initial_conditions_table = amrex::Table3D<Real,amrex::Order::C>
+        (d_table_flat.data(), {0, 0, 0}, {NumSpec+1, shape_array[0], shape_array[1]});
+#elif AMREX_SPACEDIM == 3
+    auto initial_conditions_table = amrex::Table4D<Real,amrex::Order::C>
+        (d_table_flat.data(), {0, 0, 0, 0}, {NumSpec+1, shape_array[0], shape_array[1], shape_array[2]});
+#endif
     // Copy grid spacing and offset into static RealVect objects, and convert from m to cm
     auto grid_spacing = RealVect(AMREX_D_DECL(1e2*grid_spacing_array[0], 1e2*grid_spacing_array[1], 1e2*grid_spacing_array[2]));
     auto grid_offset = RealVect(AMREX_D_DECL(1e2*grid_offset_array[0], 1e2*grid_offset_array[1], 1e2*grid_offset_array[2]));
 
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
+#if AMREX_SPACEDIM == 1
     cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table2D<Real,amrex::Order::C>));
+#elif AMREX_SPACEDIM == 2
+    cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table3D<Real,amrex::Order::C>));
+#elif AMREX_SPACEDIM == 3
+    cudaMemcpyToSymbol(d_initial_conditions_table, &initial_conditions_table, sizeof(amrex::Table4D<Real,amrex::Order::C>));
+#endif
     cudaMemcpyToSymbol(d_grid_spacing, &grid_spacing, sizeof(RealVect));
     cudaMemcpyToSymbol(d_grid_offset, &grid_offset, sizeof(RealVect));
-    amrex::Gpu::streamSynchronize();
 #else
     d_initial_conditions_table = initial_conditions_table;
     d_grid_spacing = grid_spacing;
@@ -126,35 +145,81 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     const Real* dx = geomdata.CellSize();
     const Real* problo = geomdata.ProbLo();
 
-    // Get radius for this cell
-    Real x = 0;
-    Real y = 0;
-    Real z = 0;
-    x = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
+    // Get coordinates for this cell
+    Real x0 = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
 #if AMREX_SPACEDIM >= 2
-    if (coord_type == 0) {  // Cartesian
-        y = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
-    } else if (coord_type == 1) {  // Cylindrical
-        y = 0;
-    }
+    Real x1 = problo[1] + dx[1] * (static_cast<Real>(j)+0.5);
 #endif
 #if AMREX_SPACEDIM >= 3
-    z = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
+    Real x2 = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
 #endif
 
-    // Linear interpolation to find ionization fraction and electron temperature
-    Real x_norm = (x - d_grid_offset[0]) / d_grid_spacing[0];
-    int const idx0 =static_cast<int>(x_norm);
+    // Linear interpolation to find population and electron temperature
+    Real x0_norm = (x0 - d_grid_offset[0]) / d_grid_spacing[0];
+    int const idx0 = static_cast<int>(x0_norm);
     // Find interpolation indices. If the coordinates are outside the table, clamp to the nearest edge.
     int const idx0_lo = std::clamp( idx0, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1] );
     int const idx0_hi = std::clamp( idx0 + 1, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1] );
-    Real frac = x_norm - idx0;
+    Real frac0 = x0_norm - idx0;
+#if AMREX_SPACEDIM >= 2
+    Real x1_norm = (x1 - d_grid_offset[1]) / d_grid_spacing[1];
+    int const idx1 = static_cast<int>(x1_norm);
+    int const idx1_lo = std::clamp( idx1, d_initial_conditions_table.begin[2], d_initial_conditions_table.end[2] );
+    int const idx1_hi = std::clamp( idx1 + 1, d_initial_conditions_table.begin[2], d_initial_conditions_table.end[2] );
+    Real frac1 = x1_norm - idx1;
+#endif
+#if AMREX_SPACEDIM >= 3
+    Real x2_norm = (x2 - d_grid_offset[2]) / d_grid_spacing[2];
+    int const idx2 = static_cast<int>(x2_norm);
+    int const idx2_lo = std::clamp( idx2, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3] );
+    int const idx2_hi = std::clamp( idx2 + 1, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3] );
+    Real frac2 = x2_norm - idx2;
+#endif
+
+    // Interpolate the values
     Real interp_values[NumSpec+1];
+#if AMREX_SPACEDIM == 1
+    // 1D linear interpolation
     for (int col = 0; col < NumSpec+1; ++col) {
-        Real val_low = d_initial_conditions_table(col, idx0_lo);
-        Real val_high = d_initial_conditions_table(col, idx0_hi);
-        interp_values[col] = val_low + frac * (val_high - val_low);
+        Real val_0 = d_initial_conditions_table(col, idx0_lo);
+        Real val_1 = d_initial_conditions_table(col, idx0_hi);
+        interp_values[col] = val_0 + frac0 * (val_1 - val_0);
     }
+#elif AMREX_SPACEDIM == 2
+    // 2D bilinear interpolation
+    for (int col = 0; col < NumSpec+1; ++col) {
+        Real val_00 = d_initial_conditions_table(col, idx0_lo, idx1_lo);
+        Real val_10 = d_initial_conditions_table(col, idx0_hi, idx1_lo);
+        Real val_01 = d_initial_conditions_table(col, idx0_lo, idx1_hi);
+        Real val_11 = d_initial_conditions_table(col, idx0_hi, idx1_hi);
+        Real val_0 = val_00 + frac0 * (val_10 - val_00);
+        Real val_1 = val_01 + frac0 * (val_11 - val_01);
+        interp_values[col] = val_0 + frac1 * (val_1 - val_0);
+    }
+#elif AMREX_SPACEDIM == 3
+    // 3D trilinear interpolation
+    for (int col = 0; col < NumSpec+1; ++col) {
+        Real val_000 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_lo);
+        Real val_100 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_lo);
+        Real val_010 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_lo);
+        Real val_110 = d_initial_conditions_table(col, idx0_hi, idx1_hi, idx2_lo);
+        Real val_001 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_hi);
+        Real val_101 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_hi);
+        Real val_011 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_hi);
+        Real val_111 = d_initial_conditions_table(col, idx0_hi, idx1_hi, idx2_hi);
+
+        Real val_00 = val_000 + frac0 * (val_100 - val_000);
+        Real val_10 = val_010 + frac0 * (val_110 - val_010);
+        Real val_01 = val_001 + frac0 * (val_101 - val_001);
+        Real val_11 = val_011 + frac0 * (val_111 - val_011);
+
+        Real val_0 = val_00 + frac1 * (val_10 - val_00);
+        Real val_1 = val_01 + frac1 * (val_11 - val_01);
+        interp_values[col] = val_0 + frac2 * (val_1 - val_0);
+    }
+#endif
+
+    // Extract data from interpolated array
     Real Te = interp_values[0];
     Real number_fractions[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
