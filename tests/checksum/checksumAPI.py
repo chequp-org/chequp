@@ -25,10 +25,10 @@ import sys
 import os
 
 '''
-API for HiPACE++ checksum tests. It can be used in two ways:
+API for castro_sim checksum tests. It can be used in two ways:
 
 - Directly use functions below to make a checksum test from a python script.
-  Example: add these lines to a HiPACE++ CI Python analysis script to run the
+  Example: add these lines to a castro_sim CI Python analysis script to run the
            checksum test.
     > import checksumAPI
     > checksumAPI.evaluate_checksum(test_name, file_name)
