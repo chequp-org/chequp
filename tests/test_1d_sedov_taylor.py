@@ -11,6 +11,7 @@ import glob
 import os
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
+from checksum.checksumAPI import evaluate_checksum
 
 def run_castro_simulation(runtime_options):
     """
@@ -69,8 +70,10 @@ def test_1d_sedov_taylor():
     # Run the code
     run_castro_simulation("castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
 
-    # TODO: Compare the results with the correct solution
-    pass
+    # Check the results
+    # TODO: Compare the results with Sedov-Taylor theory
+    # Evaluate checksum
+    evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
 
 if __name__ == "__main__":
     test_1d_sedov_taylor()
