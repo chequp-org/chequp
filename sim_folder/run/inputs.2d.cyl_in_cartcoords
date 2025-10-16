@@ -53,7 +53,7 @@ amr.refine.pressgrad.field_name = pressure
 # PLOTFILES
 amr.plot_file       = plt_2d_
 amr.plot_int        = 10
-amr.derive_plot_vars=ALL
+amr.derive_plot_vars=NONE
 
 # PROBLEM PARAMETERS
 problem.initial_conditions_file = "example_initial_conditions.csv"
