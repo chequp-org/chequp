@@ -13,6 +13,11 @@ sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
 from checksum.checksumAPI import evaluate_checksum
 
+def cleanup_outputs(extra_file = ""):
+    # Remove previously generated plotfiles and checkpoints
+    os.system(f"rm -rf plt_* chk* amr_diag.out species_diag.out grid_diag.out " + extra_file)
+
+
 def run_castro_simulation(runtime_options):
     """
     Run the Castro simulation.
@@ -28,8 +33,7 @@ def run_castro_simulation(runtime_options):
         raise RuntimeError(f"Multiple Castro1d executables found: {executables}")
     executable = executables[0]
 
-    # Remove previously generated plotfiles and checkpoints
-    os.system(f"rm -rf plt_* chck* amr_diag.out species_diag.out grid_diag.out")
+    cleanup_outputs()
 
     # Run the code
     inputs = "../sim_folder/run/inputs.1d.cyl"
@@ -78,6 +82,9 @@ def test_1d_sedov_taylor():
     # Evaluate checksum
     evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
 
+    # Remove generated plotfiles and checkpoints
+    cleanup_outputs('1d_sedov_taylor.h5')
+
 def test_1d_desy_benchmark():
     """
     Test the code in the scenario that benchmarked with DESY team
@@ -112,6 +119,9 @@ def test_1d_desy_benchmark():
 
     # Evaluate checksum
     evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
+
+    # Remove generated plotfiles and checkpoints
+    cleanup_outputs('1d_desy_benchmark.h5')
 
 
 if __name__ == "__main__":
