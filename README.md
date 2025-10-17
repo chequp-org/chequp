@@ -93,7 +93,7 @@ To run the test suite:
 py.test
 ```
 
-# Add a new test
+## Add a new test
 
 - In `test_1d.py`, add a new `test_<test name>` function similar to the existing ones.
 
