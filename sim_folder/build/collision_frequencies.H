@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <AMReX.H>
+#include <AMReX_Math.H>
 
 namespace SI {
     const double k_B = 1.380649e-23; // Boltzmann constant in J/K
@@ -19,17 +20,17 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real n_n, amrex::Real T_e
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
     // - Calculate Lambda_ei
     const amrex::Real rawLambdaEi = std::log(
-        (3.0 / (2.0 * std::sqrt(M_PI))) * std::sqrt(
-            std::pow(4.0 * M_PI * SI::epsilon0 * SI::k_B * T_e, 3) /
-            (std::pow(SI::q_e, 6) * n_e * (1.0 + T_e / T_h))
+        amrex::Real(3.0 / (2.0 * std::sqrt(M_PI))) * std::sqrt(
+            amrex::Math::powi<3>(4.0 * M_PI * SI::epsilon0 * SI::k_B * T_e) /
+            (amrex::Math::powi<6>(SI::q_e) * n_e * (1.0 + T_e / T_h))
         )
     );
     // - Apply lower limit
     const amrex::Real Lambda_ei = std::max(rawLambdaEi, 0.5 * std::log(2.0));
     // - Calculate v_ei using the corrected expression
     v_ei = (4.0 / 3.0) * std::sqrt(2.0 * M_PI / SI::m_e) *
-        (n_e * std::pow(SI::q_e, 4) * Lambda_ei) /
-        (std::pow(4.0 * M_PI * SI::epsilon0, 2) * std::pow(SI::k_B * T_e, 1.5));
+        (n_e * amrex::Math::powi<4>(SI::q_e) * Lambda_ei) /
+        (amrex::Math::powi<2>(4.0 * M_PI * SI::epsilon0) * (SI::k_B * T_e) * std::sqrt(SI::k_B * T_e));
 
     // Compute frequency of electron-neutral collisions (Eq. A5 in https://arxiv.org/pdf/2305.16779)
     // - Find mean energy and reduced mass
@@ -44,9 +45,9 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real n_n, amrex::Real T_e
         const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
         log_sigma_m2 = -4.28906183e+01
             -3.20501602e-01*log_E_eV
-            -9.75994914e-02*std::pow(log_E_eV, 2)
-            -1.72242991e-02*std::pow(log_E_eV, 3)
-            + 2.59407262e-03*std::pow(log_E_eV, 4);
+            -9.75994914e-02*amrex::Math::powi<2>(log_E_eV)
+            -1.72242991e-02*amrex::Math::powi<3>(log_E_eV)
+            + 2.59407262e-03*amrex::Math::powi<4>(log_E_eV);
     }
     const amrex::Real sigma_m2 = std::exp(log_sigma_m2);
     // - Calculate frequency of electron-neutral collisions

@@ -6,6 +6,7 @@
 #include <network.H>
 #include <extern_parameters.H>
 #include <collision_frequencies.H>
+#include <AMReX_Math.H>
 
 
 AMREX_FORCE_INLINE
@@ -45,7 +46,8 @@ actual_conductivity (T& state)
     // Calculate thermal conductivity using Eq. B1 in https://arxiv.org/pdf/2305.16779
     // The coefficient 3.16 comes from matching the Spitzer-Harm conductivity
     // in the fully ionized case (v_en = 0)
-    const amrex::Real conductivitySI =  std::pow(SI::k_B, 2) * n_e * T_e / SI::m_e / (2*M_PI/15 * v_en + 1/3.16 * v_ei );
+    const amrex::Real conductivitySI =  SI::k_B * SI::k_B * n_e * T_e
+        / (SI::m_e * amrex::Real((2*M_PI/15) * v_en + amrex::Real(1/3.16) * v_ei));
     // SI to cgs conversion factor for thermal conductivity
     const amrex::Real si_to_cgs_conversion_factor = 1e5; // (10^7 erg/J) / (10^2 cm/m)
 
