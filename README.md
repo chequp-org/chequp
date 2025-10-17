@@ -86,12 +86,25 @@ jupyter notebook Analysis.ipynb
 
 To run the test suite:
 
-    - In the folder `sim_folder/build`, compile the code in 1D
+- In the folder `sim_folder/build`, compile the code in 1D
 
-    - In the folder `tests`, run:
-    ```
-    py.test
-    ```
+- In the folder `tests`, run:
+```
+py.test
+```
+
+# Add a new test
+
+- In `test_1d.py`, add a new `test_<test name>` function similar to the existing ones.
+
+- Make a new file at `tests/checksum/benchmarks_json/<test name>.json` containing `{}`.
+
+- Run all tests using `py.test`. The checksum of the new test should fail and
+  print the new json file to the console.
+
+- Copy the json from the console output into the `<test name>.json` file.
+
+- Verify that `py.test` now passes.
 
 # More info on the simulations
 
