@@ -206,7 +206,7 @@ def test_1d_desy_benchmark():
     """
     # Generate openPMD inital conditions according to the agreed-upon benchmark
     sigma1 = 38e-6  # in m
-    sigma2 = 35e-6 # in m
+    sigma2 = 35e-6  # in m
     Te_max = 27 # in eV
     Ta = 0.03 # in eV
     print('Generating initial conditions...')
