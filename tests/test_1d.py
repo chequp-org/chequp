@@ -11,24 +11,33 @@ import yt
 import glob
 import os
 import openpmd_api
+import time
+import h5py
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
 sys.path.append('../sim_folder/analysis/')
 from analysis_tool import CastroSimulation
+sys.path.append('../theory/sedov_theory/python/')
+from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
 from scipy.constants import m_p, k
+from scipy.optimize import curve_fit
 
 def cleanup_outputs(extra_file = ""):
     # Remove previously generated plotfiles and checkpoints
     os.system(f"rm -rf plt_* chk* amr_diag.out species_diag.out grid_diag.out " + extra_file)
 
+
 class physical_test_1d:
-    def __init__(self, folder_name):
+
+    def __init__(self, folder_name, init_param = (5.0 / 3.0, 1205.9, 1.67e-6)):
         self.folder_name = folder_name
         self.file_start = 'plt_1d_'
         self.cs = CastroSimulation(folder_name, self.file_start)
         self.t_arr, self.r_arr, self.rmax_arr, self.q_arr = self.open_rt('density')
-        
+        self.sol = SedovTalorProblem(*init_param)
+        self.E0 = init_param[1]
+
     def open_rt(self, data_type):
         level=3
         """Extract rmax for each output time."""
@@ -41,8 +50,59 @@ class physical_test_1d:
             q_arr.append(q)
             r_arr.append(r)
         return np.array(t_arr), np.array(r_arr), np.array(rmax_arr), np.stack(q_arr)
+    
+    def fit_power_mc(self):
+        from scipy.optimize import curve_fit, OptimizeWarning
+        import warnings
 
-    def compute_energies(self):
+        # --- Monte Carlo parameters ---
+        n_mc = 1000
+        rng = np.random.default_rng(42)
+        sigma_frac = 0.05  # relative uncertainty (5%)
+
+        # --- Model definition (no t0) ---
+        def power_law(t, a):
+            return a * np.sqrt(t)
+
+        # --- Data ---
+        t_arr = np.asarray(self.t_arr)
+        rmax_arr = np.asarray(self.rmax_arr)
+
+        # --- Base fit (initial guess) ---
+        a0 = np.max(rmax_arr) / np.sqrt(np.max(t_arr)) if np.max(t_arr) > 0 else 1.0
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=OptimizeWarning)
+            popt, _ = curve_fit(power_law, t_arr, rmax_arr, p0=[a0], maxfev=10000)
+        a_fit = popt[0]
+
+        # --- Default sigma (5% of signal) ---
+        sigma = sigma_frac * rmax_arr
+
+        # --- Monte Carlo loop ---
+        a_samples = []
+        fits = np.empty((n_mc, len(t_arr)))
+
+        for i in range(n_mc):
+            rmax_noisy = rng.normal(rmax_arr, sigma)
+            try:
+                popt_i, _ = curve_fit(power_law, t_arr, rmax_noisy, p0=[a_fit], maxfev=10000)
+                a_i = popt_i[0]
+                fits[i] = power_law(t_arr, a_i)
+                a_samples.append(a_i)
+            except RuntimeError:
+                fits[i] = np.nan  # mark failed fits
+
+        # --- Clean failed fits ---
+        valid = ~np.isnan(fits).any(axis=1)
+        fits = fits[valid]
+        a_samples = np.array(a_samples)
+
+        # --- Statistics ---
+        rmax_fit_mean = np.mean(fits, axis=0)
+
+        return rmax_fit_mean
+
+    def test_energy(self, tol: int = 10):
         """
         Compute thermal, kinetic, and potential energies over time.
         """
@@ -92,37 +152,52 @@ class physical_test_1d:
             E_th_K_arr.append(E_th)
             E_pot_arr.append(E_pot)
 
-        E_total_arr = np.array(E_th_K_arr) +  np.array(E_pot_arr)
-        var_E = np.var(E_total_arr)
-        # Relative deviation in percent
-        dev_percent = 100 * (E_total_arr - np.mean(E_total_arr)) / np.mean(E_total_arr)
+        E_total_arr = (np.array(E_th_K_arr) +  np.array(E_pot_arr))
 
-        # RMS deviation in percent
-        rms_percent = np.sqrt(np.mean(dev_percent**2))
+        # compute percent relative errors and evaluate test
+        test, value = np.mean(np.abs((E_total_arr - np.mean(E_total_arr))) / E_total_arr) * 100 < tol, np.mean(np.abs((E_total_arr - np.mean(E_total_arr))) / E_total_arr) * 100
+        return bool(test), float(value)
 
-        # Maximum deviation in percent
-        max_percent = np.max(np.abs(dev_percent))
-        if max_percent < 1.0:
-            return True
-        else :
-            return [max_percent, rms_percent]
+    def test_rho_r(self, tol: int = 15):
+        """
+        Compare radial density profiles at several output times to the analytical solution.
+        Returns True if the mean relative L2 error is below 15%.
+        """
+        indices = np.arange(0.7, 0.99, 0.05) * len(self.t_arr)
+        errors = []
+        for idx in np.unique(indices):
+            idx = int(idx)
+            r = self.r_arr[idx]
+            rho_sim = self.q_arr[idx]
+            t = self.t_arr[idx]
 
-    def test_rho_r(self):
-        L_error = []
-        for i, rand_idx in enumerate(np.arange() * len(self.r_arr)):
-            r, rho_sim, t = self.r_arr[int(rand_idx)], self.q_arr[int(rand_idx)], self.t_arr[int(rand_idx)]
-            rho_analytical = self.sol.evaluate( 'density', r, t)
-            min_idx = min(np.argmax(rho_analytical), np.argmax(rho_sim))
-            error = np.linalg.norm(rho_analytical[:min_idx]-rho_sim[:min_idx])/np.linalg.norm(rho_sim[:min_idx])
-            L_error.append(error)
-        glob_error = np.mean(np.array(L_error))
-        if glob_error < 0.15 :# error under 15%
-            True
-        else :
-            False
+            rho_analytical = self.sol.evaluate('density', r, t)
 
-    def test_r_t(self):
-        return True
+            # compare up to the first peak present in both profiles
+            peak_idx = min(np.argmax(rho_analytical), np.argmax(rho_sim))
+            if r[peak_idx] > 1e-2: # dont compared for low blast radius
+                denom = np.linalg.norm(rho_sim[:peak_idx])
+                err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx]) / denom
+                errors.append(err)
+
+        mean_error = float(np.mean(errors)) * 100
+        return mean_error < tol, mean_error
+
+    def test_r_t(self, tol: int = 10):
+        """
+        Compare the fitted shock radius to the analytical Sedov-Taylor radius.
+
+        Returns True if the relative L2 error is below `tol`, False otherwise.
+        """
+        # Get fitted and analytical radii
+        r_sim = np.asarray(self.fit_power_mc())
+        r_analytical = np.asarray(self.sol.blast_radius(self.t_arr))
+
+        # Compute relative L2 error, handle zero-norm reference safely
+        denom = np.linalg.norm(r_analytical)
+        err = np.linalg.norm(r_sim - r_analytical)
+        rel_err = err / denom * 100
+        return rel_err < tol, rel_err
 
 def run_castro_simulation(runtime_options):
     """
@@ -158,8 +233,6 @@ def run_castro_simulation(runtime_options):
         print("STDERR:", e.stderr)
         raise
 
-
-
 def test_1d_sedov_taylor():
     """
     Test that code produce the exact Sedov-Taylor blast wave solution, in a simplified setup:
@@ -172,27 +245,45 @@ def test_1d_sedov_taylor():
     # 1000eV plasma in the first 5 microns, low-temperature plasma in the rest
     r = np.linspace(0, 10e-6, 1024)
     sigma = 4e-6
+    sigma_H = 1.0e-6
     T_eV = np.ones_like(r) * 1000 * np.exp(-r**2/sigma**2)
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
     populations = np.zeros((len(r), len(species_keys)))
     # Set fraction to 1 for H+
-    populations[:, species_keys.index('H1')] = 1
+    populations[:, species_keys.index('H1')] = np.where(r <= 7e-6, 1.0, np.exp(-((r - 7e-6)/sigma_H)**2))
+    populations[:, species_keys.index('H0')] = 1 - np.where(r <= 7e-6, 1.0, np.exp(-((r - 7e-6)/sigma_H)**2))
     # Save file
     save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
         T_eV, '1d_sedov_taylor.h5', species_keys)
 
     # Run the code
-    print("Running simulation...")
+    print("Starting simulation...")
+    time_s = time.time()
     run_castro_simulation("problem.initial_conditions_file=1d_sedov_taylor.h5")
-
+    time_e = time.time()
+    print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
-    print("Running physical tests...")
-    phys_test = physical_test_1d('.')
-    test_rho = phys_test.test_rho_r()
+    print("Running physical tests...\n")
+    phys_test = physical_test_1d('.', init_param = (5.0 / 3.0, 1205.9, 1.67e-6))
+    test_rho, val_rho = phys_test.test_rho_r(tol = 15)
     if test_rho :
-        print("Test density profile : PASS")
+        print(f"\t Test density profile : PASSED (rel. err. = {val_rho:.1f} % < 15 % tol.)")
+    else :
+        print(f"\t Test density profile : FAILED (rel. err. = {val_rho:.1f} % > 15 % tol.)")
+    test_r_t, val_r_t = phys_test.test_r_t(tol = 10)
+    if test_r_t :
+        print(f"\t Test shock radius vs time : PASSED (rel. err. = {val_r_t:.1f} % < 10 % tol.)")
+    else :
+        print(f"\t Test shock radius vs time : FAILED (rel. err. = {val_r_t:.1f} % > 10 % tol.)")
+
+    test_energy, val_energy = phys_test.test_energy(tol = 10)
+    if test_energy is True :
+        print(f"\t Test energy conservation : PASSED (Avg. Deviation = {val_energy:.1f} % < 10% tol.)")
+    else :
+        print(f"\t Test energy conservation : FAILED (Avg. Deviation = {val_energy:.1f} % > 10% tol.)")
+
     # Evaluate checksum
     #evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
 
@@ -209,7 +300,6 @@ def test_1d_desy_benchmark():
     sigma2 = 35e-6  # in m
     Te_max = 27 # in eV
     Ta = 0.03 # in eV
-    print('Generating initial conditions...')
     # Create r array from 0 to 6e-4 with 1e-6 increment
     r = np.arange(0, 6e-4 + 1e-6, 1e-6)
     # Calculate ionization fraction, with minimal ionization fraction of 1e-3
@@ -229,18 +319,17 @@ def test_1d_desy_benchmark():
         T_eV, '1d_desy_benchmark.h5', species_keys)
 
     # Run the code
-    print("Running simulation...")
     run_castro_simulation("problem.initial_conditions_file=1d_desy_benchmark.h5")
-    # Physical tests #
-    print("Running physical tests...")
     # Evaluate checksum
-    #evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
+    evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
 
     # Remove generated plotfiles and checkpoints
-    #cleanup_outputs('1d_desy_benchmark.h5')
-
+    cleanup_outputs('1d_desy_benchmark.h5')
 
 
 if __name__ == "__main__":
+    print("\n Starting 1D tests... \n")
     test_1d_sedov_taylor()
+    print("\n 1D Sedov-Taylor test completed. \n")
+
     #test_1d_desy_benchmark()
