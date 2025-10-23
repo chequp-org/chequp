@@ -266,10 +266,10 @@ def test_1d_sedov_taylor():
         print(f"\t Test energy conservation : FAILED (Avg. Deviation = {val_energy:.1e} % > 1% tol.)")
 
     # Evaluate checksum
-    #evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
+    evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
 
     # Remove generated plotfiles and checkpoints
-    #cleanup_outputs('1d_sedov_taylor.h5')
+    cleanup_outputs('1d_sedov_taylor.h5')
 
 def test_1d_desy_benchmark():
     """
