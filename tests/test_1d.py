@@ -279,8 +279,8 @@ def test_1d_desy_benchmark():
     # Generate openPMD inital conditions according to the agreed-upon benchmark
     sigma1 = 38e-6  # in m
     sigma2 = 32e-6  # in m
-    Te_max = 14.65 # in eV
-    Ta = 0.08 # in eV
+    Te_max = 27 # in eV
+    Ta = 0.03 # in eV
     # Create r array from 0 to 6e-4 with 1e-6 increment
     r = np.arange(0, 6e-4 + 1e-6, 1e-6)
     # Calculate ionization fraction, with minimal ionization fraction of 1e-3
