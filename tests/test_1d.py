@@ -25,7 +25,7 @@ from scipy.optimize import curve_fit
 
 def cleanup_outputs(extra_file = ""):
     # Remove previously generated plotfiles and checkpoints
-    os.system(f"rm -rf plt_* chk* amr_diag.out species_diag.out grid_diag.out " + extra_file)
+    os.system(f"rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
 
 class physical_test_1d:
@@ -102,62 +102,43 @@ class physical_test_1d:
 
         return rmax_fit_mean
 
-    def test_energy(self, tol: int = 10):
-        """
-        Compute thermal, kinetic, and potential energies over time.
-        """
-        eps_ion = 13.6 * 1.60218e-12  # erg
-        m_H = 1.673e-24            # g
-        times = self.cs.output_times
-        E_th_K_arr, E_pot_arr = [], []
-        t_arr = []
-
-        # conversion factor: erg/cm -> mJ/m
-        conv = 1e-2  # erg/cm * 1e-2 = mJ/m
-        for time in times:
-            # --- Radial grid ---
-            r, _, _ = self.cs.extract_data(time, 'rho_H1', 3)
-            dr = r[1] - r[0]
-
-            # --- Densities ---
-            _, rho_H1, _ = self.cs.extract_data(time, 'rho_H1', 3)  # g/cm³
-            _, rho_H0, _ = self.cs.extract_data(time, 'rho_H0', 3)  # g/cm³
-            ne = rho_H1 / m_H        # electrons come from ionized H only
-
-
-            # total energy density from simulation
-            _, rho_E, _ = self.cs.extract_data(time, 'rho_E', 3)
-            E_total_density = rho_E
-
-
-            # --- thermal + kinetic energy from rho_E ---
-            ethpot_density = E_total_density
-            E_th_K = 2 * np.pi * np.sum(ethpot_density * r * dr)
-
-            # --- Potential / ionization energy ---
-            q = rho_H1
-            E_pot = 2 * np.pi * np.sum(ne * eps_ion * r * dr)
-            M_ions = 2*np.pi*dr * np.sum(q*r)
+    def test_energy(self, tol: float = 1.0):
+            """
+            Extract the total energy (thermal + kinetic) as a function of time.
+            """
             e = 1.60218e-19 # C
-            E_pot = 13.6 * (e*1e7) * M_ions / (m_p * 1e3)
+            E_kin_thermal = []
+            E_tot = []
+            time = []
+            E_pot = []
+            yt_timeseries = yt.load('plt_1d_*')
+            for ds in yt_timeseries:
+                ad0 = ds.covering_grid(level=0, left_edge=ds.domain_left_edge, dims=ds.domain_dimensions)
+                r = np.array(np.linspace(ds.domain_left_edge[0], ds.domain_right_edge[0], ds.domain_dimensions[0]+1))
+                r *= 1e-2 # Convert to m
 
-            # Separate E_th and E_kin # 
+                E = np.array(ad0['rho_E'].to_ndarray().squeeze()) * 1e-7 * 1e6 # Convert to J/m^3
+                e_kin_thermal =  (np.pi*(r[1:]**2 - r[:-1]**2)*E).sum()
 
-            E_th = E_th_K
-            E_th *= conv
-            E_pot *= conv
+                rho_Hp = ad0['rho_H1'].to_ndarray().squeeze() * 1e-3 * 1e6 # Convert to kg/m^3
+                n_e = rho_Hp / m_p
+                Ntot = (np.pi*(r[1:]**2 - r[:-1]**2)*n_e).sum()
+                e_pot = 13.6*e*Ntot
 
-            # --- Save ---
-            t_arr.append(time)
-            E_th_K_arr.append(E_th)
-            E_pot_arr.append(E_pot)
+                E_kin_thermal.append( e_kin_thermal )
+                E_pot.append( e_pot )
+                E_tot.append( e_kin_thermal+e_pot )
+                time.append(float(ds.current_time))
+            time = np.array(time)
+            E_kin_thermal = np.array(E_kin_thermal) * 1e3  # Convert to mJ/m
+            E_tot = np.array(E_tot) * 1e3  # Convert to mJ/m
+            E_pot = np.array(E_pot) * 1e3  # Convert to mJ/m
 
-        E_total_arr = (np.array(E_th_K_arr) +  np.array(E_pot_arr))
-
-        # compute percent relative errors and evaluate test
-        test, value = np.mean(np.abs((E_total_arr - np.mean(E_total_arr))) / E_total_arr) * 100 < tol, np.mean(np.abs((E_total_arr - np.mean(E_total_arr))) / E_total_arr) * 100
-        return bool(test), float(value)
-
+            rel_dev = np.max(np.abs(E_tot - E_tot[0]) / np.array(E_tot[0]) * 100.)
+            test = rel_dev < tol
+            value = rel_dev
+            return test, value
+    
     def test_rho_r(self, tol: int = 15):
         """
         Compare radial density profiles at several output times to the analytical solution.
@@ -278,11 +259,11 @@ def test_1d_sedov_taylor():
     else :
         print(f"\t Test shock radius vs time : FAILED (rel. err. = {val_r_t:.1f} % > 10 % tol.)")
 
-    test_energy, val_energy = phys_test.test_energy(tol = 10)
-    if test_energy is True :
-        print(f"\t Test energy conservation : PASSED (Avg. Deviation = {val_energy:.1f} % < 10% tol.)")
+    test_energy, val_energy = phys_test.test_energy(tol = 1)
+    if test_energy :
+        print(f"\t Test energy conservation : PASSED (Avg. Deviation = {val_energy:.1e} % < 1% tol.)")
     else :
-        print(f"\t Test energy conservation : FAILED (Avg. Deviation = {val_energy:.1f} % > 10% tol.)")
+        print(f"\t Test energy conservation : FAILED (Avg. Deviation = {val_energy:.1e} % > 1% tol.)")
 
     # Evaluate checksum
     #evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
@@ -297,9 +278,9 @@ def test_1d_desy_benchmark():
     """
     # Generate openPMD inital conditions according to the agreed-upon benchmark
     sigma1 = 38e-6  # in m
-    sigma2 = 35e-6  # in m
-    Te_max = 27 # in eV
-    Ta = 0.03 # in eV
+    sigma2 = 32e-6  # in m
+    Te_max = 14.65 # in eV
+    Ta = 0.08 # in eV
     # Create r array from 0 to 6e-4 with 1e-6 increment
     r = np.arange(0, 6e-4 + 1e-6, 1e-6)
     # Calculate ionization fraction, with minimal ionization fraction of 1e-3
@@ -325,7 +306,6 @@ def test_1d_desy_benchmark():
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_desy_benchmark.h5')
-
 
 if __name__ == "__main__":
     print("\n Starting 1D tests... \n")
