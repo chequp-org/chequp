@@ -25,7 +25,7 @@ from scipy.optimize import curve_fit
 
 def cleanup_outputs(extra_file = ""):
     # Remove previously generated plotfiles and checkpoints
-    os.system(f"rm -rf plt_* chk* amr_diag.out species_diag.out grid_diag.out " + extra_file)
+    os.system(f"rm -rf plt_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
 
 class physical_test_1d:
@@ -298,7 +298,7 @@ def test_1d_desy_benchmark():
     # Generate openPMD inital conditions according to the agreed-upon benchmark
     sigma1 = 38e-6  # in m
     sigma2 = 35e-6  # in m
-    Te_max = 27 # in eV
+    Te_max = 1.7 # in eV
     Ta = 0.03 # in eV
     # Create r array from 0 to 6e-4 with 1e-6 increment
     r = np.arange(0, 6e-4 + 1e-6, 1e-6)
@@ -329,7 +329,7 @@ def test_1d_desy_benchmark():
 
 if __name__ == "__main__":
     print("\n Starting 1D tests... \n")
-    test_1d_sedov_taylor()
+    #test_1d_sedov_taylor()
     print("\n 1D Sedov-Taylor test completed. \n")
 
-    #test_1d_desy_benchmark()
+    test_1d_desy_benchmark()
