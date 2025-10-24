@@ -29,7 +29,7 @@ def cleanup_outputs(extra_file = ""):
 
 def clean_cluster_sim():
     # Remove previously generated plotfiles and checkpoints
-    os.system(f"rm -rf plt_2d_*.temp.old.* plt_2d_*.temp.* plt_2d_*.old.* amr_diag.out species_diag.out grid_diag.out Backtrace.0 slurm-*.out slurm-*.err " )
+    os.system(f"rm -rf plt_2d_* plt_2d_*.temp.old.* plt_2d_*.temp.* plt_2d_*.old.* amr_diag.out species_diag.out grid_diag.out Backtrace.0 slurm-*.out slurm-*.err " )
 
 class physical_test_2d:
 
@@ -259,9 +259,9 @@ def run_castro_simulation_cluster(runtime_options=""):
 #SBATCH --error=slurm-%j.err          # standard error
 #SBATCH --time=0-01:00:00             # walltime (D-HH:MM:SS)
 #SBATCH --partition=mpa               # queue/partition
-#SBATCH --nodes=8                     # number of nodes
+#SBATCH --nodes=1                     # number of nodes
 #SBATCH --ntasks-per-node=8           # number of MPI ranks per node
-#SBATCH --cpus-per-task=1             # threads per rank (OpenMP)
+#SBATCH --cpus-per-task=8             # threads per rank (OpenMP)
 
 # --- Environment setup ---
 export LD_PRELOAD=""                  # avoid preload issues on some nodes
@@ -313,6 +313,7 @@ def test_2d_sedov_taylor():
     - no temperature diffusion (castro.diffuse_temp=0)
     - the initial radius of the hot plasma is small (5 microns)
     """
+    clean_cluster_sim()
     print("Generating initial conditions...")
     # Grid
     r = np.linspace(0, 10e-6, 64)
