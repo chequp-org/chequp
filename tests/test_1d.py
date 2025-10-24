@@ -233,8 +233,8 @@ def test_1d_sedov_taylor():
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
     populations = np.zeros((len(r), len(species_keys)))
     # Set fraction to 1 for H+
-    populations[:, species_keys.index('H1')] = np.where(r <= 7e-6, 1.0, np.exp(-((r - 7e-6)/sigma_H)**2))
-    populations[:, species_keys.index('H0')] = 1 - np.where(r <= 7e-6, 1.0, np.exp(-((r - 7e-6)/sigma_H)**2))
+    populations[:, species_keys.index('H1')] = 1 - 1e-3
+    populations[:, species_keys.index('H0')] = 1e-3
     # Save file
     save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
         T_eV, '1d_sedov_taylor.h5', species_keys)
@@ -242,7 +242,7 @@ def test_1d_sedov_taylor():
     # Run the code
     print("Starting simulation...")
     time_s = time.time()
-    run_castro_simulation("problem.initial_conditions_file=1d_sedov_taylor.h5")
+    run_castro_simulation("castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
     time_e = time.time()
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
@@ -308,8 +308,5 @@ def test_1d_desy_benchmark():
     cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    print("\n Starting 1D tests... \n")
     test_1d_sedov_taylor()
-    print("\n 1D Sedov-Taylor test completed. \n")
-
-    #test_1d_desy_benchmark()
+    test_1d_desy_benchmark()
