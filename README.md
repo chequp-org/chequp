@@ -6,7 +6,7 @@ To setup the folders:
 ```
 git clone git@github.com:RemiLehe/castro_sim.git
 cd castro_sim
-git clone --recursive https://github.com/RemiLehe/Castro.git --branch 2Temp_new
+git clone --recursive https://github.com/RemiLehe/Castro.git --branch 2T_25.10
 ```
 
 ## Setup a conda environment
