@@ -14,7 +14,7 @@ git clone --recursive https://github.com/RemiLehe/Castro.git --branch 2T_25.10
 ```
 conda create -n castro_sim
 conda activate castro_sim
-conda install -c conda-forge compilers "hdf5=*=mpi_openmpi*" openmpi
+conda install -c conda-forge compilers "hdf5=*=mpi_openmpi*" openmpi make
 ```
 
 In order to analyze the results, create a Python environment with `numpy`, `scipy`, `Jupyter` and `yt`.
