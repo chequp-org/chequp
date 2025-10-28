@@ -13,6 +13,7 @@ import os
 import openpmd_api
 import time
 import h5py
+from scipy.interpolate import RegularGridInterpolator
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
 sys.path.append('../sim_folder/analysis/')
@@ -29,178 +30,211 @@ def cleanup_outputs(extra_file = ""):
 
 def clean_cluster_sim():
     # Remove previously generated plotfiles and checkpoints
-    os.system(f"rm -rf plt_2d_* plt_2d_*.temp.old.* plt_2d_*.temp.* plt_2d_*.old.* amr_diag.out species_diag.out grid_diag.out Backtrace.0 slurm-*.out slurm-*.err " )
+    os.system(f"rm -rf plt_2d_*.temp.old.* plt_2d_*.temp.* plt_2d_*.old.* amr_diag.out species_diag.out grid_diag.out Backtrace.0 slurm-*.out slurm-*.err " )
 
 class physical_test_2d:
-
-    def __init__(self, folder_name, init_param = (5.0 / 3.0, 1205.9, 1.67e-6)):
-        self.folder_name = folder_name
-        self.file_start = 'plt_1d_'
-        self.cs = CastroSimulation(folder_name, self.file_start)
-        self.t_arr, self.r_arr, self.rmax_arr, self.q_arr = self.open_rt('density')
-        self.sol = SedovTalorProblem(*init_param)
-        self.E0 = init_param[1]
-
-    def open_rt(self, data_type):
-        level=3
-        """Extract rmax for each output time."""
-        r_arr, rmax_arr, q_arr,  = [], [], []
-        t_arr = np.array(self.cs.output_times)
-        for time in t_arr:
-            r, q, t = self.cs.extract_data(time, data_type, level=level)
-            rmax = r[np.argmax(q)]
-            rmax_arr.append(rmax)
-            q_arr.append(q)
-            r_arr.append(r)
-        return np.array(t_arr), np.array(r_arr), np.array(rmax_arr), np.stack(q_arr)
     
-    def fit_power_mc(self):
-        from scipy.optimize import curve_fit, OptimizeWarning
-        import warnings
-
-        # --- Monte Carlo parameters ---
-        n_mc = 1000
-        rng = np.random.default_rng(42)
-        sigma_frac = 0.05  # relative uncertainty (5%)
-
-        # --- Model definition (no t0) ---
-        def power_law(t, a):
-            return a * np.sqrt(t)
-
-        # --- Data ---
-        t_arr = np.asarray(self.t_arr)
-        rmax_arr = np.asarray(self.rmax_arr)
-
-        # --- Base fit (initial guess) ---
-        a0 = np.max(rmax_arr) / np.sqrt(np.max(t_arr)) if np.max(t_arr) > 0 else 1.0
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=OptimizeWarning)
-            popt, _ = curve_fit(power_law, t_arr, rmax_arr, p0=[a0], maxfev=10000)
-        a_fit = popt[0]
-
-        # --- Default sigma (5% of signal) ---
-        sigma = sigma_frac * rmax_arr
-
-        # --- Monte Carlo loop ---
-        a_samples = []
-        fits = np.empty((n_mc, len(t_arr)))
-
-        for i in range(n_mc):
-            rmax_noisy = rng.normal(rmax_arr, sigma)
+    def __init__(self, rho_0 = 1.67e-6, E0 = 1.2e16, R0 = 50):
+        self.rho_0 = rho_0  # g/cm^3
+        self.R0 = R0  # microns
+        self.E0 = E0  # mJ/m this value is computed by integrating the initial profile of temperature ponderated by the populations
+        self.sol = SedovTalorProblem(5.0 / 3.0, E0, self.rho_0)
+        self.time, self.data_rho, self.data_T = self.load_2D(end_time=10.e-9)
+        
+    def load_2D(self, end_time=2.0e-9):
+        # List all directories that match your pattern
+        folders = sorted(glob.glob("./plt_2d_*"))
+        folders = [f for f in folders if os.path.exists(os.path.join(f, "Header"))]
+        # Field to plot
+        field_rho, field_T = ("boxlib", "density"), ("boxlib", "Temp")
+        time, data_rho, data_T = [], [], []
+        for folder in folders:
             try:
-                popt_i, _ = curve_fit(power_law, t_arr, rmax_noisy, p0=[a_fit], maxfev=10000)
-                a_i = popt_i[0]
-                fits[i] = power_law(t_arr, a_i)
-                a_samples.append(a_i)
-            except RuntimeError:
-                fits[i] = np.nan  # mark failed fits
+                ds = yt.load(folder)
+            except Exception as e:
+                continue
+            curr_time = ds.current_time
+            if (curr_time > end_time):
+                break
+            time.append(float(curr_time))
+            # Extract the full 2D grid
+            cg = ds.covering_grid(
+                level=0,
+                left_edge=ds.domain_left_edge,
+                dims=ds.domain_dimensions
+            )
 
-        # --- Clean failed fits ---
-        valid = ~np.isnan(fits).any(axis=1)
-        fits = fits[valid]
-        a_samples = np.array(a_samples)
+            # Convert field to 2D array
+            array_2d = cg[field_rho].to_ndarray()
+            array_2d = np.squeeze(array_2d)  # remove singleton dimensions
+            data_rho.append(array_2d)
 
-        # --- Statistics ---
-        rmax_fit_mean = np.mean(fits, axis=0)
+            # Extract temperature field
+            array_2d_T = cg[field_T].to_ndarray()
+            array_2d_T = np.squeeze(array_2d_T)  # remove singleton dimensions
+            data_T.append(array_2d_T)
 
-        return rmax_fit_mean
+        return time, data_rho, data_T
+    
+    def find_edge_radial_xy(self, data, n_angles=100, n_samples=1000):
+        x, y = np.linspace(0, 100, data.shape[1]), np.linspace(0, 100, data.shape[0])
+        cx, cy = 50, 50
 
-    def test_energy(self, tol: int = 10):
-        """
-        Compute thermal, kinetic, and potential energies over time.
-        """
-        eps_ion = 13.6 * 1.60218e-12  # erg
-        m_H = 1.673e-24            # g
-        times = self.cs.output_times
-        E_th_K_arr, E_pot_arr = [], []
-        t_arr = []
+        # create interpolator on physical grid
+        interp = RegularGridInterpolator((y, x), data, bounds_error=False, fill_value=np.nan)
 
-        # conversion factor: erg/cm -> mJ/m
-        conv = 1e-2  # erg/cm * 1e-2 = mJ/m
-        for time in times:
-            # --- Radial grid ---
-            r, _, _ = self.cs.extract_data(time, 'rho_H1', 3)
-            dr = r[1] - r[0]
+        # radial sampling
+        thetas = np.linspace(0, 2*np.pi, n_angles, endpoint=False)
+        radii = np.zeros(n_angles)
+        x_edge = np.zeros(n_angles)
+        y_edge = np.zeros(n_angles)
 
-            # --- Densities ---
-            _, rho_H1, _ = self.cs.extract_data(time, 'rho_H1', 3)  # g/cm³
-            _, rho_H0, _ = self.cs.extract_data(time, 'rho_H0', 3)  # g/cm³
-            ne = rho_H1 / m_H        # electrons come from ionized H only
+        # maximum possible radius (diagonal)
+        r_max = np.hypot(x[-1]-x[0], y[-1]-y[0])
 
+        for i, th in enumerate(thetas):
+            rs = np.linspace(0, r_max, n_samples)
+            xs_ray = cx + rs * np.cos(th)
+            ys_ray = cy + rs * np.sin(th)
+            pts = np.column_stack([ys_ray, xs_ray])  # interpolator expects (y,x)
+            vals = interp(pts)
+            valid = np.isfinite(vals)
+            if valid.sum() < 5:
+                radii[i] = np.nan
+                x_edge[i] = np.nan
+                y_edge[i] = np.nan
+                continue
+            rs = rs[valid]; vals = vals[valid]
 
-            # total energy density from simulation
-            _, rho_E, _ = self.cs.extract_data(time, 'rho_E', 3)
-            E_total_density = rho_E
+            dv = np.gradient(vals, rs)
+            idx = np.nanargmax(np.abs(dv))
 
+            radii[i] = rs[idx]
+            x_edge[i] = cx + radii[i] * np.cos(th)
+            y_edge[i] = cy + radii[i] * np.sin(th)
 
-            # --- thermal + kinetic energy from rho_E ---
-            ethpot_density = E_total_density
-            E_th_K = 2 * np.pi * np.sum(ethpot_density * r * dr)
-
-            # --- Potential / ionization energy ---
-            q = rho_H1
-            E_pot = 2 * np.pi * np.sum(ne * eps_ion * r * dr)
-            M_ions = 2*np.pi*dr * np.sum(q*r)
-            e = 1.60218e-19 # C
-            E_pot = 13.6 * (e*1e7) * M_ions / (m_p * 1e3)
-
-            # Separate E_th and E_kin # 
-
-            E_th = E_th_K
-            E_th *= conv
-            E_pot *= conv
-
-            # --- Save ---
-            t_arr.append(time)
-            E_th_K_arr.append(E_th)
-            E_pot_arr.append(E_pot)
-
-        E_total_arr = (np.array(E_th_K_arr) +  np.array(E_pot_arr))
-
-        # compute percent relative errors and evaluate test
-        test, value = np.mean(np.abs((E_total_arr - np.mean(E_total_arr))) / E_total_arr) * 100 < tol, np.mean(np.abs((E_total_arr - np.mean(E_total_arr))) / E_total_arr) * 100
-        return bool(test), float(value)
-
-    def test_rho_r(self, tol: int = 15):
-        """
-        Compare radial density profiles at several output times to the analytical solution.
-        Returns True if the mean relative L2 error is below 15%.
-        """
-        indices = np.arange(0.7, 0.99, 0.05) * len(self.t_arr)
-        errors = []
-        for idx in np.unique(indices):
-            idx = int(idx)
-            r = self.r_arr[idx]
-            rho_sim = self.q_arr[idx]
-            t = self.t_arr[idx]
-
-            rho_analytical = self.sol.evaluate('density', r, t)
-
-            # compare up to the first peak present in both profiles
-            peak_idx = min(np.argmax(rho_analytical), np.argmax(rho_sim))
-            if r[peak_idx] > 1e-2: # dont compared for low blast radius
-                denom = np.linalg.norm(rho_sim[:peak_idx])
-                err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx]) / denom
-                errors.append(err)
-
-        mean_error = float(np.mean(errors)) * 100
-        return mean_error < tol, mean_error
-
-    def test_r_t(self, tol: int = 10):
+        return x_edge, y_edge
+    
+    def fit_circle_radius(self, x, y):
+        r = np.sqrt((x-self.R0)**2 + (y-self.R0)**2)
+        R = np.mean(r)
+        iso = np.std(r)/np.mean(r)
+        return R, iso
+    
+    def test_r_iso_t(self, tol_r: int = 10, tol_iso: float = 0.5):
         """
         Compare the fitted shock radius to the analytical Sedov-Taylor radius.
 
         Returns True if the relative L2 error is below `tol`, False otherwise.
         """
-        # Get fitted and analytical radii
-        r_sim = np.asarray(self.fit_power_mc())
-        r_analytical = np.asarray(self.sol.blast_radius(self.t_arr))
+        L_time, L_r, L_r_analytical, L_iso = [], [], [], []
+        for idx in range(1, len(self.time)):
+            data_fit = self.data_rho[idx]
+            x_max, y_max = self.find_edge_radial_xy(data_fit)
+            R_fit, iso = self.fit_circle_radius(x_max, y_max)
+            r_analytical = self.sol.blast_radius(self.time[idx])
+            L_time.append(self.time[idx])
+            L_r.append(R_fit)
+            L_r_analytical.append(r_analytical)
+            L_iso.append(iso)
+        mask = np.array(L_time) >= 1e-9 # avoid early times with poor resolution
+        rel_error = np.linalg.norm(np.array(L_r)[mask] - np.array(L_r_analytical)[mask]) / np.linalg.norm(np.array(L_r_analytical)[mask]) * 100.
+        error_iso = np.mean(np.array(L_iso)[mask])
+        if rel_error < tol_r:
+            test_r = True
+        else:
+            test_r = False
+        if error_iso < tol_iso:
+            test_iso = True
+        else:
+            test_iso = False
+        return test_r, rel_error, test_iso, error_iso
+    
+    def test_rho_r(self, tol: int = 5):
+        """
+        Compare radial density profiles at several output times to the analytical solution.
+        Returns True if the mean relative L2 error is below 15%.
+        """
+        time_idx = np.arange(0.6, 0.99, 0.1) * len(self.time)
+        r_binned_all, data_binned_all, r_analytical_all, data_analytical_all = [], [], [], []
+        for idx in time_idx:
+            idx = int(idx)
+            x = np.linspace(-50, 50, self.data_rho[idx].shape[0])
+            rho_fit_center = self.data_rho[idx][:, self.data_rho[idx].shape[0]//2]
+            rho_analytical = self.sol.evaluate('density', np.abs(x), self.time[idx])
+            r_binned_all.append(x)
+            data_binned_all.append(rho_fit_center)
+            r_analytical_all.append(x)
+            data_analytical_all.append(rho_analytical)
+        errors = []
+        for k in range(len(time_idx)):
+            rho_sim = data_binned_all[k]
+            rho_analytical = data_analytical_all[k]
+            # compare up to the first peak present in both profiles
+            peak_idx = min(np.argmax(rho_analytical), np.argmax(rho_sim))
+            denom = np.linalg.norm(rho_sim[:peak_idx])
+            err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx])/denom
+            errors.append(err)
+            
+        mean_error = float(np.mean(errors))
+        if mean_error < tol/100:
+            test = True
+        else:
+            test = False
+        return test , mean_error
+    
+    def test_energy(self, tol: float = 1.0):
+        """
+        Extract the total energy (thermal + kinetic + potential) as a function of time in 2D Cartesian geometry.
+        The result is given per unit length along the z direction (J/m).
+        """
+        E_kin_thermal = []
+        E_pot = []
+        E_tot = []
+        time = []
+        yt_timeseries = yt.load('plt_2d_*')
 
-        # Compute relative L2 error, handle zero-norm reference safely
-        denom = np.linalg.norm(r_analytical)
-        err = np.linalg.norm(r_sim - r_analytical)
-        rel_err = err / denom * 100
-        return rel_err < tol, rel_err
+        for ds in yt_timeseries:
+            ad0 = ds.covering_grid(level=0, left_edge=ds.domain_left_edge, dims=ds.domain_dimensions)
+
+            # Coordinates (in meters)
+            x = np.linspace(ds.domain_left_edge[0], ds.domain_right_edge[0], ds.domain_dimensions[0])
+            y = np.linspace(ds.domain_left_edge[1], ds.domain_right_edge[1], ds.domain_dimensions[1])
+            dx = (x[1] - x[0])
+            dy = (y[1] - y[0])
+
+            # Energy density [erg/cm^3] -> [J/m^3]
+            E = ad0['rho_E'].to_ndarray() * 1e-7 * 1e6
+            e_kin_thermal = np.sum(E) * dx * dy  # J/m
+
+            # Hydrogen density [g/cm^3] -> [kg/m^3]
+            rho_Hp = ad0['rho_H1'].to_ndarray() * 1e-3 * 1e6
+            n_e = rho_Hp / m_p
+            Ntot = np.sum(n_e) * dx * dy  # particles/m
+            e = 1.60218e-19  # C
+            # Potential energy (13.6 eV per electron)
+            e_pot = 13.6 * e * Ntot  # J/m
+
+            E_kin_thermal.append(e_kin_thermal)
+            E_pot.append(e_pot)
+            E_tot.append(e_kin_thermal + e_pot)
+            time.append(float(ds.current_time))
+
+        # Convert to arrays
+        time = np.array(time)
+        E_kin_thermal = np.array(E_kin_thermal) * 1e3  # mJ/m
+        E_pot = np.array(E_pot) * 1e3  # mJ/m
+        E_tot = np.array(E_tot) * 1e3  # mJ/m
+
+        # Check energy conservation
+        rel_error = np.max(np.abs(E_tot - E_tot[0]) / np.abs(E_tot[0]) * 100.)
+        if rel_error < tol:
+            test = True
+        else:
+            test = False
+        value = rel_error
+        return test, value
+    
 
 def run_castro_simulation(runtime_options):
     """
@@ -236,76 +270,6 @@ def run_castro_simulation(runtime_options):
         print("STDERR:", e.stderr)
         raise
 
-def run_castro_simulation_cluster(runtime_options=""):
-
-    # --- Define paths ---
-    run_dir = "../sim_folder/run"
-    script_path = os.path.join(run_dir, "run_castro_job.sh")
-    executable = "../sim_folder/build/Castro2d.gnu.MPI.ex"
-    input_file = "../sim_folder/run/inputs.2d.cyl_in_cartcoords"
-
-    # --- Make sure run directory exists ---
-    if not os.path.isdir(run_dir):
-        raise FileNotFoundError(f"Run directory not found: {run_dir}")
-
-    # --- Clean outputs if necessary ---
-    if "cleanup_outputs" in globals():
-        cleanup_outputs()
-
-    # --- Create the SLURM job script content ---
-    script_content = f"""#!/bin/bash
-#SBATCH --job-name=castro-test        # job name
-#SBATCH --output=slurm-%j.out         # standard output (%j = job ID)
-#SBATCH --error=slurm-%j.err          # standard error
-#SBATCH --time=0-01:00:00             # walltime (D-HH:MM:SS)
-#SBATCH --partition=mpa               # queue/partition
-#SBATCH --nodes=1                     # number of nodes
-#SBATCH --ntasks-per-node=8           # number of MPI ranks per node
-#SBATCH --cpus-per-task=8             # threads per rank (OpenMP)
-
-# --- Environment setup ---
-export LD_PRELOAD=""                  # avoid preload issues on some nodes
-source /etc/profile.d/modules.sh      # enable 'module' command
-
-# --- Load dependencies ---
-module purge
-module load gcc/12.2.0
-module load openmpi/4.1.5
-module load hdf5/1.14.0
-# module load amrex                    # uncomment if available
-
-# --- Run CASTRO ---
-echo "Running Castro simulation on $(hostname) at $(date)"
-srun {executable} {input_file} {runtime_options}
-
-# --- Optional: timing info ---
-echo "Simulation completed at $(date)"
-"""
-
-    # --- Write the script to file ---
-    with open(script_path, "w") as f:
-        f.write(script_content)
-
-    # Make it executable
-    os.chmod(script_path, 0o755)
-
-    # --- Submit the job ---
-    try:
-        result = subprocess.run(
-            ["sbatch", script_path],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        # Capture job ID from sbatch output
-        job_id = result.stdout.strip().split()[-1]
-        print(f"Job submitted successfully (ID: {job_id})")
-    except subprocess.CalledProcessError as e:
-        print("Job submission failed.")
-        print("STDOUT:\n", e.stdout)
-        print("STDERR:\n", e.stderr)
-        raise
-
 def test_2d_sedov_taylor():
     """
     Test that code produce the exact Sedov-Taylor blast wave solution, in a simplified setup:
@@ -313,18 +277,17 @@ def test_2d_sedov_taylor():
     - no temperature diffusion (castro.diffuse_temp=0)
     - the initial radius of the hot plasma is small (5 microns)
     """
-    clean_cluster_sim()
     print("Generating initial conditions...")
     # Grid
-    r = np.linspace(0, 10e-6, 64)
-    X, Y = np.meshgrid(r, r, indexing='ij')  # 2D grid 64x64
-    sigma_H = 1.0e-6
-    sigma = 6e-6
+    x = np.linspace(0.0, 600e-6, 256)
+    y = np.linspace(0.0, 600e-6, 256)
+    X, Y = np.meshgrid(x, y, indexing='ij')  # 2D grid 512x512
+    sigma = 3e-6
     T_peak = 1000.0  # eV
     T_min = 1e-3     # eV, small temperature floor
-    center = 5e-6
-    T_eV = T_min + (T_peak - T_min) * np.exp(-((X - center)**2 + (Y - center)**2) / (2 * sigma**2))
- 
+    center = 300e-6
+    T_eV = T_min + (T_peak - T_min) * np.exp(- ((X-center)**2 + (Y-center)**2) / (2 * sigma**2))
+
     # Species keys
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
@@ -332,44 +295,39 @@ def test_2d_sedov_taylor():
     # Populations array
     populations = np.zeros((X.shape[0], X.shape[1], len(species_keys)))
     populations[:, :, species_keys.index('H1')] = 1.0
-
     # Save file
-    save_to_openpmd({'x': [r.min(), r.max()], 'y': [r.min(), r.max()]},
+    save_to_openpmd({'x': [x.min(), x.max()], 'y': [y.min(), y.max()]},
                 populations, T_eV, '2d_sedov_taylor.h5', species_keys)
     print("Starting simulation...")
+    # Run the code
     time_s = time.time()
-    run_castro_simulation_cluster("problem.initial_conditions_file=2d_sedov_taylor.h5")
+    run_castro_simulation("problem.initial_conditions_file=2d_sedov_taylor.h5")
     time_e = time.time()
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
 
-    if False:
-        # Run the code
-        print("Starting simulation...")
-        time_s = time.time()
-        run_castro_simulation("problem.initial_conditions_file=1d_sedov_taylor.h5")
-        time_e = time.time()
-        print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
-        # Physical tests #
-        print("Running physical tests...\n")
-        phys_test = physical_test_2d('.', init_param = (5.0 / 3.0, 1205.9, 1.67e-6))
-        test_rho, val_rho = phys_test.test_rho_r(tol = 15)
-        if test_rho :
-            print(f"\t Test density profile : PASSED (rel. err. = {val_rho:.1f} % < 15 % tol.)")
-        else :
-            print(f"\t Test density profile : FAILED (rel. err. = {val_rho:.1f} % > 15 % tol.)")
-        test_r_t, val_r_t = phys_test.test_r_t(tol = 10)
-        if test_r_t :
-            print(f"\t Test shock radius vs time : PASSED (rel. err. = {val_r_t:.1f} % < 10 % tol.)")
-        else :
-            print(f"\t Test shock radius vs time : FAILED (rel. err. = {val_r_t:.1f} % > 10 % tol.)")
+    # Physical tests #
+    print("Running physical tests...\n")
+    phys_test = physical_test_2d(rho_0=1.67e-6, E0=1.19e16, R0=50)
+    test_rho, val_rho = phys_test.test_rho_r(tol = 5)
+    if test_rho :
+        print(f"\t Test density profile : PASSED (rel. err. = {val_rho:.1f} % < 5 % tol.)")
+    else :
+        print(f"\t Test density profile : FAILED (rel. err. = {val_rho:.1f} % > 5 % tol.)")
+    test_r_t, val_r_t, test_iso, value_iso = phys_test.test_r_iso_t(tol_r = 10., tol_iso = 0.5)
+    if test_r_t :
+        print(f"\t Test shock radius vs time : PASSED (rel. err. = {val_r_t:.1f} % < 10 % tol.)")
+    else :
+        print(f"\t Test shock radius vs time : FAILED (rel. err. = {val_r_t:.1f} % > 10 % tol.)")
+    if test_iso :
+        print(f"\t Test shock isotropy : PASSED (mean isotropy = {value_iso:.2f} % < 0.5 % tol.)")
+    else :
+        print(f"\t Test shock isotropy : FAILED (mean isotropy = {value_iso:.2f} % > 0.5 % tol.)")
+    test_energy, val_energy = phys_test.test_energy(tol = 1)
+    if test_energy is True :
+        print(f"\t Test energy conservation : PASSED (Max. Deviation = {val_energy:.1e} % < 1 % tol.)")
+    else :
+        print(f"\t Test energy conservation : FAILED (Max. Deviation = {val_energy:.1e} % > 1 % tol.)")
 
-        test_energy, val_energy = phys_test.test_energy(tol = 10)
-        if test_energy is True :
-            print(f"\t Test energy conservation : PASSED (Avg. Deviation = {val_energy:.1f} % < 10% tol.)")
-        else :
-            print(f"\t Test energy conservation : FAILED (Avg. Deviation = {val_energy:.1f} % > 10% tol.)")
-
-    #clean_cluster_sim()
     # Evaluate checksum
     #evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
 
@@ -413,8 +371,6 @@ def test_2d_desy_benchmark():
     cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    print("\n Starting 2D tests... \n")
     test_2d_sedov_taylor()
-    print("\n 2D Sedov-Taylor test completed. \n")
-
+    
     #test_2d_desy_benchmark()
