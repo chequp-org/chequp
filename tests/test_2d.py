@@ -236,33 +236,35 @@ class physical_test_2d:
         return test, value
     
 
-def run_castro_simulation(runtime_options):
+def run_castro_simulation(runtime_options, work_dir="sim_2D_128_10"):
     """
-    Run the Castro simulation.
+    Run the Castro simulation in another folder specified by `work_dir`.
 
     Raise an error and print stdout/stderr if the command fails.
     """
     # Find the Castro executable
     build_dir = "../sim_folder/build"
-    executables = glob.glob( os.path.join(build_dir, "Castro2d*") )
+    executables = glob.glob(os.path.join(build_dir, "Castro2d*"))
     if len(executables) == 0:
-        raise FileNotFoundError(f"No Castro1d executable found in {build_dir}")
+        raise FileNotFoundError(f"No Castro2d executable found in {build_dir}")
     elif len(executables) > 1:
-        raise RuntimeError(f"Multiple Castro1d executables found: {executables}")
+        raise RuntimeError(f"Multiple Castro2d executables found: {executables}")
     executable = executables[0]
 
     cleanup_outputs()
 
-    # Run the code
-    inputs = "../sim_folder/run/inputs.2d.cyl_in_cartcoords"
+    # Run the code in a different directory
+    inputs = os.path.join("../sim_folder/run/inputs.2d.cyl_in_cartcoords")
     command = f"{executable} {inputs} {runtime_options}"
+
     try:
         subprocess.run(
             command,
             shell=True,
             capture_output=True,
             text=True,
-            check=True
+            check=True,
+            cwd=work_dir,  # <<< run the command from this directory
         )
     except subprocess.CalledProcessError as e:
         print(f"Command failed with exit code {e.returncode}")
@@ -339,38 +341,41 @@ def test_2d_desy_benchmark():
     Test the code in the scenario that benchmarked with DESY team
     (close - but not identical - to the one from Mewes et al., PRR 5, 033112, 2023)
     """
-    # Generate openPMD inital conditions according to the agreed-upon benchmark
-    sigma1 = 38e-6  # in m
-    sigma2 = 35e-6  # in m
-    Te_max = 27 # in eV
-    Ta = 0.03 # in eV
-    # Create r array from 0 to 6e-4 with 1e-6 increment
-    r = np.arange(0, 6e-4 + 1e-6, 1e-6)
-    # Calculate ionization fraction, with minimal ionization fraction of 1e-3
-    # (the minimal fraction is needed for the electron temperature to be defined everywhere)
-    ioniz_fraction = (1. - 1.e-3)*np.exp(-np.power(r*r/(2*sigma1*sigma1), 12)) + 1.e-3
-    # Calculate electron temperature, with a minimal temperature of 0.03 eV
-    T_eV = (Te_max - Ta) * np.exp(-np.power(r*r/(2*sigma2*sigma2), 3)) + Ta
-    # Parse the species names for which Castro has been compiled
+    print("Generating initial conditions...")
+    # Generate openPMD initial conditions according to the agreed-upon benchmark
+    data = np.loadtxt("2D_xy_Init_Slice 3_2022_06.txt")
+    x, y, Z_H1, T_eV = data.T
+
+    interp_H1 = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,2].reshape(300, 300),bounds_error=False,fill_value=None)
+    interp_T = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,3].reshape(300, 300),bounds_error=False,fill_value=None)
+    # Grid
+    x = np.linspace(0.0, 600e-6, 256)
+    y = np.linspace(0.0, 600e-6, 256)
+    center = 300e-6
+    X_grid, Y_grid = np.meshgrid(x, y, indexing='ij')
+    T_eV_interp = interp_T((Y_grid - center, X_grid - center)) 
+    T_eV_interp = T_eV_interp / (1.1e4) # conversion from K to eV
+    Z_H1_interp = interp_H1((Y_grid - center, X_grid - center))
+    # Species keys
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
-    populations = np.zeros((len(r), len(species_keys)))
-    # Set H0 and H1 fractions
-    populations[:, species_keys.index('H0')] = 1 - ioniz_fraction
-    populations[:, species_keys.index('H1')] = ioniz_fraction
+    populations = np.zeros((X_grid.shape[0], X_grid.shape[1], len(species_keys)))
+    populations[:, :, species_keys.index('H1')] = Z_H1_interp
+    populations[:, :, species_keys.index('H0')] = 1.0 - Z_H1_interp
     # Save file
-    save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
-        T_eV, '1d_desy_benchmark.h5', species_keys)
-
+    save_to_openpmd({'x': [x.min(), x.max()], 'y': [y.min(), y.max()]},
+                populations, T_eV_interp, '2d_desy_benchmark.h5', species_keys)
     # Run the code
-    run_castro_simulation("problem.initial_conditions_file=1d_desy_benchmark.h5")
-    # Evaluate checksum
-    evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
+    time_s = time.time()
+    print("Starting simulation...")
+    run_castro_simulation("problem.initial_conditions_file=2d_desy_benchmark.h5")
+    time_e = time.time()
+    print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
 
     # Remove generated plotfiles and checkpoints
-    cleanup_outputs('1d_desy_benchmark.h5')
+    #cleanup_outputs('2d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    test_2d_sedov_taylor()
+    #test_2d_sedov_taylor()
     
-    #test_2d_desy_benchmark()
+    test_2d_desy_benchmark()
