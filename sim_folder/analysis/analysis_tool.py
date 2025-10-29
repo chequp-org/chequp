@@ -58,6 +58,51 @@ class CastroSimulation(object):
             r, q = _extract_radius_and_quantity( ds, quantity, level )
         return r, q, ds.current_time.to_value()
 
+    def get_energy(self, t, level, energy_type='total'):
+        """
+        Get the energy (either kinetic, thermal, or sum of both)
+        at time `t`, at the required refinement level
+
+        Parameters:
+        -----------
+        energy_type: string
+            type of energy to get; possible values: 'kinetic', 'thermal', 'total';
+            'total is the sum of the kinetic and thermal energies
+        t: float
+            time at which to get the energy
+        level: int
+            refinement level at which to get the energy
+
+        Returns:
+        --------
+        energy: float, in erg/cm
+            The energy per unit length (for simulations that assume invariance
+            along the z axis, like 1D cylindrical and 2D Cartesian simulations)
+        t: float, in s
+            The exact time at which the energy was extracted
+        """
+        # Extract the right quantity, depending on the requested energy type
+        if energy_type == 'total':
+            r, energy_density, t = self.extract_data(t, 'rho_E', level)
+        elif energy_type == 'thermal':
+            r, energy_density, t = self.extract_data(t, 'rho_e', level)
+        elif energy_type == 'kinetic':
+            r, q1, t = self.extract_data(t, 'rho_E', level)
+            r, q2, t = self.extract_data(t, 'rho_e', level)
+            energy_density = q1 - q2
+        else:
+            raise ValueError("Invalid energy type: {energy_type}")
+
+        # Integrate the energy density over the simulation
+        dr = r[1] - r[0]
+        energy = np.sum( np.pi * ((r+0.5*dr)**2 - (r-0.5*dr)**2) * energy_density )
+
+        return energy, t
+
+        # TODO Check dimension/geometry of the simulation
+
+
+
 def _extract_radius_and_quantity( ds, quantity, level ):
     """
     Extract the quantity `quantity` at the required refinement level
@@ -76,10 +121,12 @@ def _extract_radius_and_quantity( ds, quantity, level ):
                         left_edge=ds.domain_left_edge,
                         dims=[ds.domain_dimensions[0]*2**level, 1, 1] )
         q = ad[quantity].to_ndarray().squeeze()
-        r = np.linspace(
+        # Find r values of the cell centers
+        r_edges = np.linspace(
             ds.domain_left_edge[0],
             ds.domain_right_edge[0],
-            ds.domain_dimensions[0]*2**level)
+            ds.domain_dimensions[0]*2**level + 1)
+        r = 0.5*(r_edges[1:] + r_edges[:-1])
     elif ds.dimensionality:
         ad = ds.covering_grid( level=level,
                             left_edge=ds.domain_left_edge,
