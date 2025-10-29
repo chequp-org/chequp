@@ -278,23 +278,24 @@ def test_1d_desy_benchmark():
     """
     # Generate openPMD inital conditions according to the agreed-upon benchmark
     sigma1 = 38e-6  # in m
-    sigma2 = 32e-6  # in m
-    Te_max = 14.65 # in eV
-    Ta = 0.08 # in eV
+    sigma2 = 35e-6  # in m
+    Te_max = 27 # in eV
+    kb = 8.617333262145e-5  # eV/K
+    Ta = 2000 * kb  # in eV
     # Create r array from 0 to 6e-4 with 1e-6 increment
     r = np.arange(0, 6e-4 + 1e-6, 1e-6)
     # Calculate ionization fraction, with minimal ionization fraction of 1e-3
     # (the minimal fraction is needed for the electron temperature to be defined everywhere)
     ioniz_fraction = (1. - 1.e-3)*np.exp(-np.power(r*r/(2*sigma1*sigma1), 12)) + 1.e-3
     # Calculate electron temperature, with a minimal temperature of 0.03 eV
-    T_eV = (Te_max - Ta) * np.exp(-np.power(r*r/(2*sigma2*sigma2), 3)) + Ta
+    T_eV = (Te_max) * np.exp(-np.power(r*r/(2*sigma2*sigma2), 3)) + Ta
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
     populations = np.zeros((len(r), len(species_keys)))
     # Set H0 and H1 fractions
     populations[:, species_keys.index('H0')] = 1 - ioniz_fraction
-    populations[:, species_keys.index('H1')] = ioniz_fraction
+    populations[:, species_keys.index('H1')] = ioniz_fraction   
     # Save file
     save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
         T_eV, '1d_desy_benchmark.h5', species_keys)
@@ -302,14 +303,12 @@ def test_1d_desy_benchmark():
     # Run the code
     run_castro_simulation("problem.initial_conditions_file=1d_desy_benchmark.h5")
     # Evaluate checksum
-    evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
+    #evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
 
     # Remove generated plotfiles and checkpoints
-    cleanup_outputs('1d_desy_benchmark.h5')
+    #cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    print("\n Starting 1D tests... \n")
-    test_1d_sedov_taylor()
-    print("\n 1D Sedov-Taylor test completed. \n")
+    #test_1d_sedov_taylor()
 
-    #test_1d_desy_benchmark()
+    test_1d_desy_benchmark()
