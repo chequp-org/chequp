@@ -58,6 +58,7 @@ class CastroSimulation(object):
             r, q = _extract_radius_and_quantity( ds, quantity, level )
         return r, q, ds.current_time.to_value()
 
+
     def get_energy(self, t, level, energy_type='total'):
         """
         Get the energy (either kinetic, thermal, or sum of both)
@@ -80,7 +81,7 @@ class CastroSimulation(object):
         t: float, in s
             The exact time at which the energy was extracted
         """
-        # Extract the right quantity, depending on the requested energy type
+        # Extract the right energy density, depending on the requested energy type
         if energy_type == 'total':
             r, energy_density, t = self.extract_data(t, 'rho_E', level)
         elif energy_type == 'thermal':
@@ -93,15 +94,45 @@ class CastroSimulation(object):
             raise ValueError("Invalid energy type: {energy_type}")
 
         # Integrate the energy density over the simulation
-        if ds.dimensionality == 1: # 1D cylindrical simulation
-            dr = r[1] - r[0]
-            energy = np.sum( np.pi * ((r+0.5*dr)**2 - (r-0.5*dr)**2) * energy_density )
-        else:
-            raise ValueError("Unsupported dimensionality: {ds.dimensionality}")
+        dr = r[1] - r[0]
+        energy = np.sum( np.pi * ((r+0.5*dr)**2 - (r-0.5*dr)**2) * energy_density )
 
         return energy, t
 
+    def get_particle_number( self, species_name, species_mass, t, level ):
+        """
+        Get the number of particles of the species `species_name`
+        at time `t`, at the required refinement level
 
+        Parameters:
+        -----------
+        species_name: string
+            name of the species to get the number of particles from
+        species_mass: float
+            mass of the species in g
+        t: float
+            time at which to get the number of particles
+        level: int
+            refinement level at which to get the number of particles
+
+        Returns:
+        --------
+        particle_number: float
+            The number of particles of the species `species_name` per unit length (in 1D cylindrical)
+        t: float, in s
+            The exact time at which the number of particles was extracted
+        """
+        # Extract the species mass density
+        r, species_mass_density, t = self.extract_data(t, f'rho_{species_name}', level)
+
+        # Integrate the energy density over the simulation
+        dr = r[1] - r[0]
+        mass_density = np.sum( np.pi * ((r+0.5*dr)**2 - (r-0.5*dr)**2) * species_mass_density )
+
+        # Calculate the number of particles
+        particle_number = mass_density / species_mass
+
+        return particle_number, t
 
 
 def _extract_radius_and_quantity( ds, quantity, level ):
