@@ -271,11 +271,117 @@ def test_1d_sedov_taylor():
     # Remove generated plotfiles and checkpoints
     #cleanup_outputs('1d_sedov_taylor.h5')
 
+
+def load_comsol_data():
+        all_data = {}
+        try:
+            for _ in ['Te', 'ne', 'Ta', 'na']:
+                filename = "Exp_"+str(_)+".txt"
+                r, z, t0, t1, t2, t5, t8, t10 = np.loadtxt(
+                    filename, skiprows=9, unpack=True)
+                data = {
+                    'r': r,
+                    'z': z,
+                    't0': t0,
+                    't1': t1,
+                    't2': t2,
+                    't5': t5,
+                    't8': t8,
+                    't10': t10
+                }
+                all_data[_] = data
+            return all_data
+        except Exception as e:
+            print(f"Error loading COMSOL data: {e}")
+            return {}
+
+def load_sim():
+    cs = CastroSimulation('.', 'plt_1d_')
+    """Extract rmax for each output time."""
+    r_arr, rmax_arr, q_arr,  = [], [], []
+    t_arr = np.array(cs.output_times)
+    for time in t_arr:
+        r, q, t = cs.extract_data(time, 'density', level=3)
+        rmax = r[np.argmax(q)]
+        rmax_arr.append(rmax)
+        q_arr.append(q)
+        r_arr.append(r)
+    return {'time': np.array(t_arr), 'r': np.array(r_arr), 'rmax': np.array(rmax_arr), 'q': np.array(q_arr)}
+
+def check_energy_conservation(tol: float = 1.0):
+        """
+        Extract the total energy (thermal + kinetic) as a function of time.
+        """
+        e = 1.60218e-19 # C
+        E_tot = []
+        yt_timeseries = yt.load('plt_1d_*')
+        for ds in yt_timeseries:
+            ad0 = ds.covering_grid(level=0, left_edge=ds.domain_left_edge, dims=ds.domain_dimensions)
+            r = np.array(np.linspace(ds.domain_left_edge[0], ds.domain_right_edge[0], ds.domain_dimensions[0]+1))
+            r *= 1e-2 # Convert to m
+
+            E = np.array(ad0['rho_E'].to_ndarray().squeeze()) * 1e-7 * 1e6 # Convert to J/m^3
+            e_kin_thermal =  (np.pi*(r[1:]**2 - r[:-1]**2)*E).sum()
+
+            rho_Hp = ad0['rho_H1'].to_ndarray().squeeze() * 1e-3 * 1e6 # Convert to kg/m^3
+            n_e = rho_Hp / m_p
+            Ntot = (np.pi*(r[1:]**2 - r[:-1]**2)*n_e).sum()
+            e_pot = 13.6*e*Ntot
+            E_tot.append(e_kin_thermal + e_pot)
+        E_tot = np.array(E_tot) * 1e3  # Convert to mJ/m
+
+        rel_dev = np.max(np.abs(E_tot - E_tot[0]) / np.array(E_tot[0]) * 100.)
+        test = rel_dev < tol
+        value = rel_dev
+        assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
+
+def check_r_t_CM(sim_data, tol: int = 10):
+    """
+    Compare radial density profiles at several output times to the COMSOL solution.
+    Returns True if the mean relative L2 error is below tol%.
+    """
+    comsol_data = load_comsol_data()
+    r_comsol = comsol_data['na']['r']  # in meters
+    t_comsol = np.array([0, 1, 2, 5, 8, 10]) * 1e-9  # in seconds
+    r_comsol_vals = []
+    for t in [0, 1, 2, 5, 8, 10]:
+        na_t = comsol_data['na'][f't{t}']
+        rmax = r_comsol[np.argmax(na_t)]
+        r_comsol_vals.append(rmax)
+
+    # Simulation data
+    t_sim, r_sim = sim_data['time'], sim_data['rmax']
+    r_comsol_interp = np.interp(t_sim[1:], t_comsol, r_comsol_vals)
+    rel_error = np.linalg.norm(r_sim[1:]*1e4 - r_comsol_interp*1e6) / np.linalg.norm(r_comsol_interp*1e6) * 100.
+    assert rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
+
+def check_rho_r_CM(sim_data, tol: int = 50):
+    """
+    Compare radial density profiles at several output times to the COMSOL solution.
+    Returns True if the mean relative L2 error is below tol%.
+    """
+    # Comsol data
+    comsol_data = load_comsol_data()
+    comsol_r = comsol_data['na']['r']
+    comsol_rho = comsol_data['na'] # Normalize
+    # Compute errors for different times
+    times = [2e-9, 5e-9, 8e-9]
+    diffs = []
+    for i, t in enumerate(times):
+            idx = np.argmin(np.abs(sim_data['time'] - t))
+            r, q = sim_data['r'][idx], sim_data['q'][idx]
+            na_comsol_interp = np.interp(r, comsol_r, comsol_rho[f't{int(t*1e9)}']/1e24)
+            diff = np.linalg.norm(q/1.67e-6 - na_comsol_interp) / np.linalg.norm(na_comsol_interp)
+            diffs.append(diff)
+    mean_rel_error = np.mean(diffs) * 100.
+    assert mean_rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
+
 def test_1d_desy_benchmark():
     """
     Test the code in the scenario that benchmarked with DESY team
     (close - but not identical - to the one from Mewes et al., PRR 5, 033112, 2023)
     """
+    print("Generating initial conditions...")
     # Generate openPMD inital conditions according to the agreed-upon benchmark
     sigma1 = 38e-6  # in m
     sigma2 = 35e-6  # in m
@@ -301,14 +407,29 @@ def test_1d_desy_benchmark():
         T_eV, '1d_desy_benchmark.h5', species_keys)
 
     # Run the code
+    print("Starting simulation...")
+    time_s = time.time()
     run_castro_simulation("problem.initial_conditions_file=1d_desy_benchmark.h5")
+    time_e = time.time()
+    print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
+    # Physical tests #
+    print("Running physical tests...\n")
+    sim_data = load_sim()
+
+    check_energy_conservation(tol = 1.0)
+    check_r_t_CM(sim_data, tol = 10)
+    check_rho_r_CM(sim_data, tol = 50)
+
+    print("All physical tests PASSED.")
     # Evaluate checksum
-    #evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
+    evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
 
     # Remove generated plotfiles and checkpoints
-    #cleanup_outputs('1d_desy_benchmark.h5')
+    cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
     #test_1d_sedov_taylor()
-
-    test_1d_desy_benchmark()
+    try:
+        test_1d_desy_benchmark()
+    except AssertionError as e:
+        print(f"Test failed: {e}")
