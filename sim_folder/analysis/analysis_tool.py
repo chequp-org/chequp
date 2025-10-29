@@ -76,8 +76,7 @@ class CastroSimulation(object):
         Returns:
         --------
         energy: float, in erg/cm
-            The energy per unit length (for simulations that assume invariance
-            along the z axis, like 1D cylindrical and 2D Cartesian simulations)
+            The energy per unit length (in 1D cylindrical)
         t: float, in s
             The exact time at which the energy was extracted
         """
@@ -94,12 +93,14 @@ class CastroSimulation(object):
             raise ValueError("Invalid energy type: {energy_type}")
 
         # Integrate the energy density over the simulation
-        dr = r[1] - r[0]
-        energy = np.sum( np.pi * ((r+0.5*dr)**2 - (r-0.5*dr)**2) * energy_density )
+        if ds.dimensionality == 1: # 1D cylindrical simulation
+            dr = r[1] - r[0]
+            energy = np.sum( np.pi * ((r+0.5*dr)**2 - (r-0.5*dr)**2) * energy_density )
+        else:
+            raise ValueError("Unsupported dimensionality: {ds.dimensionality}")
 
         return energy, t
 
-        # TODO Check dimension/geometry of the simulation
 
 
 
