@@ -96,7 +96,7 @@ def test_1d_sedov_taylor():
 def load_comsol_data():
         all_data = {}
         try:
-            for _ in ['Te', 'ne', 'Ta', 'na']:
+            for _ in ['Te', 'na']:
                 filename = "Exp_"+str(_)+".txt"
                 r, z, t0, t1, t2, t5, t8, t10 = np.loadtxt(
                     filename, skiprows=9, unpack=True)
