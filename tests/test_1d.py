@@ -54,7 +54,7 @@ def check_r_t_ST(sim_data, sol, tol: int = 10):
     rel_error = np.linalg.norm(r_fit*1e4 - r_analytical*1e4) / np.linalg.norm(r_analytical*1e4) * 100.
     assert rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
-def check_rho_r_ST(sim_data, sol, tol: int = 50):
+def check_rho_r_ST(sim_data, sol, tol: int = 10):
     indices = np.arange(0.7, 0.99, 0.05) * len(sim_data['time'])
     errors = []
     for idx in np.unique(indices):
@@ -116,7 +116,7 @@ def test_1d_sedov_taylor():
     """
     print("Generating initial conditions...")
     # Generate openPMD inital conditions for a small-radius plasma
-    # 1000eV plasma in the first 5 microns, low-temperature plasma in the rest
+    # Gaussian temperature profile with sigma=4 microns, peak T=1000 eV
     r = np.linspace(0, 10e-6, 1024)
     sigma = 4e-6
     T_eV = np.ones_like(r) * 1000 * np.exp(-r**2/sigma**2) # Gaussian profile to fasten convergence
@@ -140,12 +140,12 @@ def test_1d_sedov_taylor():
     # Physical tests #
     print("Running physical tests...\n")
     sim_data = load_sim()
-    init_param = (5.0 / 3.0, 1205.9, 1.67e-6) # gamma, E0 (erg), rho0 (g/cm3)
+    init_param = (5.0 / 3.0, 1205.9, 1.67e-6) # gamma, E0 (erg), rho0 (g/cm3) (computed by integrating initial conditions)
     analytical_data = SedovTalorProblem(*init_param)
 
     check_energy_conservation(sim_data, tol=1.0)
     check_r_t_ST(sim_data, analytical_data, tol=10)
-    check_rho_r_ST(sim_data, analytical_data, tol=50)
+    check_rho_r_ST(sim_data, analytical_data, tol=10)
 
     print("Physical tests passed.\n")
     # Evaluate checksum
