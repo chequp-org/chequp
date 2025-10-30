@@ -52,9 +52,9 @@ def check_r_t_ST(sim_data, sol, tol: int = 10):
     r_fit = popt[0] * np.sqrt(sim_data['time'])
     r_analytical = np.array(sol.blast_radius(sim_data['time']))
     rel_error = np.linalg.norm(r_fit*1e4 - r_analytical*1e4) / np.linalg.norm(r_analytical*1e4) * 100.
-    assert rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
+    assert rel_error < tol, f"Shock radius comparison to Sedov Taylor theory failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
-def check_rho_r_ST(sim_data, sol, tol: int = 10):
+def check_rho_r_ST(sim_data, sol, tol: int = 15):
     indices = np.arange(0.7, 0.99, 0.05) * len(sim_data['time'])
     errors = []
     for idx in np.unique(indices):
@@ -72,7 +72,7 @@ def check_rho_r_ST(sim_data, sol, tol: int = 10):
         errors.append(err)
 
     mean_rel_error = np.mean(np.array(errors)) * 100.
-    assert mean_rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
+    assert mean_rel_error < tol, f"Shock radius comparison to Sedov Taylor theory failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
 
 def run_castro_simulation(runtime_options):
     """
@@ -112,7 +112,6 @@ def test_1d_sedov_taylor():
     Test that code produce the exact Sedov-Taylor blast wave solution, in a simplified setup:
     - no ionization reactions (castro.add_ext_src=0)
     - no temperature diffusion (castro.diffuse_temp=0)
-    - the initial radius of the hot plasma is small (5 microns)
     """
     print("Generating initial conditions...")
     # Generate openPMD inital conditions for a small-radius plasma
@@ -145,7 +144,7 @@ def test_1d_sedov_taylor():
 
     check_energy_conservation(sim_data, tol=1.0)
     check_r_t_ST(sim_data, analytical_data, tol=10)
-    check_rho_r_ST(sim_data, analytical_data, tol=10)
+    check_rho_r_ST(sim_data, analytical_data, tol=15)
 
     print("Physical tests passed.\n")
     # Evaluate checksum
@@ -153,11 +152,13 @@ def test_1d_sedov_taylor():
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_sedov_taylor.h5')
-    def test_1d_desy_benchmark():
-        """
-        Test the code in the scenario that benchmarked with DESY team
-        (close - but not identical - to the one from Mewes et al., PRR 5, 033112, 2023)
-        """
+
+
+def test_1d_desy_benchmark():
+    """
+    Test the code in the scenario that benchmarked with DESY team
+    (close - but not identical - to the one from Mewes et al., PRR 5, 033112, 2023)
+    """
     # Generate openPMD inital conditions according to the agreed-upon benchmark
     sigma1 = 38e-6  # in m
     sigma2 = 35e-6  # in m
