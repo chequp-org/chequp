@@ -235,11 +235,8 @@ class physical_test_2d:
         value = rel_error
         return test, value
     
-
-def run_castro_simulation(runtime_options, work_dir="sim_2D_128_10"):
+def run_castro_simulation(runtime_options):
     """
-    Run the Castro simulation in another folder specified by `work_dir`.
-
     Raise an error and print stdout/stderr if the command fails.
     """
     # Find the Castro executable
@@ -264,7 +261,6 @@ def run_castro_simulation(runtime_options, work_dir="sim_2D_128_10"):
             capture_output=True,
             text=True,
             check=True,
-            cwd=work_dir,  # <<< run the command from this directory
         )
     except subprocess.CalledProcessError as e:
         print(f"Command failed with exit code {e.returncode}")
@@ -343,18 +339,16 @@ def test_2d_desy_benchmark():
     """
     print("Generating initial conditions...")
     # Generate openPMD initial conditions according to the agreed-upon benchmark
-    data = np.loadtxt("2D_xy_Init_Slice 3_2022_06.txt")
+    data = np.loadtxt("init_2D_castro_comsol.txt", skiprows=1)
     x, y, Z_H1, T_eV = data.T
-
-    interp_H1 = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,2].reshape(300, 300),bounds_error=False,fill_value=None)
-    interp_T = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,3].reshape(300, 300),bounds_error=False,fill_value=None)
+    interp_H1 = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,2].reshape(1001, 1001).T,bounds_error=False,fill_value=None)
+    interp_T = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,3].reshape(1001, 1001).T,bounds_error=False,fill_value=None)
     # Grid
     x = np.linspace(0.0, 600e-6, 256)
     y = np.linspace(0.0, 600e-6, 256)
     center = 300e-6
     X_grid, Y_grid = np.meshgrid(x, y, indexing='ij')
-    T_eV_interp = interp_T((Y_grid - center, X_grid - center)) 
-    T_eV_interp = T_eV_interp / (1.1e4) # conversion from K to eV
+    T_eV_interp = interp_T((Y_grid - center, X_grid - center))
     Z_H1_interp = interp_H1((Y_grid - center, X_grid - center))
     # Species keys
     with open('../sim_folder/build/species.net', 'r') as f:
