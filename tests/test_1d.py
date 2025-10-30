@@ -33,7 +33,7 @@ def load_sim():
     r_arr, rmax_arr, q_arr, E_tot_arr = [], [], [], []
     t_arr = np.array(cs.output_times)
     for time in t_arr:
-        r, q, t, E = cs.extract_data(time, 'density', level=3)
+        r, q, t = cs.extract_data(time, 'density', level=3)
         rmax = r[np.argmax(q)]
         rmax_arr.append(rmax)
         q_arr.append(q)
@@ -49,9 +49,9 @@ def check_energy_conservation(sim_data, tol: float = 1.0):
 
 def check_r_t_ST(sim_data, sol, tol: int = 10):
     popt, _ = curve_fit(lambda t, a: a * np.sqrt(t), sim_data['time'][1:], sim_data['rmax'][1:])
-    r_fit = sim_data['time'], popt[0] * np.sqrt(sim_data['time'])
-    r_analytical = np.asarray(sol.blast_radius(sim_data['time']))
-    rel_error = np.linalg.norm(r_fit[1:]*1e4 - r_analytical*1e6) / np.linalg.norm(r_analytical*1e6) * 100.
+    r_fit = popt[0] * np.sqrt(sim_data['time'])
+    r_analytical = np.array(sol.blast_radius(sim_data['time']))
+    rel_error = np.linalg.norm(r_fit*1e4 - r_analytical*1e4) / np.linalg.norm(r_analytical*1e4) * 100.
     assert rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
 def check_rho_r_ST(sim_data, sol, tol: int = 50):
@@ -140,7 +140,8 @@ def test_1d_sedov_taylor():
     # Physical tests #
     print("Running physical tests...\n")
     sim_data = load_sim()
-    analytical_data = SedovTalorProblem(E0=3.2e-3, rho0=1.67e-6, dim=1)
+    init_param = (5.0 / 3.0, 1205.9, 1.67e-6) # gamma, E0 (erg), rho0 (g/cm3)
+    analytical_data = SedovTalorProblem(*init_param)
 
     check_energy_conservation(sim_data, tol=1.0)
     check_r_t_ST(sim_data, analytical_data, tol=10)
