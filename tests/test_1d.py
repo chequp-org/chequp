@@ -6,12 +6,9 @@ import subprocess
 import re
 import numpy as np
 import sys
-import yt
 import glob
 import os
-import openpmd_api
 import time
-import h5py
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
 sys.path.append('../sim_folder/analysis/')
@@ -19,21 +16,20 @@ from analysis_tool import CastroSimulation
 sys.path.append('../theory/sedov_theory/python/')
 from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
-from scipy.constants import m_p, k
 from scipy.optimize import curve_fit
 
 def cleanup_outputs(extra_file = ""):
     # Remove previously generated plotfiles and checkpoints
 
-    os.system(f"rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
+    os.system("rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
 def load_sim():
     cs = CastroSimulation('.', 'plt_1d_')
     """Extract rmax for each output time."""
     r_arr, rmax_arr, q_arr, E_tot_arr = [], [], [], []
     t_arr = np.array(cs.output_times)
-    for time in t_arr:
-        r, q, t = cs.extract_data(time, 'density', level=3)
+    for t0 in t_arr:
+        r, q, t = cs.extract_data(t0, 'density', level=3)
         rmax = r[np.argmax(q)]
         rmax_arr.append(rmax)
         q_arr.append(q)
@@ -191,9 +187,5 @@ def test_1d_desy_benchmark():
     cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    try:
-        test_1d_sedov_taylor()
-    except AssertionError as e:
-        print(f"Test failed: {e}")
-        
-    #test_1d_desy_benchmark()
+    test_1d_sedov_taylor()
+    test_1d_desy_benchmark()
