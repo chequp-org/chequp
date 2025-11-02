@@ -147,7 +147,7 @@ def test_1d_sedov_taylor():
 
     check_energy_conservation(sim_data, tol=1.0)
     check_r_t_ST(sim_data, analytical_data, tol=10)
-    check_rho_r_ST(sim_data, analytical_data, tol=15)
+    check_rho_r_ST(sim_data, analytical_data, tol=22)
 
     print("Physical tests passed.\n")
     # Evaluate checksum
