@@ -6,26 +6,16 @@ To setup the folders:
 ```
 git clone git@github.com:RemiLehe/castro_sim.git
 cd castro_sim
-git clone --recursive https://github.com/RemiLehe/Castro.git --branch 2Temp_new
+git clone --recursive https://github.com/RemiLehe/Castro.git --branch 2T_25.10
 ```
 
-On Linux, I used the same compilation environment as for WarpX i.e.
-```
-spack env activate warpx-openmp-dev
-```
-or (for GPU)
-```
-spack env activate warpx-cuda-dev
-```
+## Setup a conda environment
 
-On MacOS, I followed the instruction here:
-https://github.com/AMReX-Astro/Castro/issues/2195
 ```
-brew install gcc@11 make
-brew install --build-from-source open-mpi --cc=gcc-11
-brew install hdf5-mpi
+conda create -n castro_sim
+conda activate castro_sim
+conda install -c conda-forge compilers "hdf5=*=mpi_openmpi*" openmpi make zlib
 ```
-and used `gmake` instead of `make` in the instructions below.
 
 In order to analyze the results, create a Python environment with `numpy`, `scipy`, `Jupyter` and `yt`.
 
@@ -48,10 +38,9 @@ EOS_DIR     := gamma_law
 
 ```
 cd sim_folder/build
-export HDF5_DIR=$(pkg-config --variable=prefix hdf5)
 make -j 4
 ```
-(for GPU, use `make USE_CUDA=TRUE -j 4`)
+(for GPU, use `make USE_CUDA=TRUE -j 4` ; on MacOS, use `make COMP=clang -j 4`)
 
 ```
 cd ../run
@@ -67,10 +56,9 @@ jupyter notebook Analysis.ipynb
 
 ```
 cd sim_folder/build
-export HDF5_DIR=$(pkg-config --variable=prefix hdf5)
 make DIM=1 -j 4
 ```
-(for GPU, use `make DIM=1 USE_CUDA=TRUE -j 4`)
+(for GPU, use `make DIM=1 USE_CUDA=TRUE -j 4` ; on MacOS, use `make COMP=clang DIM=1 -j 4`)
 
 ```
 cd ../run
