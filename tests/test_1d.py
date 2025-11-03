@@ -25,7 +25,7 @@ from scipy.optimize import curve_fit
 def cleanup_outputs(extra_file = ""):
     # Remove previously generated plotfiles and checkpoints
 
-    os.system(f"rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
+    os.system("rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
 def load_sim():
     cs = CastroSimulation('.', 'plt_1d_')
@@ -191,9 +191,7 @@ def test_1d_desy_benchmark():
     cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    try:
-        test_1d_sedov_taylor()
-    except AssertionError as e:
-        print(f"Test failed: {e}")
+
+    test_1d_sedov_taylor()
         
     #test_1d_desy_benchmark()
