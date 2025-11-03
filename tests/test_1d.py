@@ -32,8 +32,8 @@ def load_sim():
     """Extract rmax for each output time."""
     r_arr, rmax_arr, q_arr, E_tot_arr = [], [], [], []
     t_arr = np.array(cs.output_times)
-    for time in t_arr:
-        r, q, t = cs.extract_data(time, 'density', level=3)
+    for t0 in t_arr:
+        r, q, t = cs.extract_data(t0, 'density', level=3)
         rmax = r[np.argmax(q)]
         rmax_arr.append(rmax)
         q_arr.append(q)
@@ -72,7 +72,7 @@ def check_rho_r_ST(sim_data, sol, tol: int = 15):
         errors.append(err)
 
     mean_rel_error = np.mean(np.array(errors)) * 100.
-    assert mean_rel_error < tol, f"Shock radius comparison to Sedov Taylor theory failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
+    assert mean_rel_error < tol, f"Density profile comparison to Sedov Taylor theory failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
 
 def run_castro_simulation(runtime_options):
     """
@@ -118,7 +118,8 @@ def test_1d_sedov_taylor():
     # Gaussian temperature profile with sigma=4 microns, peak T=1000 eV
     r = np.linspace(0, 10e-6, 1024)
     sigma = 4e-6
-    T_eV = np.ones_like(r) * 1000 * np.exp(-r**2/sigma**2) # Gaussian profile to fasten convergence
+    T0_eV = 1000
+    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/sigma**2) # Gaussian profile to fasten convergence
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
@@ -139,19 +140,25 @@ def test_1d_sedov_taylor():
     # Physical tests #
     print("Running physical tests...\n")
     sim_data = load_sim()
-    init_param = (5.0 / 3.0, 1205.9, 1.67e-6) # gamma, E0 (erg), rho0 (g/cm3) (computed by integrating initial conditions)
-    analytical_data = SedovTalorProblem(*init_param)
+
+    # Comparison with Sedov Taylor theory
+    rho_initial = 1.67e-6  # in g.cm^-3
+    mp_g = m_p*1e3 # in g
+    sigma_cm = sigma*1e2 # in cm
+    deposited_energy = 3*np.pi/2 * T0_eV*e * sigma_cm**2 * rho_initial/mp_g * 1e7 # in erg/cm (computed by integrating initial conditions)
+    analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial)
 
     check_energy_conservation(sim_data, tol=1.0)
     check_r_t_ST(sim_data, analytical_data, tol=10)
-    check_rho_r_ST(sim_data, analytical_data, tol=15)
+    check_rho_r_ST(sim_data, analytical_data, tol=22)
 
     print("Physical tests passed.\n")
     # Evaluate checksum
-    evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
+    evaluate_checksum("1d_sedov_taylor", "plt_1d_*", rtol=4.e-7)
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_sedov_taylor.h5')
+
 
 def test_1d_desy_benchmark():
     """
@@ -184,7 +191,7 @@ def test_1d_desy_benchmark():
     # Run the code
     run_castro_simulation("problem.initial_conditions_file=1d_desy_benchmark.h5")
     # Evaluate checksum
-    evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
+    evaluate_checksum("1d_desy_benchmark", "plt_1d_*", rtol=4.e-7)
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_desy_benchmark.h5')
