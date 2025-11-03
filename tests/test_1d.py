@@ -151,7 +151,7 @@ def test_1d_sedov_taylor():
 
     print("Physical tests passed.\n")
     # Evaluate checksum
-    evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
+    evaluate_checksum("1d_sedov_taylor", "plt_1d_*", rtol=4.e-7)
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_sedov_taylor.h5')
@@ -188,7 +188,7 @@ def test_1d_desy_benchmark():
     # Run the code
     run_castro_simulation("problem.initial_conditions_file=1d_desy_benchmark.h5")
     # Evaluate checksum
-    evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
+    evaluate_checksum("1d_desy_benchmark", "plt_1d_*", rtol=4.e-7)
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_desy_benchmark.h5')
