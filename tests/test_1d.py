@@ -133,7 +133,7 @@ def test_1d_sedov_taylor():
     # Run the code
     print("Starting simulation...")
     time_s = time.time()
-    run_castro_simulation("castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
+    run_castro_simulation("amr.n_cell=128 castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
     time_e = time.time()
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
@@ -152,7 +152,6 @@ def test_1d_sedov_taylor():
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_sedov_taylor.h5')
-
 
 def test_1d_desy_benchmark():
     """
