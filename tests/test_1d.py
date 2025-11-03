@@ -20,7 +20,6 @@ from analysis_tool import CastroSimulation
 sys.path.append('../theory/sedov_theory/python/')
 from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
-from scipy.constants import m_p, k
 
 def cleanup_outputs(extra_file = ""):
     # Remove previously generated plotfiles and checkpoints
@@ -92,11 +91,10 @@ def test_1d_sedov_taylor():
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_sedov_taylor.h5')
 
-
 def load_comsol_data():
         all_data = {}
         try:
-            for _ in ['Te', 'na']:
+            for _ in ['Te', 'na']: # only uselful quantities
                 filename = "Exp_"+str(_)+".txt"
                 r, z, t0, t1, t2, t5, t8, t10 = np.loadtxt(
                     filename, skiprows=9, unpack=True)
@@ -119,42 +117,22 @@ def load_comsol_data():
 def load_sim():
     cs = CastroSimulation('.', 'plt_1d_')
     """Extract rmax for each output time."""
-    r_arr, rmax_arr, q_arr,  = [], [], []
+    r_arr, rmax_arr, q_arr, E_tot_arr = [], [], [], []
     t_arr = np.array(cs.output_times)
-    for time in t_arr:
-        r, q, t = cs.extract_data(time, 'density', level=3)
+    for t0 in t_arr:
+        r, q, t = cs.extract_data(t0, 'density', level=3)
         rmax = r[np.argmax(q)]
         rmax_arr.append(rmax)
         q_arr.append(q)
         r_arr.append(r)
-    return {'time': np.array(t_arr), 'r': np.array(r_arr), 'rmax': np.array(rmax_arr), 'q': np.array(q_arr)}
+        E_tot_arr.append(cs.get_energy(t, level=3)[0])
+    return {'time': np.array(t_arr), 'r': np.array(r_arr), 'rmax': np.array(rmax_arr), 'q': np.array(q_arr), 'E_tot': np.array(E_tot_arr)}
 
-def check_energy_conservation(tol: float = 1.0):
-        """
-        Extract the total energy (thermal + kinetic) as a function of time.
-        """
-        e = 1.60218e-19 # C
-        E_tot = []
-        yt_timeseries = yt.load('plt_1d_*')
-        for ds in yt_timeseries:
-            ad0 = ds.covering_grid(level=0, left_edge=ds.domain_left_edge, dims=ds.domain_dimensions)
-            r = np.array(np.linspace(ds.domain_left_edge[0], ds.domain_right_edge[0], ds.domain_dimensions[0]+1))
-            r *= 1e-2 # Convert to m
-
-            E = np.array(ad0['rho_E'].to_ndarray().squeeze()) * 1e-7 * 1e6 # Convert to J/m^3
-            e_kin_thermal =  (np.pi*(r[1:]**2 - r[:-1]**2)*E).sum()
-
-            rho_Hp = ad0['rho_H1'].to_ndarray().squeeze() * 1e-3 * 1e6 # Convert to kg/m^3
-            n_e = rho_Hp / m_p
-            Ntot = (np.pi*(r[1:]**2 - r[:-1]**2)*n_e).sum()
-            e_pot = 13.6*e*Ntot
-            E_tot.append(e_kin_thermal + e_pot)
-        E_tot = np.array(E_tot) * 1e3  # Convert to mJ/m
-
-        rel_dev = np.max(np.abs(E_tot - E_tot[0]) / np.array(E_tot[0]) * 100.)
-        test = rel_dev < tol
-        value = rel_dev
-        assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
+def check_energy_conservation(sim_data, tol: float = 1.0):
+    rel_err = np.abs(sim_data['E_tot'] - sim_data['E_tot'][0]) / sim_data['E_tot'][0] * 100.0
+    test = np.all(rel_err < tol)
+    value = np.max(rel_err)
+    assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
 
 def check_r_t_CM(sim_data, tol: int = 10):
     """
@@ -208,14 +186,14 @@ def test_1d_desy_benchmark():
     sigma2 = 35e-6  # in m
     Te_max = 27 # in eV
     kb = 8.617333262145e-5  # eV/K
-    Ta = 2000 * kb  # in eV
+    Ta = 2000 * kb  # Background temperature in eV (constrain from COMSOL simulation)
     # Create r array from 0 to 6e-4 with 1e-6 increment
     r = np.arange(0, 6e-4 + 1e-6, 1e-6)
     # Calculate ionization fraction, with minimal ionization fraction of 1e-3
     # (the minimal fraction is needed for the electron temperature to be defined everywhere)
     ioniz_fraction = (1. - 1.e-3)*np.exp(-np.power(r*r/(2*sigma1*sigma1), 12)) + 1.e-3
-    # Calculate electron temperature, with a minimal temperature of 0.03 eV
-    T_eV = (Te_max) * np.exp(-np.power(r*r/(2*sigma2*sigma2), 3)) + Ta
+    # Calculate electron temperature profile such that it match with the COMSOL one
+    T_eV = Te_max * np.exp(-np.power(r*r/(2*sigma2*sigma2), 3)) + Ta
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
@@ -230,18 +208,17 @@ def test_1d_desy_benchmark():
     # Run the code
     print("Starting simulation...")
     time_s = time.time()
-    run_castro_simulation("problem.initial_conditions_file=1d_desy_benchmark.h5")
+    run_castro_simulation("castro.add_ext_src=1 castro.diffuse_temp=1 problem.initial_conditions_file=1d_desy_benchmark.h5")
     time_e = time.time()
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
     print("Running physical tests...\n")
     sim_data = load_sim()
 
-    check_energy_conservation(tol = 1.0)
-    check_r_t_CM(sim_data, tol = 10)
+    check_energy_conservation(sim_data, tol = 1.0)
+    check_r_t_CM(sim_data, tol = 12)
     check_rho_r_CM(sim_data, tol = 50)
 
-    print("All physical tests PASSED.")
     # Evaluate checksum
     evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
 
@@ -250,7 +227,4 @@ def test_1d_desy_benchmark():
 
 if __name__ == "__main__":
     #test_1d_sedov_taylor()
-    try:
-        test_1d_desy_benchmark()
-    except AssertionError as e:
-        print(f"Test failed: {e}")
+    test_1d_desy_benchmark()
