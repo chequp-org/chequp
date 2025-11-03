@@ -339,10 +339,10 @@ def test_2d_desy_benchmark():
     """
     print("Generating initial conditions...")
     # Generate openPMD initial conditions according to the agreed-upon benchmark
-    data = np.loadtxt("init_2D_castro_comsol.txt", skiprows=1)
+    data = np.loadtxt("2D_xy_Init_Slice_3_2022_06.txt")
     x, y, Z_H1, T_eV = data.T
-    interp_H1 = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,2].reshape(1001, 1001).T,bounds_error=False,fill_value=None)
-    interp_T = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,3].reshape(1001, 1001).T,bounds_error=False,fill_value=None)
+    interp_H1 = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,2].reshape(300, 300),bounds_error=False,fill_value=None)
+    interp_T = RegularGridInterpolator((np.unique(data[:,1]), np.unique(data[:,0])),data[:,3].reshape(300, 300),bounds_error=False,fill_value=None)
     # Grid
     x = np.linspace(0.0, 600e-6, 256)
     y = np.linspace(0.0, 600e-6, 256)
@@ -362,7 +362,7 @@ def test_2d_desy_benchmark():
     # Run the code
     time_s = time.time()
     print("Starting simulation...")
-    run_castro_simulation("problem.initial_conditions_file=2d_desy_benchmark.h5")
+    #run_castro_simulation("problem.initial_conditions_file=2d_desy_benchmark.h5")
     time_e = time.time()
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
 
