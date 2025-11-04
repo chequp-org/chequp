@@ -294,5 +294,5 @@ def test_1d_desy_benchmark():
     cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    #test_1d_sedov_taylor()
+    test_1d_sedov_taylor()
     test_1d_desy_benchmark()
