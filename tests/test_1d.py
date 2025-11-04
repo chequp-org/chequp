@@ -182,7 +182,7 @@ def load_comsol_data():
             print(f"Error loading COMSOL data: {e}")
             return {}
 
-def load_sim():
+def load_sim(species = ['H0', 'H1']):
     cs = CastroSimulation('.', 'plt_1d_')
     """Extract rmax for each output time."""
     r_arr, rmax_arr, q_arr, E_tot_arr = [], [], [], []
@@ -193,7 +193,7 @@ def load_sim():
         rmax_arr.append(rmax)
         q_arr.append(q)
         r_arr.append(r)
-        E_tot_arr.append(cs.get_energy(t, level=3)[0])
+        E_tot_arr.append(cs.get_energy(t, level=3, species = species)[0])
     return {'time': np.array(t_arr), 'r': np.array(r_arr), 'rmax': np.array(rmax_arr), 'q': np.array(q_arr), 'E_tot': np.array(E_tot_arr)}
 
 def check_energy_conservation(sim_data, tol: float = 1.0):
@@ -281,7 +281,7 @@ def test_1d_desy_benchmark():
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
     print("Running physical tests...\n")
-    sim_data = load_sim()
+    sim_data = load_sim(species = ['H0', 'H1'])
 
     check_energy_conservation(sim_data, tol = 1.0)
     check_r_t_CM(sim_data, tol = 12)

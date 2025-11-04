@@ -77,7 +77,7 @@ class CastroSimulation(object):
         return r, q, ds.current_time.to_value()
 
 
-    def get_energy(self, t, level, energy_type='total'):
+    def get_energy(self, t, level, energy_type='total', species = ['H0', 'H1']):
         """
         Get the energy (either kinetic, thermal, or sum of both)
         at time `t`, at the required refinement level
@@ -103,8 +103,10 @@ class CastroSimulation(object):
         if energy_type == 'total':
             r, energy_density, t = self.extract_data(t, 'rho_E', level)
             if bool(get_param_value("../sim_folder/run/inputs.1d.cyl", "castro.add_ext_src")): # Check if ionization is taking into account
-                r, ion_density, t = self.extract_data(t, 'rho_H1', level)
-                energy_density += 13.6 * e * ion_density / m_p * 1e-3
+                data_ion = {'H0': 0.0, 'H1': 13.598, 'N0': 0.0, 'N1':14.5341, 'N2':29.6013, 'N3':47.4453, 'N4':77.4735, 'N5':97.8901}
+                for spe in species:
+                    r, ion_density, t = self.extract_data(t, f'rho_{spe}', level)
+                    energy_density += data_ion[spe] * e * ion_density / m_p * 1e-3
         elif energy_type == 'thermal':
             r, energy_density, t = self.extract_data(t, 'rho_e', level)
         elif energy_type == 'kinetic':
