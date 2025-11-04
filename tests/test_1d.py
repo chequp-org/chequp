@@ -8,9 +8,7 @@ import numpy as np
 import sys
 import glob
 import os
-import openpmd_api
 import time
-import h5py
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
 sys.path.append('../sim_folder/analysis/')
@@ -18,7 +16,7 @@ from analysis_tool import CastroSimulation
 sys.path.append('../theory/sedov_theory/python/')
 from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
-from scipy.constants import m_p, k
+from scipy.constants import m_p, e
 from scipy.optimize import curve_fit
 
 def cleanup_outputs(extra_file = ""):
