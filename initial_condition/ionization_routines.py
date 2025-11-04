@@ -144,8 +144,40 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
     z_average = np.sum(charges * populations)
     if z_average > 0:
         T = kin_energy / (3/2 * z_average * e)
-
     return populations, T, t  # Return full populations array
+
+@numba.guvectorize(
+    [(numba.float64, numba.float64, numba.float64, numba.float64[:],
+      numba.float64[:], numba.float64[:], numba.float64[:],
+      numba.int64[:], numba.int64[:], numba.float64[:], numba.float64[:],
+      numba.float64[:], numba.float64[:])],
+    '(),(),(),(p),(t),(t),(t),(t),(t),(s),(s)->(s),()',  # Changed signature
+    target='parallel',
+    nopython=True
+)
+def _vectorized_ionization(a0_scalar, tau_scalar, lambd_scalar, ell,
+                           adk_prefactors, adk_powers, adk_exp_prefactors,
+                           source_indices, target_indices, charges,
+                           initial_populations,
+                           populations_out, T_out):
+    """
+    Vectorized wrapper for get_fraction_and_temperature_multispecies
+    This function is called in parallel for each a0 value
+    
+    Dimensions:
+    - p: polarization vector length (2)
+    - t: number of transitions
+    - s: number of species
+    """
+    populations, T, _ = get_fraction_and_temperature_multispecies(
+        a0_scalar, tau_scalar, lambd_scalar, ell,
+        adk_prefactors, adk_powers, adk_exp_prefactors,
+        source_indices, target_indices, charges,
+        initial_populations,
+        80  # npts_per_wavelength - explicitly pass the default value
+    )
+    populations_out[:] = populations
+    T_out[0] = T
 
 
 def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
@@ -249,24 +281,19 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     # Check that the sum is 1 to machine precision
     assert np.abs(np.sum(initial_populations) - 1) < 1.e-10
 
-    # Flatten, and prepare arrays for temperature and population
-    a0_flat = a0_array.flatten()
-    T_flat = np.zeros_like(a0_flat)
-    all_populations_flat = np.zeros((len(a0_flat), len(species_keys)))
-
-    # Process nD profile
-    for i in tqdm.tqdm(range(len(a0_flat)), desc=f"Processing {a0_array.ndim}D multi-species profile"):
-        all_populations_flat[i, :], T_flat[i], _ = get_fraction_and_temperature_multispecies(
-            a0_flat[i],
-            tau, lambd, ell,
-            adk_prefactors, adk_powers, adk_exp_prefactors,
-            source_indices, target_indices, charges,
-            initial_populations
-        )
-
+    # Use vectorized function to process all points in parallel
+    print(f"Processing {a0_array.ndim}D multi-species profile in parallel...")
+    all_populations, T_array = _vectorized_ionization(
+        a0_array.flatten(),
+        tau, lambd, ell,
+        adk_prefactors, adk_powers, adk_exp_prefactors,
+        source_indices, target_indices, charges,
+        initial_populations
+    )
+    
     # Reshape back to nD arrays
-    all_populations = all_populations_flat.reshape(a0_array.shape + (len(species_keys),))
-    T_array = T_flat.reshape(a0_array.shape)
+    all_populations = all_populations.reshape(a0_array.shape + (len(species_keys),))
+    T_array = T_array.reshape(a0_array.shape)
 
     # Save detailed CSV output with all species
     if output_file and grid_extent is not None:
