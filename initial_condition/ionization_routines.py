@@ -173,8 +173,7 @@ def _vectorized_ionization(a0_scalar, tau_scalar, lambd_scalar, ell,
         a0_scalar, tau_scalar, lambd_scalar, ell,
         adk_prefactors, adk_powers, adk_exp_prefactors,
         source_indices, target_indices, charges,
-        initial_populations,
-        80  # npts_per_wavelength - explicitly pass the default value
+        initial_populations
     )
     populations_out[:] = populations
     T_out[0] = T
