@@ -1,0 +1,281 @@
+==============================================================================
+ Castro Job Information
+==============================================================================
+job name: Castro
+
+inputs file: inputs.2d.cyl
+
+number of MPI processes: 1
+
+hydro tile size:         (1024,16)
+
+CPU time used since start of simulation (CPU-hours): 0.0318192
+
+==============================================================================
+ Plotfile Information
+==============================================================================
+output date / time: Tue Nov  4 15:26:10 2025
+
+output dir:         /home/benahmed/src/castro_sim/sim_folder/run/run_2d_rz
+I/O time (s):       0.00193764
+
+
+==============================================================================
+ Build Information
+==============================================================================
+build date:    2025-11-04 15:20:12.945566
+build machine: Linux max-wgse001.desy.de 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Oct 21 04:15:07 EDT 2025 x86_64 x86_64 x86_64 GNU/Linux
+build dir:     /home/benahmed/src/castro_sim/sim_folder/build
+AMReX dir:     ../../Castro/external/amrex
+
+COMP:          gnu
+COMP version:  11.5.0
+
+C++ compiler:  mpicxx
+C++ flags:     -O3 -std=c++17   -DBL_LAZY -DAMREX_LAZY -DBL_USE_MPI -DAMREX_USE_MPI -DAMREX_MPI_THREAD_MULTIPLE -DBL_NO_FORT -DAMREX_GPU_MAX_THREADS=0 -DBL_SPACEDIM=2 -DAMREX_SPACEDIM=2 -DBL_FORT_USE_UNDERSCORE -DAMREX_FORT_USE_UNDERSCORE -DBL_Linux -DAMREX_Linux -DAMREX_DIMENSION_AGNOSTIC -DNDEBUG -DAMREX_NO_PROBINIT -DOMPI_SKIP_MPICXX -DSPONGE -DDIFFUSION -DCONS_SPECIES_HAVE_SOURCES -DSTRANG -DSCREEN_METHOD=SCREEN_METHOD_screen5 -DCONDUCTIVITY -DNAUX_NET=1 -DAUTODIFF_DEVICE_FUNC=AMREX_GPU_HOST_DEVICE -DAMREX_USE_HDF5 -Itmp_build_dir/s/2d.gnu.MPI.EXE -I. -I../../Castro/external/amrex/Src/Extern/HDF5 -I/include -I../../Castro/external/amrex/Src/Base -I../../Castro/external/amrex/Src/Base/Parser -I../../Castro/external/amrex/Src/AmrCore -I../../Castro/external/amrex/Src/Amr -I../../Castro/external/amrex/Src/Boundary -I../../Castro/external/amrex/Src/LinearSolvers/MLMG -I../../Castro/external/Microphysics/util -I../../Castro/external/Microphysics/util/autodiff -I../../Castro/external/Microphysics/util/gcem/include -I. -I../../Castro/Source/driver -I../../Castro/Source/hydro -I../../Castro/Source/problems -I../../Castro/Source/sources -I../../Castro/Source/diffusion -I../../Castro/external/Microphysics/EOS -I../../Castro/external/Microphysics/EOS/gamma_law -I../../Castro/external/Microphysics/networks/general_null -I../../Castro/external/Microphysics/EOS -I../../Castro/external/Microphysics/networks -I../../Castro/external/Microphysics/interfaces -I../../Castro/external/Microphysics/conductivity -I../../Castro/external/Microphysics/conductivity/. -I../../Castro/external/Microphysics/constants -I../../Castro/external/Microphysics/util/approx_math -Itmp_build_dir/castro_sources/2d.gnu.MPI.EXE -I../../Castro/external/amrex/Tools/C_scripts 
+
+Fortran comp:  mpif90
+Fortran flags: -g1 -O3 -ffree-line-length-none -fno-range-check -fno-second-underscore -fimplicit-none 
+
+Link flags:    -L. -L/lib
+Libraries:      -O2 -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -Wp,-D_GLIBCXX_ASSERTIONS -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -m64 -march=x86-64-v2 -mtune=generic -Wl,-z,relro -Wl,--as-needed -Wl,-z,now -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -specs=/usr/lib/rpm/redhat/redhat-annobin-cc1 -I/usr/include/mpich-x86_64 -L/usr/lib64/mpich/lib -lmpicxx -Wl,-rpath -Wl,/usr/lib64/mpich/lib -Wl,--enable-new-dtags -lmpi -lhdf5 -lz -ldl -lhdf5 -lhdf5_fortran -lhdf5 -lz 
+
+EOS: ../../Castro/external/Microphysics/EOS/gamma_law
+NETWORK: ../../Castro/external/Microphysics/networks/general_null
+CONDUCTIVITY: ../../Castro/external/Microphysics/conductivity/.
+
+Castro       git describe: a5e943b52
+AMReX        git describe: 25.06
+Microphysics git describe: 43b27837
+
+
+==============================================================================
+ Grid Information
+==============================================================================
+ level: 0
+   number of boxes = 1
+   maximum zones   = 32 64 
+
+ level: 1
+   number of boxes = 1
+   maximum zones   = 64 128 
+
+ level: 2
+   number of boxes = 1
+   maximum zones   = 128 256 
+
+ level: 3
+   number of boxes = 2
+   maximum zones   = 256 512 
+
+ Boundary conditions
+   -x: symmetry
+   +x: outflow
+   -y: symmetry
+   +y: outflow
+
+
+ Domain geometry info
+     center: 0 , 0 , 0
+
+     geometry.is_periodic: 0 0 
+     geometry.coord_sys:   1
+     geometry.prob_lo:     0 0 
+     geometry.prob_hi:     0.06 0.12 
+     amr.n_cell:           32 64 
+     amr.max_level:        3
+     amr.ref_ratio:        2 2 2 
+     amr.n_error_buf:      1 1 1 
+     amr.regrid_int:       5 5 5 
+     amr.blocking_factor:  8 8 8 
+     amr.max_grid_size:    256 256 256 
+
+     amr.subcycling_mode: Auto
+
+==============================================================================
+ Species Information
+==============================================================================
+ index                         name              A              Z
+------------------------------------------------------------------------------
+     0                           H0              1              0
+     1                           H1              1              1
+     2                           N0             14              0
+     3                           N1             14              1
+     4                           N2             14              2
+     5                           N3             14              3
+     6                           N4             14              4
+     7                           N5             14              5
+
+
+==============================================================================
+ Inputs File Parameters
+==============================================================================
+    castro.diffuse_temp = 0
+    castro.diffuse_cutoff_density = -1e+200
+    castro.diffuse_cutoff_density_hi = -1e+200
+    castro.diffuse_cond_scale_fac = 1
+[*] castro.diffuse_use_amrex_mlmg = 0
+    castro.sponge_lower_radius = -1
+    castro.sponge_upper_radius = -1
+    castro.sponge_lower_density = -1
+    castro.sponge_upper_density = -1
+    castro.sponge_lower_pressure = -1
+    castro.sponge_upper_pressure = -1
+    castro.sponge_lower_factor = 0
+    castro.sponge_upper_factor = 1
+    castro.sponge_target_x_velocity = 0
+    castro.sponge_target_y_velocity = 0
+    castro.sponge_target_z_velocity = 0
+    castro.sponge_timescale = -1
+    castro.state_interp_order = 1
+    castro.lin_limit_state_interp = 0
+    castro.do_reflux = 1
+    castro.update_sources_after_reflux = 1
+[*] castro.allow_non_unit_aspect_zones = 1
+    castro.difmag = 0.1
+[*] castro.small_dens = 1e-100
+[*] castro.small_temp = 1e-100
+[*] castro.small_pres = 1e-100
+[*] castro.small_ener = 7.01533e-93
+    castro.do_hydro = 1
+    castro.time_integration_method = 0
+    castro.limit_fourth_order = 1
+    castro.initialization_is_cell_average = 0
+    castro.use_reconstructed_gamma1 = 0
+    castro.add_ext_src = 0
+    castro.hybrid_hydro = 0
+    castro.ppm_type = 1
+    castro.ppm_do_limiting = 1
+    castro.mhd_limit_characteristic = 1
+    castro.ppm_temp_fix = 0
+    castro.plm_iorder = 2
+    castro.plm_limiter = 2
+    castro.hybrid_riemann = 0
+    castro.riemann_solver = 0
+    castro.riemann_shock_maxiter = 12
+    castro.riemann_pstar_tol = 1e-05
+    castro.riemann_cg_blend = 2
+    castro.use_flattening = 1
+    castro.transverse_use_eos = 0
+    castro.transverse_reset_density = 1
+    castro.transverse_reset_rhoe = 0
+    castro.dual_energy_eta1 = 1
+    castro.dual_energy_eta2 = 0.0001
+    castro.use_pslope = 0
+    castro.ppm_well_balanced = 0
+    castro.pslope_cutoff_density = -1e+20
+    castro.limit_fluxes_on_small_dens = 0
+    castro.speed_limit = 0
+    castro.do_sponge = 0
+    castro.sponge_implicit = 1
+    castro.ext_src_implicit = 0
+    castro.source_term_predictor = 0
+    castro.first_order_hydro = 0
+    castro.xl_ext_bc_type = -1
+    castro.xr_ext_bc_type = -1
+    castro.yl_ext_bc_type = -1
+    castro.yr_ext_bc_type = -1
+    castro.zl_ext_bc_type = -1
+    castro.zr_ext_bc_type = -1
+    castro.hse_zero_vels = 0
+    castro.hse_interp_temp = 0
+    castro.hse_fixed_temp = -1e+200
+    castro.hse_reflect_vels = 0
+    castro.fill_ambient_bc = 0
+    castro.ambient_fill_dir = -1
+    castro.ambient_outflow_vel = 0
+    castro.clamp_ambient_temp = 0
+    castro.ambient_safety_factor = 1.1
+    castro.ambient_density = -1e+200
+    castro.ambient_temp = -1e+200
+    castro.ambient_energy = -1e+200
+    castro.sdc_order = 2
+    castro.sdc_quadrature = 0
+    castro.sdc_extra = 0
+    castro.sdc_solver = 1
+    castro.use_geom_source = 1
+    castro.add_sdc_react_source_to_advection = 1
+    castro.hydro_memory_footprint_ratio = -1
+    castro.fixed_dt = -1
+    castro.initial_dt = -1
+    castro.dt_cutoff = 1e-12
+    castro.max_dt = 1e+200
+[*] castro.cfl = 0.5
+[*] castro.init_shrink = 0.01
+    castro.change_max = 1.1
+    castro.check_dt_before_advance = 1
+    castro.check_dt_after_advance = 1
+    castro.plot_per_is_exact = 0
+    castro.small_plot_per_is_exact = 0
+    castro.use_retry = 1
+    castro.retry_subcycle_factor = 0.5
+    castro.retry_small_density_cutoff = -1e+200
+    castro.abundance_failure_tolerance = 0.01
+    castro.abundance_failure_rho_cutoff = -1e+200
+    castro.use_post_step_regrid = 0
+    castro.max_subcycles = 10
+    castro.sdc_iters = 2
+    castro.stopping_criterion_field = 
+    castro.stopping_criterion_value = 1e+200
+    castro.dtnuc_e = 1e+200
+    castro.dtnuc_X = 1e+200
+    castro.dtnuc_X_threshold = 0.001
+[*] castro.do_react = 0
+    castro.react_T_min = 0
+    castro.react_T_max = 1e+200
+    castro.react_rho_min = 0
+    castro.react_rho_max = 1e+200
+    castro.disable_shock_burning = 0
+    castro.shock_detection_threshold = 0.666667
+    castro.shock_detection_include_sources = 1
+    castro.T_guess = 1e+08
+    castro.drive_initial_convection = 0
+    castro.drive_initial_convection_tmax = 1e+200
+    castro.drive_initial_convection_reinit_period = 1e+200
+    castro.do_grav = 1
+    castro.moving_center = 0
+    castro.grav_source_type = 4
+    castro.do_rotation = 1
+    castro.bndry_func_thread_safe = 1
+    castro.grown_factor = 1
+    castro.star_at_center = 1
+    castro.do_scf_initial_model = 0
+    castro.scf_maximum_density = -1e+06
+    castro.scf_equatorial_radius = -1e+09
+    castro.scf_polar_radius = -1e+09
+    castro.scf_relax_tol = 0.001
+    castro.scf_max_iterations = 30
+    castro.do_special_tagging = 0
+    castro.max_tagging_radius = 10
+[*] castro.verbose = 1
+    castro.dump_old = 0
+    castro.domain_is_plane_parallel = 0
+    castro.print_update_diagnostics = 0
+[*] castro.sum_interval = 1
+    castro.sum_per = -1
+    castro.job_name = Castro
+    castro.output_at_completion = 1
+    castro.reset_checkpoint_time = -1e+200
+    castro.reset_checkpoint_step = -1
+    castro.store_omegadot = 0
+    castro.store_burn_weights = 0
+    castro.abort_on_invalid_params = 0
+    castro.do_radiation = 1
+    diffusion.verbose = 0
+    diffusion.mlmg_maxorder = 4
+[*] problem.initial_conditions_file = 2d_inits.h5
+[*] problem.p_ambient = 41655.5
+[*] problem.dens_ambient = 1.67e-06
+    problem.temp_ambient = 300
+[*] problem.a_direct_ioniz = 7.1e-09
+[*] problem.q_direct_ioniz = 0.4
+[*] problem.e_direct_ioniz_eV = 13.6
+[*] problem.a_twostep_ioniz = 1.24e-08
+[*] problem.q_twostep_ioniz = 0.3
+[*] problem.e_twostep_ioniz_eV = 10.6
+[*] problem.e_loss_ioniz_eV = 13.6
+[*] eos.eos_gamma = 1.66667
+[*] eos.eos_assume_neutral = 0
+    network.small_x = 1e-30
+    network.use_tables = 0
+    network.use_c12ag_deboer17 = 0
