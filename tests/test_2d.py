@@ -270,7 +270,7 @@ def test_2d_sedov_taylor():
     # Run the code
     run_castro_simulation("amr.n_cell = 64   64 problem.initial_conditions_file=2d_sedov_taylor.h5")
     # Physical tests
-    deposited_energy = 1.19e16 # in erg/cm2
+    deposited_energy = 1.19e16 # in erg/cm
     rho_initial = 1.67e-6  # in g/cm^3
     sim_data = load_sim()
     analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial) # E0 in mJ/m, rho_0 in g/cm^3 (computed by integrating the initial profile of temperature ponderated by the populations)
