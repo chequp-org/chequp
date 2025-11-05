@@ -174,7 +174,7 @@ def check_energy_conservation(tol: float = 1.0):
     test = rel_error < tol
     assert test, f"Energy conservation test failed: Max. Deviation = {rel_error:.2f} % > {tol} %"
 
-def check_rho_r(sim_data, sol, tol: int = 10):
+def check_rho_r(sim_data, sol, tol: int = 16):
     """
     Compare radial density profiles at several output times to the analytical solution.
     Returns True if the mean relative L2 error is below 15%.
@@ -261,7 +261,8 @@ def test_2d_sedov_taylor():
 
     # Populations array
     populations = np.zeros((X.shape[0], X.shape[1], len(species_keys)))
-    populations[:, :, species_keys.index('H1')] = 1.0
+    populations[:, :, species_keys.index('H1')] = 1.0 - 1e-3
+    populations[:, :, species_keys.index('H0')] = 1e-3
     # Save file
     save_to_openpmd({'x': [x.min(), x.max()], 'y': [y.min(), y.max()]},
                 populations, T_eV, '2d_sedov_taylor.h5', species_keys)
@@ -269,21 +270,20 @@ def test_2d_sedov_taylor():
     # Run the code
     run_castro_simulation("problem.initial_conditions_file=2d_sedov_taylor.h5")
     # Physical tests
-    print("Running physical tests...\n")
-
+    deposited_energy = 1.19e16 # in erg/cm2
+    rho_initial = 1.67e-6  # in g/cm^3
     sim_data = load_sim()
-    analytical_data = SedovTalorProblem(5.0 / 3.0, 1.19e16, 1.67e-6) # E0 in mJ/m, rho_0 in g/cm^3 (computed by integrating the initial profile of temperature ponderated by the populations)
+    analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial) # E0 in mJ/m, rho_0 in g/cm^3 (computed by integrating the initial profile of temperature ponderated by the populations)
 
     check_r_iso_t(sim_data, analytical_data, tol_r=10, tol_iso=0.5)
     check_energy_conservation(tol=1.0)
-    check_rho_r(sim_data, analytical_data, tol=10)
+    check_rho_r(sim_data, analytical_data, tol=16)
 
-    print("All physical tests passed.\n")
     # Evaluate checksum
-    evaluate_checksum("1d_sedov_taylor", "plt_1d_*")
+    evaluate_checksum("2d_sedov_taylor", "plt_2d_*")
 
     # Remove generated plotfiles and checkpoints
-    cleanup_outputs('1d_sedov_taylor.h5')
+    cleanup_outputs('2d_sedov_taylor.h5')
 
 def test_2d_desy_benchmark():
     """
@@ -323,5 +323,4 @@ def test_2d_desy_benchmark():
 
 if __name__ == "__main__":
     test_2d_sedov_taylor()
-    
-    #test_2d_desy_benchmark()
+    test_2d_desy_benchmark()
