@@ -59,72 +59,6 @@ def load_sim():
                     'temperature': np.array(data_T)}
         return sim_data
 
-def check_r_iso_t(sim_data, sol, tol_r: int = 10, tol_iso: float = 10):
-
-    def find_edge_radial_xy(data, n_angles=100, n_samples=1000):
-        x, y = np.linspace(0, 100, data.shape[1]), np.linspace(0, 100, data.shape[0])
-        cx, cy = 50, 50
-
-        # create interpolator on physical grid
-        interp = RegularGridInterpolator((y, x), data, bounds_error=False, fill_value=np.nan)
-
-        # radial sampling
-        thetas = np.linspace(0, 2*np.pi, n_angles, endpoint=False)
-        radii = np.zeros(n_angles)
-        x_edge = np.zeros(n_angles)
-        y_edge = np.zeros(n_angles)
-
-        # maximum possible radius (diagonal)
-        r_max = np.hypot(x[-1]-x[0], y[-1]-y[0])
-
-        for i, th in enumerate(thetas):
-            rs = np.linspace(0, r_max, n_samples)
-            xs_ray = cx + rs * np.cos(th)
-            ys_ray = cy + rs * np.sin(th)
-            pts = np.column_stack([ys_ray, xs_ray])  # interpolator expects (y,x)
-            vals = interp(pts)
-            valid = np.isfinite(vals)
-            if valid.sum() < 5:
-                radii[i] = np.nan
-                x_edge[i] = np.nan
-                y_edge[i] = np.nan
-                continue
-            rs = rs[valid]; vals = vals[valid]
-
-            dv = np.gradient(vals, rs)
-            idx = np.nanargmax(np.abs(dv))
-
-            radii[i] = rs[idx]
-            x_edge[i] = cx + radii[i] * np.cos(th)
-            y_edge[i] = cy + radii[i] * np.sin(th)
-
-        return x_edge, y_edge
-
-    def fit_circle_radius(x, y, R0 = 50):
-        r = np.sqrt((x-R0)**2 + (y-R0)**2)
-        R = np.mean(r)
-        iso = np.std(r)/np.mean(r)
-        return R, iso
-
-    L_time, L_r, L_r_analytical, L_iso = [], [], [], []
-    for idx in range(1, len(sim_data['time'])):
-        data_fit = sim_data['density'][idx]
-        x_max, y_max = find_edge_radial_xy(data_fit)
-        R_fit, iso = fit_circle_radius(x_max, y_max)
-        r_analytical = sol.blast_radius(sim_data['time'][idx])
-        L_time.append(sim_data['time'][idx])
-        L_r.append(R_fit)
-        L_r_analytical.append(r_analytical)
-        L_iso.append(iso)
-    mask = np.array(L_time) >= 1e-9 # avoid early times with poor resolution
-    error_r = np.linalg.norm(np.array(L_r)[mask] - np.array(L_r_analytical)[mask]) / np.linalg.norm(np.array(L_r_analytical)[mask]) * 100.
-    error_iso = np.mean(np.array(L_iso)[mask])
-    test_r = error_r < tol_r
-    test_iso = error_iso < tol_iso
-
-    assert test_r, f"Shock radius test failed: rel. error = {error_r:.2f} % > {tol_r} %"
-    assert test_iso, f"Shock isotropy test failed: mean isotropy = {error_iso:.2f} % > {tol_iso} %"
-
 def check_energy_conservation(tol: float = 1.0):
     """
     Extract the total energy (thermal + kinetic + potential) as a function of time in 2D Cartesian geometry.
@@ -172,36 +106,6 @@ def check_energy_conservation(tol: float = 1.0):
     rel_error = np.max(np.abs(E_tot - E_tot[0]) / np.abs(E_tot[0]) * 100.)
     test = rel_error < tol
     assert test, f"Energy conservation test failed: Max. Deviation = {rel_error:.2f} % > {tol} %"
-
-def check_rho_r(sim_data, sol, tol: int = 10):
-    """
-    Compare radial density profiles at several output times to the analytical solution.
-    Returns True if the mean relative L2 error is below 15%.
-    """
-    time_idx = np.arange(0.6, 0.99, 0.1) * len(sim_data['time'])
-    r_binned_all, data_binned_all, r_analytical_all, data_analytical_all = [], [], [], []
-    for idx in time_idx:
-        idx = int(idx)
-        x = np.linspace(-50, 50, sim_data['density'][idx].shape[0])
-        rho_fit_center = sim_data['density'][idx][:, sim_data['density'][idx].shape[0]//2]
-        rho_analytical = sol.evaluate('density', np.abs(x), sim_data['time'][idx])
-        r_binned_all.append(x)
-        data_binned_all.append(rho_fit_center)
-        r_analytical_all.append(x)
-        data_analytical_all.append(rho_analytical)
-    errors = []
-    for k in range(len(time_idx)):
-        rho_sim = data_binned_all[k]
-        rho_analytical = data_analytical_all[k]
-        # compare up to the first peak present in both profiles
-        peak_idx = min(np.argmax(rho_analytical), np.argmax(rho_sim))
-        denom = np.linalg.norm(rho_sim[:peak_idx])
-        err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx])/denom
-        errors.append(err)
-
-    mean_error = float(np.mean(errors)) * 100
-    test = mean_error < tol
-    assert test, f"Density profile test failed: mean rel. L2 error = {mean_error:.2f} % > {tol} %"
 
 def run_castro_simulation(runtime_options):
     """
@@ -284,7 +188,7 @@ def test_2d_sedov_taylor():
     cleanup_outputs('1d_sedov_taylor.h5')
 
 def check_r_iso_t_CM(sim_data, tol_r: int = 10, tol_iso: float = 0.5):
-    L_t, L_r_comsol, L_iso_comsol = np.loadtxt("desy_2d_r_iso_t.txt", unpack=True)
+    L_t, L_r_comsol, L_iso_comsol = np.loadtxt("2d_r_iso_t_comsol.txt", unpack=True)
 
     def find_edge_radial_xy(data, n_angles=100, n_samples=1000):
         x, y = np.linspace(0, 100, data.shape[1]), np.linspace(0, 100, data.shape[0])
@@ -339,12 +243,11 @@ def check_r_iso_t_CM(sim_data, tol_r: int = 10, tol_iso: float = 0.5):
         L_time.append(sim_data['time'][idx])
         L_r.append(R_fit)
         L_iso.append(iso)
-    mask = np.array(L_time) >= 1e-9 # avoid early times with poor resolution
     # Interpolate comsol data to castro times
-    L_r_comsol = np.interp(np.array(L_time)[mask], L_t, L_r_comsol)
-    L_iso_comsol = np.interp(np.array(L_time)[mask], L_t, L_iso_comsol)
-    error_r = np.linalg.norm(np.array(L_r)[mask] - np.array(L_r_comsol)[mask]) / np.linalg.norm(np.array(L_r_comsol)[mask]) * 100.
-    error_iso = np.linalg.norm(np.array(L_iso)[mask] - np.array(L_iso_comsol)[mask]) / np.linalg.norm(np.array(L_iso_comsol)[mask]) * 100.
+    L_r_comsol = np.interp(np.array(L_time), L_t, L_r_comsol)
+    L_iso_comsol = np.interp(np.array(L_time), L_t, L_iso_comsol)
+    error_r = np.linalg.norm(np.array(L_r) - np.array(L_r_comsol)) / np.linalg.norm(np.array(L_r_comsol)) * 100.
+    error_iso = np.linalg.norm(np.array(L_iso) - np.array(L_iso_comsol)) / np.linalg.norm(np.array(L_iso_comsol)) * 100.
     test_r = error_r < tol_r
     test_iso = error_iso < tol_iso
 
@@ -379,9 +282,9 @@ def test_2d_desy_benchmark():
                 populations, T_eV_interp, '2d_desy_benchmark.h5', species_keys)
     print("Starting simulation...")
     # Run the code
-    run_castro_simulation("problem.initial_conditions_file=2d_desy_benchmark.h5")
+    #run_castro_simulation("amr.n_cell = 128   128 castro.add_ext_src = 0 castro.diffuse_temp = 0problem.initial_conditions_file=2d_desy_benchmark.h5")
     # Physical tests
-    #sim_data = load_sim()
+    sim_data = load_sim()
     #check_energy_conservation(tol=1.0)
     #check_r_iso_t_CM(sim_data, tol_r=10, tol_iso=0.5)
     # Evaluate checksum
@@ -391,6 +294,5 @@ def test_2d_desy_benchmark():
     #cleanup_outputs('2d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    #test_2d_sedov_taylor()
-
+    test_2d_sedov_taylor()
     test_2d_desy_benchmark()
