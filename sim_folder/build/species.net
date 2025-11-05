@@ -1,0 +1,12 @@
+
+# name   short name    aion     zion    Eion
+  H_neutral  H0         1.0      0.0    0.000
+  H_ion      H1         1.0      1.0    13.598
+  N_neutral  N0        14.0      0.0    0.000
+  N_ion_1    N1        14.0      1.0    14.5341
+  N_ion_2    N2        14.0      2.0    29.6013
+  N_ion_3    N3        14.0      3.0    47.4453
+  N_ion_4    N4        14.0      4.0    77.4735
+  N_ion_5    N5	       14.0	     5.0    97.8901
+# auxiliary variables
+__aux_f_heavies
