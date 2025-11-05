@@ -1,5 +1,6 @@
 import numpy as np
 import numba
+from numba import cuda
 import math
 import tqdm
 import os
@@ -89,6 +90,102 @@ def get_adk_parameters():
     return species_keys, adk_prefactors, adk_powers, adk_exp_prefactors, source_indices, target_indices, charges
 
 
+@cuda.jit(device=True)
+def get_fraction_and_temperature_multispecies_device(a0, tau, lambd, ell,
+                                             adk_prefactors, adk_powers, adk_exp_prefactors,
+                                             source_indices, target_indices, charges,
+                                             initial_populations,
+                                             populations_out, T_out,
+                                             npts_per_wavelength=80):
+    """
+    GPU device function for ionization calculation
+    This version writes directly to output arrays instead of returning values
+    """
+    omega = 2*math.pi*c/lambd
+    E0 = m_e*omega*c/e
+    inv_tau2 = 1./tau**2
+
+    # Copy initial populations to output array
+    for i in range(len(initial_populations)):
+        populations_out[i] = initial_populations[i]
+    
+    kin_energy = 0.0
+    t = -3*tau
+    dt = lambd/c/npts_per_wavelength
+    
+    while (t < 3*tau):
+        a_env = a0 * math.exp(-2 * math.log(2) * inv_tau2*t**2)
+        a = a_env * math.sqrt( ell[0]**2*math.cos(omega*t)**2 + ell[1]**2*math.sin(omega*t)**2 )
+        E = E0 * a_env * math.sqrt( ell[0]**2*math.sin(omega*t)**2 + ell[1]**2*math.cos(omega*t)**2 )
+
+        total_new_electrons = 0.0
+        for i in range(len(adk_prefactors)):
+            source_idx = source_indices[i]
+            target_idx = target_indices[i]
+
+            w = 0.0
+            if E > 0:
+                w = adk_prefactors[i] * E**adk_powers[i] * math.exp( adk_exp_prefactors[i]/E )
+
+            dp = 1 - math.exp(-w*dt)
+            delta_p = dp * populations_out[source_idx]
+
+            populations_out[source_idx] -= delta_p
+            populations_out[target_idx] += delta_p
+            total_new_electrons += delta_p
+
+        if total_new_electrons > 0:
+            kin_energy += total_new_electrons * m_e*c**2 * (math.sqrt( 1 + a**2 ) - 1)
+
+        t += dt
+
+    T = 0.0
+    z_average = 0.0
+    for i in range(len(charges)):
+        z_average += charges[i] * populations_out[i]
+    
+    if z_average > 0:
+        T = kin_energy / (3/2 * z_average * e)
+    
+    T_out[0] = T
+
+
+@cuda.jit
+def ionization_kernel_gpu(a0_array, tau, lambd, ell,
+                         adk_prefactors, adk_powers, adk_exp_prefactors,
+                         source_indices, target_indices, charges,
+                         initial_populations,
+                         all_populations, T_array, npts_per_wavelength):
+    """
+    CUDA kernel for parallel ionization calculation on GPU
+    Each thread processes one spatial point
+    
+    Local array size is hardcoded to 16 species max.
+    """
+    idx = cuda.grid(1)
+    
+    if idx < a0_array.shape[0]:
+        # Allocate local arrays for this thread
+        num_species = len(initial_populations)
+        populations_local = cuda.local.array(16, numba.float64)
+        T_local = cuda.local.array(1, numba.float64)
+        
+        # Call device function
+        get_fraction_and_temperature_multispecies_device(
+            a0_array[idx], tau, lambd, ell,
+            adk_prefactors, adk_powers, adk_exp_prefactors,
+            source_indices, target_indices, charges,
+            initial_populations,
+            populations_local, T_local,
+            npts_per_wavelength
+        )
+        
+        # Copy results to global memory
+        for i in range(num_species):
+            all_populations[idx, i] = populations_local[i]
+        T_array[idx] = T_local[0]
+
+
 @numba.njit
 def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
                                              adk_prefactors, adk_powers, adk_exp_prefactors,
@@ -144,8 +241,104 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
     z_average = np.sum(charges * populations)
     if z_average > 0:
         T = kin_energy / (3/2 * z_average * e)
+    return populations, T, t
 
-    return populations, T, t  # Return full populations array
+
+@numba.guvectorize(
+    [(numba.float64, numba.float64, numba.float64, numba.float64[:],
+      numba.float64[:], numba.float64[:], numba.float64[:],
+      numba.int64[:], numba.int64[:], numba.float64[:], numba.float64[:],
+      numba.float64[:], numba.float64[:])],
+    '(),(),(),(p),(t),(t),(t),(t),(t),(s),(s)->(s),()',
+    target='parallel',
+    nopython=True
+)
+def _vectorized_ionization_cpu(a0_scalar, tau_scalar, lambd_scalar, ell,
+                           adk_prefactors, adk_powers, adk_exp_prefactors,
+                           source_indices, target_indices, charges,
+                           initial_populations,
+                           populations_out, T_out):
+    """
+    CPU-parallelized wrapper (original version)
+    """
+    populations, T, _ = get_fraction_and_temperature_multispecies(
+        a0_scalar, tau_scalar, lambd_scalar, ell,
+        adk_prefactors, adk_powers, adk_exp_prefactors,
+        source_indices, target_indices, charges,
+        initial_populations
+    )
+    populations_out[:] = populations
+    T_out[0] = T
+
+
+def process_on_gpu(a0_array, tau, lambd, ell,
+                   adk_prefactors, adk_powers, adk_exp_prefactors,
+                   source_indices, target_indices, charges,
+                   initial_populations,
+                   threads_per_block=256,
+                   npts_per_wavelength=80):
+    """
+    Process ionization calculation on GPU
+    
+    Parameters:
+    -----------
+    a0_array : 1D array
+        Flattened array of normalized vector potentials
+    ... (other parameters same as before)
+    threads_per_block : int
+        Number of threads per CUDA block
+    npts_per_wavelength : int
+        Number of time steps per laser wavelength for integration
+    
+    Returns:
+    --------
+    all_populations : 2D array (n_points, n_species)
+    T_array : 1D array (n_points,)
+    """
+    n_points = len(a0_array)
+    n_species = len(initial_populations)
+    
+    # Check if species count exceeds local array size
+    MAX_SPECIES = 16  # Must match cuda.local.array size in kernel
+    if n_species > MAX_SPECIES:
+        raise ValueError(f"Number of species ({n_species}) exceeds maximum ({MAX_SPECIES}). "
+                        f"Edit ionization_kernel_gpu and increase cuda.local.array size.")
+    
+    
+    # Allocate output arrays on CPU
+    all_populations = np.zeros((n_points, n_species), dtype=np.float64)
+    T_array = np.zeros(n_points, dtype=np.float64)
+    
+    # Transfer data to GPU
+    d_a0 = cuda.to_device(a0_array)
+    d_ell = cuda.to_device(ell)
+    d_adk_prefactors = cuda.to_device(adk_prefactors)
+    d_adk_powers = cuda.to_device(adk_powers)
+    d_adk_exp_prefactors = cuda.to_device(adk_exp_prefactors)
+    d_source_indices = cuda.to_device(source_indices)
+    d_target_indices = cuda.to_device(target_indices)
+    d_charges = cuda.to_device(charges)
+    d_initial_populations = cuda.to_device(initial_populations)
+    d_all_populations = cuda.to_device(all_populations)
+    d_T_array = cuda.to_device(T_array)
+    
+    # Configure kernel launch
+    blocks_per_grid = (n_points + threads_per_block - 1) // threads_per_block
+    
+    # Launch kernel
+    ionization_kernel_gpu[blocks_per_grid, threads_per_block](
+        d_a0, tau, lambd, d_ell,
+        d_adk_prefactors, d_adk_powers, d_adk_exp_prefactors,
+        d_source_indices, d_target_indices, d_charges,
+        d_initial_populations,
+        d_all_populations, d_T_array, npts_per_wavelength
+    )
+    
+    # Copy results back to CPU
+    all_populations = d_all_populations.copy_to_host()
+    T_array = d_T_array.copy_to_host()
+    
+    return all_populations, T_array
 
 
 def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
@@ -208,15 +401,15 @@ def load_intensity_profile(filename):
 
     return intensity_array
 
+
 def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges, species_keys,
-            initial_populations, output_file=None, grid_extent=None):
+            initial_populations, output_file=None, grid_extent=None,
+            use_gpu=True, threads_per_block=256, npts_per_wavelength=80):
     """
     Process nD intensity array for multi-species plasma
-
-    Parameters:
-    -----------
+    
     intensity_nd : nD array
         Laser intensity profile I in W/m^2
     lambd : float
@@ -230,9 +423,15 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
         If an element from species_keys is not in the dictionary, it is assumed to be 0
     output_file : str, optional
         Filename to save openPMD output with radius, temperature and populations
-    r_coords : array-like, optional
-        Radial coordinates (m). Required for 1D data if output_file is specified.
-        For 2D data, used to determine radial sampling for CSV output.
+    grid_extent : dict, optional
+        Grid extent for openPMD output
+    use_gpu : bool
+        If True and CUDA is available, use GPU acceleration. Otherwise use CPU.
+    threads_per_block : int
+        Number of CUDA threads per block (only used if use_gpu=True)
+    npts_per_wavelength : int
+        Number of time steps per laser wavelength for integration
+
 
     Returns:
     --------
@@ -245,30 +444,50 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     a0_array = e * lambd / (np.pi * m_e * c) * np.sqrt(intensity_nd / (2 * epsilon_0 * c**3))
 
     # Prepare array of initial populations
-    initial_populations = np.array([initial_populations.get(key, 0) for key in species_keys])
+    initial_populations_array = np.array([initial_populations.get(key, 0) for key in species_keys])
     # Check that the sum is 1 to machine precision
-    assert np.abs(np.sum(initial_populations) - 1) < 1.e-10
+    assert np.abs(np.sum(initial_populations_array) - 1) < 1.e-10
 
-    # Flatten, and prepare arrays for temperature and population
+    # Flatten a0 array for processing
     a0_flat = a0_array.flatten()
-    T_flat = np.zeros_like(a0_flat)
-    all_populations_flat = np.zeros((len(a0_flat), len(species_keys)))
-
-    # Process nD profile
-    for i in tqdm.tqdm(range(len(a0_flat)), desc=f"Processing {a0_array.ndim}D multi-species profile"):
-        all_populations_flat[i, :], T_flat[i], _ = get_fraction_and_temperature_multispecies(
-            a0_flat[i],
-            tau, lambd, ell,
+    original_shape = a0_array.shape
+    
+    # Check if GPU is available and requested
+    gpu_available = cuda.is_available()
+    
+    if use_gpu and gpu_available:
+        print(f"Processing {a0_array.ndim}D multi-species profile on GPU...")
+        print(f"GPU: {cuda.gpus[0].name}")
+        all_populations, T_array = process_on_gpu(
+            a0_flat, tau, lambd, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges,
-            initial_populations
+            initial_populations_array,
+            threads_per_block=threads_per_block,
+            npts_per_wavelength=npts_per_wavelength
         )
-
+    elif use_gpu and not gpu_available:
+        print("GPU requested but not available. Falling back to CPU parallelization...")
+        all_populations, T_array = _vectorized_ionization_cpu(
+            a0_flat, tau, lambd, ell,
+            adk_prefactors, adk_powers, adk_exp_prefactors,
+            source_indices, target_indices, charges,
+            initial_populations_array
+        )
+    else:
+        print(f"Processing {a0_array.ndim}D multi-species profile on CPU (parallel)...")
+        all_populations, T_array = _vectorized_ionization_cpu(
+            a0_flat, tau, lambd, ell,
+            adk_prefactors, adk_powers, adk_exp_prefactors,
+            source_indices, target_indices, charges,
+            initial_populations_array
+        )
+    
     # Reshape back to nD arrays
-    all_populations = all_populations_flat.reshape(a0_array.shape + (len(species_keys),))
-    T_array = T_flat.reshape(a0_array.shape)
+    all_populations = all_populations.reshape(original_shape + (len(species_keys),))
+    T_array = T_array.reshape(original_shape)
 
-    # Save detailed CSV output with all species
+    # Save detailed output with all species
     if output_file and grid_extent is not None:
         save_to_openpmd(grid_extent, all_populations, T_array, output_file, species_keys)
 
