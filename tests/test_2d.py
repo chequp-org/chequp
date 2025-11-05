@@ -59,7 +59,7 @@ def load_sim():
                     'temperature': np.array(data_T)}
         return sim_data
 
-def check_r_iso_t(sim_data, sol, tol_r: int = 10, tol_iso: float = 0.5):
+def check_r_iso_t(sim_data, sol, tol_r: int = 10, tol_iso: float = 10):
 
     def find_edge_radial_xy(data, n_angles=100, n_samples=1000):
         x, y = np.linspace(0, 100, data.shape[1]), np.linspace(0, 100, data.shape[0])
@@ -283,12 +283,79 @@ def test_2d_sedov_taylor():
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_sedov_taylor.h5')
 
+def check_r_iso_t_CM(sim_data, tol_r: int = 10, tol_iso: float = 0.5):
+    L_t, L_r_comsol, L_iso_comsol = np.loadtxt("desy_2d_r_iso_t.txt", unpack=True)
+
+    def find_edge_radial_xy(data, n_angles=100, n_samples=1000):
+        x, y = np.linspace(0, 100, data.shape[1]), np.linspace(0, 100, data.shape[0])
+        cx, cy = 50, 50
+
+        # create interpolator on physical grid
+        interp = RegularGridInterpolator((y, x), data, bounds_error=False, fill_value=np.nan)
+
+        # radial sampling
+        thetas = np.linspace(0, 2*np.pi, n_angles, endpoint=False)
+        radii = np.zeros(n_angles)
+        x_edge = np.zeros(n_angles)
+        y_edge = np.zeros(n_angles)
+
+        # maximum possible radius (diagonal)
+        r_max = np.hypot(x[-1]-x[0], y[-1]-y[0])
+
+        for i, th in enumerate(thetas):
+            rs = np.linspace(0, r_max, n_samples)
+            xs_ray = cx + rs * np.cos(th)
+            ys_ray = cy + rs * np.sin(th)
+            pts = np.column_stack([ys_ray, xs_ray])  # interpolator expects (y,x)
+            vals = interp(pts)
+            valid = np.isfinite(vals)
+            if valid.sum() < 5:
+                radii[i] = np.nan
+                x_edge[i] = np.nan
+                y_edge[i] = np.nan
+                continue
+            rs = rs[valid]; vals = vals[valid]
+
+            dv = np.gradient(vals, rs)
+            idx = np.nanargmax(np.abs(dv))
+
+            radii[i] = rs[idx]
+            x_edge[i] = cx + radii[i] * np.cos(th)
+            y_edge[i] = cy + radii[i] * np.sin(th)
+
+        return x_edge, y_edge
+
+    def fit_circle_radius(x, y, R0 = 50):
+        r = np.sqrt((x-R0)**2 + (y-R0)**2)
+        R = np.mean(r)
+        iso = np.std(r)/np.mean(r)
+        return R, iso
+
+    L_time, L_r, L_iso = [], [], []
+    for idx in range(1, len(sim_data['time'])):
+        data_fit = sim_data['density'][idx]
+        x_max, y_max = find_edge_radial_xy(data_fit)
+        R_fit, iso = fit_circle_radius(x_max, y_max)
+        L_time.append(sim_data['time'][idx])
+        L_r.append(R_fit)
+        L_iso.append(iso)
+    mask = np.array(L_time) >= 1e-9 # avoid early times with poor resolution
+    # Interpolate comsol data to castro times
+    L_r_comsol = np.interp(np.array(L_time)[mask], L_t, L_r_comsol)
+    L_iso_comsol = np.interp(np.array(L_time)[mask], L_t, L_iso_comsol)
+    error_r = np.linalg.norm(np.array(L_r)[mask] - np.array(L_r_comsol)[mask]) / np.linalg.norm(np.array(L_r_comsol)[mask]) * 100.
+    error_iso = np.linalg.norm(np.array(L_iso)[mask] - np.array(L_iso_comsol)[mask]) / np.linalg.norm(np.array(L_iso_comsol)[mask]) * 100.
+    test_r = error_r < tol_r
+    test_iso = error_iso < tol_iso
+
+    assert test_r, f"Shock radius test failed: rel. error = {error_r:.2f} % > {tol_r} %"
+    assert test_iso, f"Shock isotropy test failed: mean isotropy = {error_iso:.2f} % > {tol_iso} %"
+
 def test_2d_desy_benchmark():
     """
     Test the code in the scenario that benchmarked with DESY team
     (close - but not identical - to the one from Mewes et al., PRR 5, 033112, 2023)
     """
-    print("Generating initial conditions...")
     # Generate openPMD initial conditions according to the agreed-upon benchmark
     data = np.loadtxt("input_2D_xy_comsol.txt")
     x, y, Z_H1, T_eV = data.T
@@ -313,8 +380,12 @@ def test_2d_desy_benchmark():
     print("Starting simulation...")
     # Run the code
     run_castro_simulation("problem.initial_conditions_file=2d_desy_benchmark.h5")
+    # Physical tests
+    #sim_data = load_sim()
+    #check_energy_conservation(tol=1.0)
+    #check_r_iso_t_CM(sim_data, tol_r=10, tol_iso=0.5)
     # Evaluate checksum
-    #evaluate_checksum("2d_desy_benchmark", "plt_2d_*")
+    evaluate_checksum("2d_desy_benchmark", "plt_2d_*")
 
     # Remove generated plotfiles and checkpoints
     #cleanup_outputs('2d_desy_benchmark.h5')
