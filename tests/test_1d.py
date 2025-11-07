@@ -16,8 +16,8 @@ from analysis_tool import CastroSimulation
 sys.path.append('../theory/sedov_theory/python/')
 from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
+from scipy.constants import m_p, e
 from scipy.optimize import curve_fit
-from scipy.constants import e, m_p
 
 def cleanup_outputs(extra_file = ""):
     # Remove previously generated plotfiles and checkpoints
@@ -132,7 +132,7 @@ def test_1d_sedov_taylor():
     # Run the code
     print("Starting simulation...")
     time_s = time.time()
-    run_castro_simulation("castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
+    run_castro_simulation("amr.n_cell=128 castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
     time_e = time.time()
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
@@ -148,7 +148,7 @@ def test_1d_sedov_taylor():
 
     check_energy_conservation(sim_data, tol=1.0)
     check_r_t_ST(sim_data, analytical_data, tol=10)
-    check_rho_r_ST(sim_data, analytical_data, tol=22)
+    check_rho_r_ST(sim_data, analytical_data, tol=15)
 
     print("Physical tests passed.\n")
     # Evaluate checksum
@@ -195,5 +195,5 @@ def test_1d_desy_benchmark():
     cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    test_1d_sedov_taylor()
     test_1d_desy_benchmark()
+    test_1d_sedov_taylor()
