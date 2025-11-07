@@ -466,23 +466,15 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             threads_per_block=threads_per_block,
             npts_per_wavelength=npts_per_wavelength
         )
-    elif use_gpu and not gpu_available:
-        print("GPU requested but not available. Falling back to CPU parallelization...")
+    elif not use_gpu or not gpu_available:
+        if use_gpu:
+            print("GPU requested but not available. Falling back to CPU parallelization...")
         all_populations, T_array = _vectorized_ionization_cpu(
             a0_flat, tau, lambd, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges,
             initial_populations_array
         )
-    else:
-        print(f"Processing {a0_array.ndim}D multi-species profile on CPU (parallel)...")
-        all_populations, T_array = _vectorized_ionization_cpu(
-            a0_flat, tau, lambd, ell,
-            adk_prefactors, adk_powers, adk_exp_prefactors,
-            source_indices, target_indices, charges,
-            initial_populations_array
-        )
-    
     # Reshape back to nD arrays
     all_populations = all_populations.reshape(original_shape + (len(species_keys),))
     T_array = T_array.reshape(original_shape)
