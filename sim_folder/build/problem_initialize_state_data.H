@@ -158,21 +158,21 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     Real x0_norm = (x0 - d_grid_offset[0]) / d_grid_spacing[0];
     int const idx0 = static_cast<int>(x0_norm);
     // Find interpolation indices. If the coordinates are outside the table, clamp to the nearest edge.
-    int const idx0_lo = std::clamp( idx0, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1] );
-    int const idx0_hi = std::clamp( idx0 + 1, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1] );
+    int const idx0_lo = std::clamp( idx0, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1]-1 );
+    int const idx0_hi = std::clamp( idx0 + 1, d_initial_conditions_table.begin[1], d_initial_conditions_table.end[1]-1 );
     Real frac0 = x0_norm - idx0;
 #if AMREX_SPACEDIM >= 2
     Real x1_norm = (x1 - d_grid_offset[1]) / d_grid_spacing[1];
     int const idx1 = static_cast<int>(x1_norm);
-    int const idx1_lo = std::clamp( idx1, d_initial_conditions_table.begin[2], d_initial_conditions_table.end[2] );
-    int const idx1_hi = std::clamp( idx1 + 1, d_initial_conditions_table.begin[2], d_initial_conditions_table.end[2] );
+    int const idx1_lo = std::clamp( idx1, d_initial_conditions_table.begin[2], d_initial_conditions_table.end[2]-1 );
+    int const idx1_hi = std::clamp( idx1 + 1, d_initial_conditions_table.begin[2], d_initial_conditions_table.end[2]-1 );
     Real frac1 = x1_norm - idx1;
 #endif
 #if AMREX_SPACEDIM >= 3
     Real x2_norm = (x2 - d_grid_offset[2]) / d_grid_spacing[2];
     int const idx2 = static_cast<int>(x2_norm);
-    int const idx2_lo = std::clamp( idx2, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3] );
-    int const idx2_hi = std::clamp( idx2 + 1, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3] );
+    int const idx2_lo = std::clamp( idx2, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3]-1 );
+    int const idx2_hi = std::clamp( idx2 + 1, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3]-1 );
     Real frac2 = x2_norm - idx2;
 #endif
 

@@ -113,10 +113,11 @@ def test_1d_sedov_taylor():
     print("Generating initial conditions...")
     # Generate openPMD inital conditions for a small-radius plasma
     # Gaussian temperature profile with sigma=4 microns, peak T=1000 eV
-    r = np.linspace(0, 10e-6, 1024)
     sigma = 4e-6
+    r = np.linspace(0, 5*sigma, 1024)
     T0_eV = 1000
     T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/sigma**2) # Gaussian profile to fasten convergence
+    T_eV[-1] = 0 # put last value to zero as this is used outside of 5*sigma
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
