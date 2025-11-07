@@ -351,7 +351,6 @@ Examples:
         save_density_to_openpmd(r_1d_m, z_1d_m, density_m3, output_file, verbose=args.verbose)
         saved_files.append((species_name, output_file))
     
-    return 0
 
 
 if __name__ == '__main__':
