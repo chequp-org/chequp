@@ -444,9 +444,9 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     a0_array = e * lambd / (np.pi * m_e * c) * np.sqrt(intensity_nd / (2 * epsilon_0 * c**3))
 
     # Prepare array of initial populations
-    initial_populations_array = np.array([initial_populations.get(key, 0) for key in species_keys])
+    initial_populations = np.array([initial_populations.get(key, 0) for key in species_keys])
     # Check that the sum is 1 to machine precision
-    assert np.abs(np.sum(initial_populations_array) - 1) < 1.e-10
+    assert np.abs(np.sum(initial_populations) - 1) < 1.e-10
 
     # Flatten a0 array for processing
     a0_flat = a0_array.flatten()
@@ -462,7 +462,7 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             a0_flat, tau, lambd, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges,
-            initial_populations_array,
+            initial_populations,
             threads_per_block=threads_per_block,
             npts_per_wavelength=npts_per_wavelength
         )
@@ -473,7 +473,7 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             a0_flat, tau, lambd, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges,
-            initial_populations_array
+            initial_populations
         )
     # Reshape back to nD arrays
     all_populations = all_populations.reshape(original_shape + (len(species_keys),))
