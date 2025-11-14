@@ -108,14 +108,13 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
     E0 = m_e*omega*c/e
     inv_tau2 = 1./tau**2
 
-    populations = initial_populations.copy()
     kin_energy = 0.0
     t = -3*tau
     dt = lambd/c/npts_per_wavelength
     assert len(ell) == 2
     assert abs(ell[0]**2 + ell[1]**2 - 1) < 1.e-10
     while (t < 3*tau):
-        a_env = a0 * math.exp(-2 * np.log(2) * inv_tau2*t**2)
+        a_env = a0 * math.exp(-2 * math.log(2) * inv_tau2*t**2)
         a = a_env * math.sqrt( ell[0]**2*np.cos(omega*t)**2 + ell[1]**2*np.sin(omega*t)**2 )
         E = E0 * a_env * math.sqrt( ell[0]**2*np.sin(omega*t)**2 + ell[1]**2*np.cos(omega*t)**2 )
 
@@ -129,10 +128,10 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
                 w = adk_prefactors[i] * E**adk_powers[i] * math.exp( adk_exp_prefactors[i]/E )
 
             dp = 1 - math.exp(-w*dt)
-            delta_p = dp * populations[source_idx]
+            delta_p = dp * initial_populations[source_idx]
 
-            populations[source_idx] -= delta_p
-            populations[target_idx] += delta_p
+            initial_populations[source_idx] -= delta_p
+            initial_populations[target_idx] += delta_p
             total_new_electrons += delta_p
 
         if total_new_electrons > 0:
@@ -141,12 +140,41 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
         t += dt
 
     T = 0.0
-    z_average = np.sum(charges * populations)
+    z_average = 0.0
+    for i in range(len(charges)):
+        z_average += charges[i] * initial_populations[i]    
     if z_average > 0:
         T = kin_energy / (3/2 * z_average * e)
 
-    return populations, T, t  # Return full populations array
+    return initial_populations, T, t  # Return full populations array
 
+@numba.guvectorize(
+    ['void(float64, float64, float64, float64[:], '
+     'float64[:], float64[:], float64[:], '
+     'int64[:], int64[:], float64[:], float64[:], '
+     'float64[:], float64[:])'],
+    '(),(),(),(m),(t),(t),(t),(t),(t),(s),(s)->(s),()',  
+    nopython=True,
+    target='cuda'  # or 'parallel' for cpu
+)
+def compute_ionization_vectorized(
+    a0, tau, lambd, ell,
+    adk_prefactors, adk_powers, adk_exp_prefactors,
+    source_indices, target_indices, charges, initial_populations,
+    populations_out, T_out
+):
+    for i in range(initial_populations.shape[0]):
+        populations_out[i] = initial_populations[i]
+
+    pops, T, _ = get_fraction_and_temperature_multispecies(
+        a0, tau, lambd, ell,
+        adk_prefactors, adk_powers, adk_exp_prefactors,
+        source_indices, target_indices, charges,
+        populations_out,
+        80
+    )
+
+    T_out[0] = T
 
 def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
     """
@@ -254,15 +282,13 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     T_flat = np.zeros_like(a0_flat)
     all_populations_flat = np.zeros((len(a0_flat), len(species_keys)))
 
-    # Process nD profile
-    for i in tqdm.tqdm(range(len(a0_flat)), desc=f"Processing {a0_array.ndim}D multi-species profile"):
-        all_populations_flat[i, :], T_flat[i], _ = get_fraction_and_temperature_multispecies(
-            a0_flat[i],
-            tau, lambd, ell,
-            adk_prefactors, adk_powers, adk_exp_prefactors,
-            source_indices, target_indices, charges,
-            initial_populations
-        )
+    compute_ionization_vectorized(
+        a0_flat, tau, lambd, ell,
+        adk_prefactors, adk_powers, adk_exp_prefactors,
+        source_indices, target_indices, charges,
+        initial_populations,
+        all_populations_flat, T_flat
+    )
 
     # Reshape back to nD arrays
     all_populations = all_populations_flat.reshape(a0_array.shape + (len(species_keys),))
