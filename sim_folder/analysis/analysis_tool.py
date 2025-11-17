@@ -81,6 +81,13 @@ class CastroSimulation(object):
         t: float, in s
             The exact time at which the energy was extracted
         """
+        E_ion = {'H0': 13.6,
+                 'H1': 0.0,
+                 'N0': 14.5,
+                 'N1': 29.6,
+                 'N2': 47.4,
+                 'N3': 77.5,
+                 'N4': 97.9,}
         # Extract the right energy density, depending on the requested energy type
         if energy_type == 'total':
             r, energy_density, t = self.extract_data(t, 'rho_E', level)
