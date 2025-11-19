@@ -24,49 +24,36 @@ def cleanup_outputs(extra_file = ""):
 
     os.system("rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
-def load_sim():
-    cs = CastroSimulation('.', 'plt_1d_')
-    """Extract rmax for each output time."""
-    r_arr, rmax_arr, q_arr, E_tot_arr = [], [], [], []
-    t_arr = np.array(cs.output_times)
-    for t0 in t_arr:
-        r, q, t = cs.extract_data(t0, 'density', level=3)
-        rmax = r[np.argmax(q)]
-        rmax_arr.append(rmax)
-        q_arr.append(q)
-        r_arr.append(r)
-        E_tot_arr.append(cs.get_energy(t, level=3)[0])
-    return {'time': np.array(t_arr), 'r': np.array(r_arr), 'rmax': np.array(rmax_arr), 'q': np.array(q_arr), 'E_tot': np.array(E_tot_arr)}
-
 def check_energy_conservation(sim_data, tol: float = 1.0):
-    rel_err = np.abs(sim_data['E_tot'] - sim_data['E_tot'][0]) / sim_data['E_tot'][0] * 100.0
+    t = sim_data.output_times
+    E_tot = sim_data.get_energy(t, level=2, energy_type='total')[0]
+    rel_err = np.abs(E_tot - E_tot[0]) / E_tot[0] * 100.0
     test = np.all(rel_err < tol)
     value = np.max(rel_err)
     assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
 
 def check_r_t_ST(sim_data, sol, tol: int = 10):
-    popt, _ = curve_fit(lambda t, a: a * np.sqrt(t), sim_data['time'][1:], sim_data['rmax'][1:])
-    r_fit = popt[0] * np.sqrt(sim_data['time'])
-    r_analytical = np.array(sol.blast_radius(sim_data['time']))
+    t = sim_data.output_times
+    r_blast = [sim_data.get_field(t_, 'density', level=2)['r'][np.argmax(sim_data.get_field(t_, 'density', level=2)['q'])] for t_ in t]
+    popt, _ = curve_fit(lambda time, a: a * np.sqrt(time), t[1:], r_blast[1:])
+    r_fit = popt[0] * np.sqrt(t)
+    r_analytical = np.array(sol.blast_radius(t))
     rel_error = np.linalg.norm(r_fit*1e4 - r_analytical*1e4) / np.linalg.norm(r_analytical*1e4) * 100.
     assert rel_error < tol, f"Shock radius comparison to Sedov Taylor theory failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
 def check_rho_r_ST(sim_data, sol, tol: int = 15):
-    indices = np.arange(0.7, 0.99, 0.05) * len(sim_data['time'])
+    t = np.array([sim_data.output_times[int(len(sim_data.output_times)*f)] for f in [0.7, 0.8, 0.9]])
+    r = np.array([sim_data.get_field(t_, 'density', level=2)['r'] for t_ in t])
+    rho_sim = np.array([sim_data.get_field(t_, 'density', level=2)['q'] for t_ in t])
+    rho_analytical = np.array([sol.evaluate('density', r_, t_) for r_, t_ in zip(r, t)])
     errors = []
-    for idx in np.unique(indices):
-        idx = int(idx)
-        r = sim_data['r'][idx]
-        rho_sim = sim_data['q'][idx]
-        t = sim_data['time'][idx]
-    rho_analytical = sol.evaluate('density', r, t)
-
     # compare up to the first peak present in both profiles
-    peak_idx = min(np.argmax(rho_analytical), np.argmax(rho_sim))
-    if r[peak_idx] > 1e-2: # dont compared for low blast radius
-        denom = np.linalg.norm(rho_sim[:peak_idx])
-        err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx]) / denom
-        errors.append(err)
+    for rho_a, rho_s, r_ in zip(rho_analytical, rho_sim, r):
+        peak_idx = min(np.argmax(rho_a), np.argmax(rho_s))
+        if r_[peak_idx] > 1e-2: # dont compared for low blast radius
+            denom = np.linalg.norm(rho_s[:peak_idx])
+            err = np.linalg.norm(rho_a[:peak_idx] - rho_s[:peak_idx]) / denom
+            errors.append(err)
 
     mean_rel_error = np.mean(np.array(errors)) * 100.
     assert mean_rel_error < tol, f"Density profile comparison to Sedov Taylor theory failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
@@ -137,7 +124,7 @@ def test_1d_sedov_taylor():
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
     print("Running physical tests...\n")
-    sim_data = load_sim()
+    sim_data = CastroSimulation('.', 'plt_1d_') # load simulation data
 
     # Comparison with Sedov Taylor theory
     rho_initial = 1.67e-6  # in g.cm^-3
