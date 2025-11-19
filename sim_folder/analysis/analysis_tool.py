@@ -171,4 +171,3 @@ def _extract_radius_and_quantity( ds, quantity, level ):
             ds.domain_dimensions[0]*2**level//2)
         r -= 0.5*(ds.domain_left_edge[0] + ds.domain_right_edge[0])
     return r.to_ndarray(), q
-    
