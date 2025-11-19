@@ -43,7 +43,6 @@ class CastroSimulation(object):
         print(f" - Dimension: {self.dim}D")
         print(f" - Geometry: {self.geo}")
         print(f" - Available fields: {self.fields_list}")
-        print(f" - Species: {self.species}")
         print(f" - Number of outputs: {len(self.ts)}")
         print(f" - Time range: {self.output_times[0]} s to {self.output_times[-1]} s \n")
 
