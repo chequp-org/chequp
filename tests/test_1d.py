@@ -27,22 +27,10 @@ def cleanup_outputs(extra_file = ""):
 
     os.system("rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
-def load_sim():
-    cs = CastroSimulation('.', 'plt_1d_')
-    """Extract rmax for each output time."""
-    r_arr, rmax_arr, q_arr, E_tot_arr = [], [], [], []
-    t_arr = np.array(cs.output_times)
-    for t0 in t_arr:
-        r, q, t = cs.extract_data(t0, 'density', level=3)
-        rmax = r[np.argmax(q)]
-        rmax_arr.append(rmax)
-        q_arr.append(q)
-        r_arr.append(r)
-        E_tot_arr.append(cs.get_energy(t, level=3)[0])
-    return {'time': np.array(t_arr), 'r': np.array(r_arr), 'rmax': np.array(rmax_arr), 'q': np.array(q_arr), 'E_tot': np.array(E_tot_arr)}
-
 def check_energy_conservation(sim_data, tol: float = 1.0):
-    rel_err = np.abs(sim_data['E_tot'] - sim_data['E_tot'][0]) / sim_data['E_tot'][0] * 100.0
+    t = sim_data.output_times
+    E_tot = sim_data.get_energy(t, level=2, energy_type='total')[0]
+    rel_err = np.abs(E_tot - E_tot[0]) / E_tot[0] * 100.0
     test = np.all(rel_err < tol)
     value = np.max(rel_err)
     assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
@@ -159,66 +147,42 @@ def test_1d_sedov_taylor():
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_sedov_taylor.h5')
 
-def load_comsol_data():
-        all_data = {}
-        try:
-            for _ in ['Te', 'na']: # only uselful quantities
-                filename = "Exp_"+str(_)+".txt"
-                r, z, t0, t1, t2, t5, t8, t10 = np.loadtxt(
-                    filename, skiprows=9, unpack=True)
-                data = {
-                    'r': r,
-                    'z': z,
-                    't0': t0,
-                    't1': t1,
-                    't2': t2,
-                    't5': t5,
-                    't8': t8,
-                    't10': t10
-                }
-                all_data[_] = data
-            return all_data
-        except Exception as e:
-            print(f"Error loading COMSOL data: {e}")
-            return {}
 
-def load_sim(species = ['H0', 'H1']):
-    cs = CastroSimulation('.', 'plt_1d_')
-    """Extract rmax for each output time."""
-    r_arr, rmax_arr, q_arr, E_tot_arr = [], [], [], []
-    t_arr = np.array(cs.output_times)
-    for t0 in t_arr:
-        r, q, t = cs.extract_data(t0, 'density', level=3)
-        rmax = r[np.argmax(q)]
-        rmax_arr.append(rmax)
-        q_arr.append(q)
-        r_arr.append(r)
-        E_tot_arr.append(cs.get_energy(t, level=3, species = species)[0])
-    return {'time': np.array(t_arr), 'r': np.array(r_arr), 'rmax': np.array(rmax_arr), 'q': np.array(q_arr), 'E_tot': np.array(E_tot_arr)}
-
-def check_energy_conservation(sim_data, tol: float = 1.0):
-    rel_err = np.abs(sim_data['E_tot'] - sim_data['E_tot'][0]) / sim_data['E_tot'][0] * 100.0
-    test = np.all(rel_err < tol)
-    value = np.max(rel_err)
-    assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
+comsol_data = {
+    "blast":{
+        "t": np.array([0, 9.987819732034104e-10, 1.9975639464068208e-9, 5.006090133982948e-9, 8.002436053593179e-9, 9.987819732034105e-9]),
+        "r": np.array([0.000056708333333333334, 0.00008966666666666666, 0.00011241666666666667, 0.00016491666666666667, 0.00020837499999999998, 0.00023375])
+    },
+        "2ns": {
+        "r": np.array([0.0, 3.33e-05, 6.665999999999999e-05, 9.995999999999998e-05, 0.00013331999999999998, 0.00016661999999999997, 0.00019998, 0.00023328, 0.00026663999999999995, 0.0003]),
+        "Te": np.array([23211.770254021863, 26268.06379376689, 25591.017258312797, 20765.247549951004, 18346.123342827552, 13993.043254526054, 9584.55472861077, 5462.684093868529, 2669.5177678165664, 2186.16848211767]),
+        "na": np.array([4.573456505084193e23, 4.488322021597051e23, 4.716988950992047e23, 1.2950720870687254e24, 1.000191035605734e24, 1.0000108494331972e24, 1.0000074151960918e24, 1.0000038781767558e24, 1.0000005022939332e24, 1.0000000117352788e24])
+    },
+        "5ns": {
+        "r": np.array([0.0, 3.33e-05, 6.665999999999999e-05, 9.995999999999998e-05, 0.00013331999999999998, 0.00016661999999999997, 0.00019998, 0.00023328, 0.00026663999999999995, 0.0003]),
+        "Te": np.array([15298.083353951515, 15839.669679535817, 16230.07213040422, 16191.996802917163, 13554.72861167953, 12179.76963417542, 8297.040258967807, 5445.559752830032, 3581.2870669509766, 2873.4876147582386]),
+        "na": np.array([1.845096259779847e23, 1.8600390663265706e23, 2.182668312667086e23, 2.9632927479752823e23, 8.15295462591155e23, 2.4862851947449127e24, 1.0000272133128904e24, 1.0000241194832156e24, 1.0000129103143216e24, 1.0000059737963808e24])
+    },
+        "8ns": {
+        "r": np.array([0.0, 3.33e-05, 6.665999999999999e-05, 9.995999999999998e-05, 0.00013331999999999998, 0.00016661999999999997, 0.00019998, 0.00023328, 0.00026663999999999995, 0.0003]),
+        "Te": np.array([15261.491790992808, 14799.523774366897, 14131.878282643287, 13239.936964127124, 11439.173495150188, 8950.546444133326, 7785.458674669467, 5495.694543677841, 3659.4758700778334, 3033.5011783160394]),
+        "na": np.array([1.7173346635405725e23, 1.6882604000540383e23, 1.7749837289864806e23, 1.980970437470241e23, 2.929998504336976e23, 9.050084528474029e23, 2.80213515839221e24, 1.0000595793491873e24, 1.00004108600266e24, 1.0000290997686949e24])
+    }
+}
 
 def check_r_t_CM(sim_data, tol: int = 10):
     """
     Compare radial density profiles at several output times to the COMSOL solution.
     Returns True if the mean relative L2 error is below tol%.
     """
-    comsol_data = load_comsol_data()
-    r_comsol = comsol_data['na']['r']  # in meters
-    t_comsol = np.array([0, 1, 2, 5, 8, 10]) * 1e-9  # in seconds
-    r_comsol_vals = []
-    for t in [0, 1, 2, 5, 8, 10]:
-        na_t = comsol_data['na'][f't{t}']
-        rmax = r_comsol[np.argmax(na_t)]
-        r_comsol_vals.append(rmax)
+
+    # Comsol data
+    t_comsol, r_comsol = comsol_data['blast']['t'], comsol_data['blast']['r']
 
     # Simulation data
-    t_sim, r_sim = sim_data['time'], sim_data['rmax']
-    r_comsol_interp = np.interp(t_sim[1:], t_comsol, r_comsol_vals)
+    t_sim = sim_data.output_times
+    r_sim = np.array([sim_data.get_field(t_, 'density', level=2)['r'][np.argmax(sim_data.get_field(t_, 'density', level=2)['q'])] for t_ in t_sim])
+    r_comsol_interp = np.interp(t_sim[1:], t_comsol, r_comsol)
     rel_error = np.linalg.norm(r_sim[1:]*1e4 - r_comsol_interp*1e6) / np.linalg.norm(r_comsol_interp*1e6) * 100.
     assert rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
@@ -228,19 +192,13 @@ def check_rho_r_CM(sim_data, tol: int = 50):
     Returns True if the mean relative L2 error is below tol%.
     """
     # Comsol data
-    comsol_data = load_comsol_data()
-    comsol_r = comsol_data['na']['r']
-    comsol_rho = comsol_data['na'] # Normalize
-    # Compute errors for different times
-    times = [2e-9, 5e-9, 8e-9]
-    diffs = []
-    for i, t in enumerate(times):
-            idx = np.argmin(np.abs(sim_data['time'] - t))
-            r, q = sim_data['r'][idx], sim_data['q'][idx]
-            na_comsol_interp = np.interp(r, comsol_r, comsol_rho[f't{int(t*1e9)}']/1e24)
-            diff = np.linalg.norm(q/1.67e-6 - na_comsol_interp) / np.linalg.norm(na_comsol_interp)
-            diffs.append(diff)
-    mean_rel_error = np.mean(diffs) * 100.
+    errors = []
+    for t, t_comsol in zip([2e-9, 5e-9, 8e-9], ['2ns', '5ns', '8ns']):
+            r = np.array(sim_data.get_field(float(t), 'density', level=2)['r'], dtype=np.float64)
+            rho = np.array(sim_data.get_field(float(t), 'density', level=2)['q'], dtype=np.float64)
+            na_comsol_interp = np.interp(r, comsol_data[t_comsol]['r'], comsol_data[t_comsol]['na']/1e24)
+            errors.append(np.linalg.norm(rho/1.67e-6 - na_comsol_interp) / np.linalg.norm(na_comsol_interp))
+    mean_rel_error = np.mean(errors) * 100.
     assert mean_rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
 
 def test_1d_desy_benchmark():
@@ -281,7 +239,7 @@ def test_1d_desy_benchmark():
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
     print("Running physical tests...\n")
-    sim_data = load_sim(species = ['H0', 'H1'])
+    sim_data = CastroSimulation('.', 'plt_1d_*')
 
     check_energy_conservation(sim_data, tol = 1.0)
     check_r_t_CM(sim_data, tol = 12)
