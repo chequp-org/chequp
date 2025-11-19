@@ -8,6 +8,24 @@ from scipy.constants import m_p, k
 # Convert constants to cgs
 m_H = m_p * 1e3 # g
 kB = k * 1e7 # erg/K
+e = 1.602e-12 # erg
+
+
+def get_param_value(filename, param_name):
+    """
+    Searches for a parameter (like 'problem.a_direct_ioniz') in a Castro-style
+    input file and returns its value as a string (or None if not found).
+    """
+    pattern = rf"^\s*{re.escape(param_name)}\s*=\s*([^\s#//]+)"
+    with open(filename) as f:
+        for line in f:
+            # remove inline comments starting with '#' or '//'
+            line = re.split(r'#|//', line)[0]
+            match = re.search(pattern, line)
+            if match:
+                return match.group(1)
+    return None
+
 
 class CastroSimulation(object):
     """
@@ -28,7 +46,7 @@ class CastroSimulation(object):
         """
         # Then extract time for each output
         self.ts = yt.load(os.path.join(run_dir, file_start + '*'), hint="castro")
-        self.output_times = np.array([ float(ds.current_time) for ds in tqdm.tqdm(self.ts) ])
+        self.output_times = np.array([ float(ds.current_time) for ds in self.ts ])
 
 
     def extract_data( self, t, quantity, level ):
@@ -59,7 +77,7 @@ class CastroSimulation(object):
         return r, q, ds.current_time.to_value()
 
 
-    def get_energy(self, t, level, energy_type='total'):
+    def get_energy(self, t, level, energy_type='total', species = ['H0', 'H1']):
         """
         Get the energy (either kinetic, thermal, or sum of both)
         at time `t`, at the required refinement level
@@ -84,6 +102,11 @@ class CastroSimulation(object):
         # Extract the right energy density, depending on the requested energy type
         if energy_type == 'total':
             r, energy_density, t = self.extract_data(t, 'rho_E', level)
+            if bool(get_param_value("../sim_folder/run/inputs.1d.cyl", "castro.add_ext_src")): # Check if ionization is taking into account
+                data_ion = {'H0': 0.0, 'H1': 13.598, 'N0': 0.0, 'N1':14.5341, 'N2':29.6013, 'N3':47.4453, 'N4':77.4735, 'N5':97.8901}
+                for spe in species:
+                    r, ion_density, t = self.extract_data(t, f'rho_{spe}', level)
+                    energy_density += data_ion[spe] * e * ion_density / m_p * 1e-3
         elif energy_type == 'thermal':
             r, energy_density, t = self.extract_data(t, 'rho_e', level)
         elif energy_type == 'kinetic':
@@ -171,4 +194,3 @@ def _extract_radius_and_quantity( ds, quantity, level ):
             ds.domain_dimensions[0]*2**level//2)
         r -= 0.5*(ds.domain_left_edge[0] + ds.domain_right_edge[0])
     return r.to_ndarray(), q
-    
