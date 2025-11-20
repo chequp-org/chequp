@@ -150,7 +150,7 @@ class CastroSimulation(object):
             # Calculate radial coordinates of cell centers
             m_edges = np.linspace(ds.domain_left_edge[0], ds.domain_right_edge[0],
                                 ds.domain_dimensions[0] * 2**level + 1)
-            m['r'] = 0.5 * (m_edges[1:] + m_edges[:-1])
+            m['r'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dytype=float)
 
         # Handle 2D simulations
         elif self.dim == 2:
@@ -181,11 +181,11 @@ class CastroSimulation(object):
             
             # Set coordinate names based on geometry
             if self.geo == 'cylindrical':
-                m['r'] = 0.5 * (m_edges_x[1:] + m_edges_x[:-1])  # Radial coordinate
-                m['z'] = 0.5 * (m_edges_y[1:] + m_edges_y[:-1])  # Axial coordinate
+                m['r'] = np.array(0.5 * (m_edges_x[1:] + m_edges_x[:-1]), dtype=float)  # Radial coordinate
+                m['z'] = np.array(0.5 * (m_edges_y[1:] + m_edges_y[:-1]), dtype=float)  # Axial coordinate
             elif self.geo == 'cartesian':
-                m['x'] = 0.5 * (m_edges_x[1:] + m_edges_x[:-1])  # x-coordinate
-                m['y'] = 0.5 * (m_edges_y[1:] + m_edges_y[:-1])  # y-coordinate
+                m['x'] = np.array(0.5 * (m_edges_x[1:] + m_edges_x[:-1]), dtype=float)  # x-coordinate
+                m['y'] = np.array(0.5 * (m_edges_y[1:] + m_edges_y[:-1]), dtype=float)  # y-coordinate
         
         # Handle 3D cartesian simulations
         elif self.dim == 3 and self.geo == 'cartesian':
@@ -217,9 +217,9 @@ class CastroSimulation(object):
             m_edges_z = np.linspace(ds.domain_left_edge[2], ds.domain_right_edge[2],
                                   ds.domain_dimensions[2] * 2**level + 1)
             
-            m['x'] = 0.5 * (m_edges_x[1:] + m_edges_x[:-1])
-            m['y'] = 0.5 * (m_edges_y[1:] + m_edges_y[:-1])
-            m['z'] = 0.5 * (m_edges_z[1:] + m_edges_z[:-1])
+            m['x'] = np.array(0.5 * (m_edges_x[1:] + m_edges_x[:-1]), dtype=float)
+            m['y'] = np.array(0.5 * (m_edges_y[1:] + m_edges_y[:-1]), dtype=float)
+            m['z'] = np.array(0.5 * (m_edges_z[1:] + m_edges_z[:-1]), dtype=float)
 
         # Extract 1D slices from 2D data if positions are specified
         if bool(positions.keys() & m.keys()):
