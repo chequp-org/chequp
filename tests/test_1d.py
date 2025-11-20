@@ -6,12 +6,9 @@ import subprocess
 import re
 import numpy as np
 import sys
-import yt
 import glob
 import os
-import openpmd_api
 import time
-import h5py
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
 sys.path.append('../sim_folder/analysis/')
@@ -206,7 +203,6 @@ def test_1d_desy_benchmark():
     Test the code in the scenario that benchmarked with DESY team
     (close - but not identical - to the one from Mewes et al., PRR 5, 033112, 2023)
     """
-    print("Generating initial conditions...")
     # Generate openPMD inital conditions according to the agreed-upon benchmark
     sigma1 = 38e-6  # in m
     sigma2 = 35e-6  # in m
@@ -247,6 +243,5 @@ def test_1d_desy_benchmark():
     cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-
     test_1d_sedov_taylor()
     test_1d_desy_benchmark()
