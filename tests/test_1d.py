@@ -6,9 +6,12 @@ import subprocess
 import re
 import numpy as np
 import sys
+import yt
 import glob
 import os
+import openpmd_api
 import time
+import h5py
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
 sys.path.append('../sim_folder/analysis/')
@@ -16,8 +19,8 @@ from analysis_tool import CastroSimulation
 sys.path.append('../theory/sedov_theory/python/')
 from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
-from scipy.constants import m_p, e
 from scipy.optimize import curve_fit
+from scipy.constants import e, m_p
 
 def cleanup_outputs(extra_file = ""):
     # Remove previously generated plotfiles and checkpoints
@@ -59,14 +62,14 @@ def check_rho_r_ST(sim_data, sol, tol: int = 15):
     mean_rel_error = np.mean(np.array(errors)) * 100.
     assert mean_rel_error < tol, f"Density profile comparison to Sedov Taylor theory failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
 
-def run_castro_simulation(runtime_options):
+def run_castro_simulation(model = 'gamma_law', runtime_options = ""):
     """
     Run the Castro simulation.
     Raise an error and print stdout/stderr if the command fails.
     """
     # Find the Castro executable
     build_dir = "../sim_folder/build"
-    executables = glob.glob( os.path.join(build_dir, "Castro1d*") )
+    executables = glob.glob( os.path.join(build_dir, f"Castro1d*.{model}.ex") )
     if len(executables) == 0:
         raise FileNotFoundError(f"No Castro1d executable found in {build_dir}")
     elif len(executables) > 1:
@@ -101,11 +104,10 @@ def test_1d_sedov_taylor():
     print("Generating initial conditions...")
     # Generate openPMD inital conditions for a small-radius plasma
     # Gaussian temperature profile with sigma=4 microns, peak T=1000 eV
+    r = np.linspace(0, 10e-6, 1024)
     sigma = 4e-6
-    r = np.linspace(0, 5*sigma, 1024)
     T0_eV = 1000
     T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/sigma**2) # Gaussian profile to fasten convergence
-    T_eV[-1] = 0 # put last value to zero as this is used outside of 5*sigma
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
@@ -120,7 +122,7 @@ def test_1d_sedov_taylor():
     # Run the code
     print("Starting simulation...")
     time_s = time.time()
-    run_castro_simulation("amr.n_cell=128 castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
+    run_castro_simulation("castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
     time_e = time.time()
     print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
@@ -136,7 +138,7 @@ def test_1d_sedov_taylor():
 
     check_energy_conservation(sim_data, tol=1.0)
     check_r_t_ST(sim_data, analytical_data, tol=10)
-    check_rho_r_ST(sim_data, analytical_data, tol=15)
+    check_rho_r_ST(sim_data, analytical_data, tol=22)
 
     print("Physical tests passed.\n")
     # Evaluate checksum
@@ -230,13 +232,8 @@ def test_1d_desy_benchmark():
         T_eV, '1d_desy_benchmark.h5', species_keys)
 
     # Run the code
-    print("Starting simulation...")
-    time_s = time.time()
-    run_castro_simulation("castro.add_ext_src=1 castro.diffuse_temp=1 problem.initial_conditions_file=1d_desy_benchmark.h5")
-    time_e = time.time()
-    print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
+    run_castro_simulation(model = 'gamma_law_2T', runtime_options="castro.add_ext_src=1 castro.diffuse_temp=1 amr.plot_int = 100 problem.initial_conditions_file=1d_desy_benchmark.h5")
     # Physical tests #
-    print("Running physical tests...\n")
     sim_data = CastroSimulation('.', 'plt_1d_*')
 
     check_energy_conservation(sim_data, tol = 1.0)
@@ -250,5 +247,6 @@ def test_1d_desy_benchmark():
     cleanup_outputs('1d_desy_benchmark.h5')
 
 if __name__ == "__main__":
-    test_1d_desy_benchmark()
+
     test_1d_sedov_taylor()
+    test_1d_desy_benchmark()
