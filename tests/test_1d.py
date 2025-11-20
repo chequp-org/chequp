@@ -24,6 +24,31 @@ def cleanup_outputs(extra_file = ""):
 
     os.system("rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
+def make_ex(model = 'gamma_law', dim = '1'):
+    makefile_path = "../sim_folder/build/GNUmakefile"
+    replacements = {
+        rf"^EOS_DIR\s*:=.*": f"EOS_DIR     := {model}",
+        rf"^DIM\s*=.*": f"DIM        = {dim}",
+    }
+    with open(makefile_path, "r") as f:
+        content = f.read()
+    for pattern, new_value in replacements.items():
+        content = re.sub(pattern, new_value, content, flags=re.MULTILINE)
+    with open(makefile_path, "w") as f:
+        f.write(content)
+    cmd = """
+    cd ../sim_folder/build
+    make realclean
+    module purge
+    module load mpi/mpich-x86_64
+    make -j 96
+    """
+    result = subprocess.run(
+        ["bash", "-c", cmd],
+        stdout=subprocess.DEVNULL,   # silence stdout
+        stderr=subprocess.DEVNULL    # silence stderr
+    )
+    
 def check_energy_conservation(sim_data, tol: float = 1.0):
     t = sim_data.output_times
     E_tot = sim_data.get_energy(t, level=2, energy_type='total')[0]
@@ -117,13 +142,9 @@ def test_1d_sedov_taylor():
         T_eV, '1d_sedov_taylor.h5', species_keys)
 
     # Run the code
-    print("Starting simulation...")
-    time_s = time.time()
+    make_ex(model = 'gamma_law', dim = '1')
     run_castro_simulation("amr.n_cell=128 castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
-    time_e = time.time()
-    print(f"Simulation completed in {time_e - time_s:.2f} seconds.")
     # Physical tests #
-    print("Running physical tests...\n")
     sim_data = CastroSimulation('.', 'plt_1d_') # load simulation data
 
     # Comparison with Sedov Taylor theory
@@ -137,7 +158,6 @@ def test_1d_sedov_taylor():
     check_r_t_ST(sim_data, analytical_data, tol=10)
     check_rho_r_ST(sim_data, analytical_data, tol=15)
 
-    print("Physical tests passed.\n")
     # Evaluate checksum
     evaluate_checksum("1d_sedov_taylor", "plt_1d_*", rtol=4.e-7)
 
