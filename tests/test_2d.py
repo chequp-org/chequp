@@ -125,19 +125,18 @@ def check_rho_r(sim_data, sol, tol: int = 21):
     test = mean_error < tol
     assert test, f"Density profile test failed: mean rel. L2 error = {mean_error:.2f} % > {tol} %"
 
-def run_castro_simulation(runtime_options):
+def run_castro_simulation(model = 'gamma_law', runtime_options = ""):
     """
     Run the Castro simulation.
-
     Raise an error and print stdout/stderr if the command fails.
     """
     # Find the Castro executable
     build_dir = "../sim_folder/build"
-    executables = glob.glob( os.path.join(build_dir, "Castro2d*") )
+    executables = glob.glob( os.path.join(build_dir, f"Castro2d*.{model}.ex") )
     if len(executables) == 0:
-        raise FileNotFoundError(f"No Castro1d executable found in {build_dir}")
+        raise FileNotFoundError(f"No Castro2d executable found in {build_dir}")
     elif len(executables) > 1:
-        raise RuntimeError(f"Multiple Castro1d executables found: {executables}")
+        raise RuntimeError(f"Multiple Castro2d executables found: {executables}")
     executable = executables[0]
 
     cleanup_outputs()
@@ -188,7 +187,7 @@ def test_2d_sedov_taylor():
     save_to_openpmd({'x': [x.min(), x.max()], 'y': [y.min(), y.max()]},
                 populations, T_eV, '2d_sedov_taylor.h5', species_keys)
     # Run the code
-    run_castro_simulation("amr.n_cell = 64 64 castro.add_ext_src = 0 castro.diffuse_temp = 0 amr.max_level  = 3 problem.initial_conditions_file=2d_sedov_taylor.h5")
+    run_castro_simulation(model = 'gamma_law', runtime_options = "amr.n_cell = 64 64 castro.add_ext_src = 0 castro.diffuse_temp = 0 amr.max_level  = 3 problem.initial_conditions_file=2d_sedov_taylor.h5")
     # Physical tests 
     dx = x[1] - x[0]
     dy = y[1] - y[0]
