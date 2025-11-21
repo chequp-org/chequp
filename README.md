@@ -22,13 +22,13 @@ In order to analyze the results, create a Python environment with `numpy`, `scip
 ## Switch between two-temperature and single-temperature model
 
 The choice of a single-temperature model or two-temperature model depends on the ex file that you are using to run Castro. 
-To compiled both model use :
+To compiled both model use:
 ```
 cd sim_folder/build
 make -j 4 -s EOS_DIR=gamma_law DIM=1
 make -j 4 -s EOS_DIR=gamma_law_2T DIM=1
 ```
-It will create two files with a sufix coresponding to the model : gamma_law for single-temperature, gamma_law_2T for two-temperature. The DIM flag change the dimension (here 1D).
+It will create two files with a sufix coresponding to the model: gamma_law for single-temperature, gamma_law_2T for two-temperature. The DIM flag change the dimension (here 1D).
 
 ## For 2D Cartesian sims
 
