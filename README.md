@@ -30,18 +30,22 @@ make -j 4 -s EOS_DIR=gamma_law_2T DIM=1
 ```
 It will create two files with a sufix coresponding to the model : gamma_law for single-temperature, gamma_law_2T for two-temperature. The DIM flag change the dimension (here 1D).
 
-## Tutorial 2D rz
+## For 2D Cartesian sims
 
-First compile the code with 2d single-temperature model :
 ```
 cd sim_folder/build
 make -j 4 -s EOS_DIR=gamma_law DIM=2
 ```
-(for GPU, use `make USE_CUDA=TRUE -j 4` ; on MacOS, use `make COMP=clang -j 4`)
+(for GPU, use `make USE_CUDA=TRUE -j 4 -s EOS_DIR=gamma_law DIM=2` ; on MacOS, use `make COMP=clang -j 4 -s EOS_DIR=gamma_law DIM=2`)
+
+```
+cd ../run
+../build/Castro2d.gnu.gamma_law.MPI.ex inputs.2d.cyl_in_cartcoords
+```
 
 ```
 cd ../analysis
-jupyter notebook Tutorial_2D_rz_v0.ipynb
+jupyter notebook Analysis.ipynb
 ```
 
 ## For 1D Cylindrical sims
