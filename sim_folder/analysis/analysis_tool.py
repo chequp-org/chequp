@@ -12,6 +12,9 @@ m_H = m_p * 1e3  # Hydrogen mass in grams
 kB = k * 1e7     # Boltzmann constant in erg/K
 qe = elementary_charge * 1e7  # Elementary charge in erg
 
+MODULE_DIR = Path(__file__).resolve().parent
+json_file = MODULE_DIR / "database_species.json"
+
 class CastroSimulation(object):
     """
     Class to postprocess and analyze results from Castro simulations.
@@ -28,26 +31,26 @@ class CastroSimulation(object):
         """
         Initialize the Castro simulation analysis object.
 
-        Parameters:
-        -----------
-        run_dir: str
+        Parameters
+        ----------
+        run_dir : str
             Path to the directory containing Castro output files
-        file_start: str
+        file_start : str
             Prefix of the output filenames (e.g., 'plt_1d_', 'plt00000')
             
-        Attributes:
-        -----------
-        ts: yt.DatasetSeries
+        Attributes
+        ----------
+        ts : yt.DatasetSeries
             Time series of all simulation outputs
-        output_times: np.ndarray
+        output_times : np.ndarray
             Array of simulation times for each output
-        parameters_list: dict
+        parameters_list : dict
             Simulation parameters from the first output file
-        fields_list: list
+        fields_list : list
             List of available physical quantities in the simulation
-        dim: int
+        dim : int
             Dimensionality of the simulation (1D, 2D, or 3D)
-        geo: str
+        geo : str
             Geometry type ('Cartesian' or 'cylindrical')
         """
         # Load all simulation outputs as a time series
@@ -63,7 +66,7 @@ class CastroSimulation(object):
         self.dim = self.ts[0].dimensionality
         self.geo = self.ts[0].geometry
         self.max_level = self.ts[0].max_level  # Number of AMR levels
-        with open("database_species.json") as f: # Load species data : energies in eV, masses in g
+        with open(json_file) as f: # Load species data : energies in eV, masses in g
             self.data_species = json.load(f)
 
     def sim_info(self):
@@ -85,28 +88,28 @@ class CastroSimulation(object):
         """
         Extract a physical quantity from the simulation at a specific time and refinement level.
 
-        Parameters:
-        -----------
-        t: float
+        Parameters
+        ----------
+        t : float
             Time at which to extract the quantity (finds closest output)
-        quantity: str
+        quantity : str
             Name of the physical quantity to extract
             Special computed quantities: 'T_e' (electron temperature), 'T_h' (heavy particle temperature)
-        level: int, optional
+        level : int, optional
             AMR refinement level to extract data from (default: 0, coarsest level)
-        positions: dict, optional
+        positions : dict, optional
             Dictionary to extract 1D slices from 2D data (e.g., {'r': 0.5} or {'z': 1.0})
 
-        Returns:
-        --------
+        Returns
+        -------
         dict
             Dictionary containing:
             - 't': exact simulation time
             - 'q': the requested quantity values
             - coordinate arrays ('r', 'z', 'x', 'y') depending on geometry and dimension
             
-        Raises:
-        -------
+        Raises
+        ------
         ValueError
             If the requested quantity is not available in the simulation
         """
@@ -241,28 +244,28 @@ class CastroSimulation(object):
         """
         Calculate the total energy content of the simulation at specified time(s).
 
-        Parameters:
-        -----------
-        t: float or array-like
+        Parameters
+        ----------
+        t : float or array-like
             Time(s) at which to calculate energy
-        level: int
+        level : int
             AMR refinement level for energy calculation
-        energy_type: str, optional
+        energy_type : str, optional
             Type of energy to calculate:
             - 'total': kinetic + thermal + ionization energy
             - 'thermal': internal energy only
             - 'kinetic': kinetic energy only
             - 'ion': ionization energy only
 
-        Returns:
-        --------
-        energy: float or list
+        Returns
+        -------
+        energy : float or list
             Total energy in erg (or erg/cm for 1D cylindrical)
-        time: float or list
+        time : float or list
             Exact time(s) at which energy was calculated
             
-        Raises:
-        -------
+        Raises
+        ------
         ValueError
             If invalid energy_type is specified or ionization energy is requested
             but not available in the simulation
@@ -344,24 +347,24 @@ class CastroSimulation(object):
         """
         Calculate the total number of particles of a specific species in the simulation.
 
-        Parameters:
-        -----------
-        t: float or array-like
+        Parameters
+        ----------
+        t : float or array-like
             Time(s) at which to calculate particle number
-        species: str
+        species : str
             Species identifier (e.g., 'H0', 'H1', 'N0', 'N1', etc.)
-        level: int
+        level : int
             AMR refinement level for calculation
 
-        Returns:
-        --------
-        particle_number: float or list
+        Returns
+        -------
+        particle_number : float or list
             Total number of particles of the specified species
-        time: float or list
+        time : float or list
             Exact time(s) at which particle number was calculated
             
-        Raises:
-        -------
+        Raises
+        ------
         ValueError
             If the specified species is not found in the simulation
         """
