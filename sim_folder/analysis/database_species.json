@@ -1,0 +1,48 @@
+{
+  "sources": {
+    "ionization_energies": {
+      "reference": "Kramida, A., Ralchenko, Yu., Reader, J., and NIST ASD Team (2024). NIST Atomic Spectra Database (ver. 5.12), [Online]. Available: https://physics.nist.gov/asd [2025, November 21]. National Institute of Standards and Technology, Gaithersburg, MD.",
+      "DOI": "https://doi.org/10.18434/T4W30F"
+    },
+    "atomic_masses": {
+      "reference": "Coursey, J.S., Schwab, D.J., Tsai, J.J., and Dragoset, R.A. (2015), Atomic Weights and Isotopic Compositions (version 4.1). [Online] Available: http://physics.nist.gov/Comp [year, month, day]. National Institute of Standards and Technology, Gaithersburg, MD."
+    },
+    "units": {
+      "mass": "grams",
+      "ion_energy": "electronvolts"
+    }
+  },
+  "H0": {
+    "mass": 1.6735575e-24,
+    "ion_energy": 0.0
+  },
+  "H1": {
+    "mass": 1.6726219e-24,
+    "ion_energy": 13.5984
+  },
+
+  "N0": {
+    "mass": 2.3258671e-23,
+    "ion_energy": 0.0
+  },
+  "N1": {
+    "mass": 2.3257010e-23,
+    "ion_energy": 14.534
+  },
+  "N2": {
+    "mass": 2.3255349e-23,
+    "ion_energy": 29.6013
+  },
+  "N3": {
+    "mass": 2.3253688e-23,
+    "ion_energy": 47.4493
+  },
+  "N4": {
+    "mass": 2.3252027e-23,
+    "ion_energy": 77.4735
+  },
+  "N5": {
+    "mass": 2.3250366e-23,
+    "ion_energy": 97.8901
+  }
+}

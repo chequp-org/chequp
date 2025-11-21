@@ -35,4 +35,6 @@ USE_SPECIES_SOURCES = TRUE
 Bpack   := ./Make.package
 Blocs   := .
 
+USERSuffix = .$(EOS_DIR)
+
 include $(CASTRO_HOME)/Exec/Make.Castro

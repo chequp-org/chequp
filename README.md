@@ -21,30 +21,26 @@ In order to analyze the results, create a Python environment with `numpy`, `scip
 
 ## Switch between two-temperature and single-temperature model
 
-The choice of a single-temperature model or two-temperature model is done before compiling,
-by changing the flag `EOS_DIR` in `sim_folder/build/GNUmakefile`.
-
-- For a two-temperature model, use
+The choice of a single-temperature model or two-temperature model depends on the ex file that you are using to run Castro. 
+To compiled both model use:
 ```
-EOS_DIR     := gamma_law_2T
+cd sim_folder/build
+make -j 4 -s EOS_DIR=gamma_law DIM=1
+make -j 4 -s EOS_DIR=gamma_law_2T DIM=1
 ```
-
-- For a single-temperature model, use
-```
-EOS_DIR     := gamma_law
-```
+It will create two files with a sufix coresponding to the model: gamma_law for single-temperature, gamma_law_2T for two-temperature. The DIM flag change the dimension (here 1D).
 
 ## For 2D Cartesian sims
 
 ```
 cd sim_folder/build
-make -j 4
+make -j 4 -s EOS_DIR=gamma_law DIM=2
 ```
-(for GPU, use `make USE_CUDA=TRUE -j 4` ; on MacOS, use `make COMP=clang -j 4`)
+(for GPU, use `make USE_CUDA=TRUE -j 4 -s EOS_DIR=gamma_law DIM=2` ; on MacOS, use `make COMP=clang -j 4 -s EOS_DIR=gamma_law DIM=2`)
 
 ```
 cd ../run
-../build/Castro2d.gnu.MPI.ex inputs.2d.cyl_in_cartcoords
+../build/Castro2d.gnu.gamma_law.MPI.ex inputs.2d.cyl_in_cartcoords
 ```
 
 ```
@@ -56,13 +52,13 @@ jupyter notebook Analysis.ipynb
 
 ```
 cd sim_folder/build
-make DIM=1 -j 4
+make -j 4 -s EOS_DIR=gamma_law DIM=1
 ```
-(for GPU, use `make DIM=1 USE_CUDA=TRUE -j 4` ; on MacOS, use `make COMP=clang DIM=1 -j 4`)
+(for GPU, use `make USE_CUDA=TRUE -j 4 -s EOS_DIR=gamma_law DIM=1` ; on MacOS, use `make COMP=clang -j 4 -s EOS_DIR=gamma_law DIM=1`)
 
 ```
 cd ../run
-../build/Castro1d.gnu.MPI.ex inputs.1d.cyl
+../build/Castro1d.gnu.MPI.gamma_law.ex inputs.1d.cyl
 ```
 
 ```
@@ -93,6 +89,7 @@ py.test
 - Copy the json from the console output into the `<test name>.json` file.
 
 - Verify that `py.test` now passes.
+
 
 # More info on the simulations
 
