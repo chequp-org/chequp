@@ -66,7 +66,7 @@ class CastroSimulation(object):
         self.dim = self.ts[0].dimensionality
         self.geo = self.ts[0].geometry
         self.max_level = self.ts[0].max_level  # Number of AMR levels
-        with open(json_file) as f: # Load species data : energies in eV, masses in g
+        with open(json_file) as f: # Load species data: energies in eV, masses in g
             self.data_species = json.load(f)
 
     def sim_info(self):
