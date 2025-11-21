@@ -21,7 +21,7 @@ class CastroSimulation(object):
     - Extract physical quantities at different refinement levels
     - Calculate energies (kinetic, thermal, ionization, total)
     - Compute particle numbers for different species
-    - Handle 1D/2D/3D simulations with cartesian or cylindrical geometry
+    - Handle 1D/2D/3D simulations with Cartesian or cylindrical geometry
     """
 
     def __init__(self, run_dir, file_start):
@@ -30,25 +30,25 @@ class CastroSimulation(object):
 
         Parameters:
         -----------
-        run_dir : str
+        run_dir: str
             Path to the directory containing Castro output files
-        file_start : str
+        file_start: str
             Prefix of the output filenames (e.g., 'plt_1d_', 'plt00000')
             
         Attributes:
         -----------
-        ts : yt.DatasetSeries
+        ts: yt.DatasetSeries
             Time series of all simulation outputs
-        output_times : np.ndarray
+        output_times: np.ndarray
             Array of simulation times for each output
-        parameters_list : dict
+        parameters_list: dict
             Simulation parameters from the first output file
-        fields_list : list
+        fields_list: list
             List of available physical quantities in the simulation
-        dim : int
+        dim: int
             Dimensionality of the simulation (1D, 2D, or 3D)
-        geo : str
-            Geometry type ('cartesian' or 'cylindrical')
+        geo: str
+            Geometry type ('Cartesian' or 'cylindrical')
         """
         # Load all simulation outputs as a time series
         self.ts = yt.load(os.path.join(run_dir, file_start + '*'), hint="castro")
@@ -58,7 +58,7 @@ class CastroSimulation(object):
         
         # Get simulation metadata from the first output
         self.parameters_list = self.ts[0].parameters
-        self.fields_list = [f for _, f in self.ts[0].field_list]
+        self.fields_list = [f for _, f in self.ts[0].field_list] + ['T_e', 'T_h'] # T_e and T_h are derived quantities
         self.species_list = [f[-2:] for f in self.fields_list if f[-1].isdigit()]
         self.dim = self.ts[0].dimensionality
         self.geo = self.ts[0].geometry
@@ -87,14 +87,14 @@ class CastroSimulation(object):
 
         Parameters:
         -----------
-        t : float
+        t: float
             Time at which to extract the quantity (finds closest output)
-        quantity : str
+        quantity: str
             Name of the physical quantity to extract
             Special computed quantities: 'T_e' (electron temperature), 'T_h' (heavy particle temperature)
-        level : int, optional
+        level: int, optional
             AMR refinement level to extract data from (default: 0, coarsest level)
-        positions : dict, optional
+        positions: dict, optional
             Dictionary to extract 1D slices from 2D data (e.g., {'r': 0.5} or {'z': 1.0})
 
         Returns:
@@ -133,10 +133,9 @@ class CastroSimulation(object):
             
             # Calculate derived temperatures if requested (not directly stored)
             if quantity in ['T_e', 'T_h']:
-                f = ad['rho_f_heavies'].to_ndarray().squeeze()      # Heavy particle fraction
+                f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Heavy particle fraction
                 e_ = ad['rho_e'].to_ndarray().squeeze()             # Internal energy density
-                X_H = ad['rho_H1'].to_ndarray().squeeze()           # Hydrogen mass fraction
-                
+                X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Hydrogen mass fraction
                 if quantity == 'T_e':
                     # Electron temperature: T_e = (2/3) * (internal energy per electron) / k_B
                     m['q'] = 2 * m_H * e_ * (1 - f) / (3 * X_H * kB)
@@ -162,10 +161,9 @@ class CastroSimulation(object):
             
             # Calculate derived temperatures (same as 1D case)
             if quantity in ['T_e', 'T_h']:
-                f = ad['rho_f_heavies'].to_ndarray().squeeze()
+                f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 e_ = ad['rho_e'].to_ndarray().squeeze()
-                X_H = ad['rho_H1'].to_ndarray().squeeze()
-                
+                X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 if quantity == 'T_e':
                     m['q'] = 2 * m_H * e_ * (1 - f) / (3 * X_H * kB)
                 else:
@@ -187,7 +185,7 @@ class CastroSimulation(object):
                 m['x'] = np.array(0.5 * (m_edges_x[1:] + m_edges_x[:-1]), dtype=float)  # x-coordinate
                 m['y'] = np.array(0.5 * (m_edges_y[1:] + m_edges_y[:-1]), dtype=float)  # y-coordinate
         
-        # Handle 3D cartesian simulations
+        # Handle 3D Cartesian simulations
         elif self.dim == 3 and self.geo == 'cartesian':
             # Create 3D covering grid
             ad = ds.covering_grid(level=level,
@@ -198,9 +196,9 @@ class CastroSimulation(object):
             
             # Calculate derived temperatures (same as previous cases)
             if quantity in ['T_e', 'T_h']:
-                f = ad['rho_f_heavies'].to_ndarray().squeeze()
+                f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 e_ = ad['rho_e'].to_ndarray().squeeze()
-                X_H = ad['rho_H1'].to_ndarray().squeeze()
+                X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 
                 if quantity == 'T_e':
                     m['q'] = 2 * m_H * e_ * (1 - f) / (3 * X_H * kB)
@@ -245,11 +243,11 @@ class CastroSimulation(object):
 
         Parameters:
         -----------
-        t : float or array-like
+        t: float or array-like
             Time(s) at which to calculate energy
-        level : int
+        level: int
             AMR refinement level for energy calculation
-        energy_type : str, optional
+        energy_type: str, optional
             Type of energy to calculate:
             - 'total': kinetic + thermal + ionization energy
             - 'thermal': internal energy only
@@ -258,9 +256,9 @@ class CastroSimulation(object):
 
         Returns:
         --------
-        energy : float or list
+        energy: float or list
             Total energy in erg (or erg/cm for 1D cylindrical)
-        time : float or list
+        time: float or list
             Exact time(s) at which energy was calculated
             
         Raises:
@@ -323,7 +321,7 @@ class CastroSimulation(object):
                 energies.append(energy)
                 
             elif self.dim == 2 and self.geo == 'cartesian':
-                # 2D cartesian integration: ∫∫ energy_density * dx * dy
+                # 2D Cartesian integration: ∫∫ energy_density * dx * dy
                 dx = m_rho_E['x'][1] - m_rho_E['x'][0]
                 dy = m_rho_E['y'][1] - m_rho_E['y'][0]
                 energy = np.sum((dx * dy) * m_rho_E['q'])
@@ -348,18 +346,18 @@ class CastroSimulation(object):
 
         Parameters:
         -----------
-        t : float or array-like
+        t: float or array-like
             Time(s) at which to calculate particle number
-        species : str
+        species: str
             Species identifier (e.g., 'H0', 'H1', 'N0', 'N1', etc.)
-        level : int
+        level: int
             AMR refinement level for calculation
 
         Returns:
         --------
-        particle_number : float or list
+        particle_number: float or list
             Total number of particles of the specified species
-        time : float or list
+        time: float or list
             Exact time(s) at which particle number was calculated
             
         Raises:
