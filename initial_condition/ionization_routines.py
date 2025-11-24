@@ -1,5 +1,6 @@
 import numpy as np
 import numba
+from numba import cuda
 import math
 import tqdm
 import os
@@ -148,6 +149,12 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
 
     return initial_populations, T, t  # Return full populations array
 
+# Automatically detect hardware: use 'cuda' if GPU is available, otherwise 'parallel' (CPU)
+if numba.cuda.is_available():
+    target_backend = 'cuda'
+else:
+    target_backend = 'parallel'
+    
 @numba.guvectorize(
     ['void(float64, float64, float64, float64[:], '
      'float64[:], float64[:], float64[:], '
@@ -155,7 +162,7 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
      'float64[:], float64[:])'],
     '(),(),(),(m),(t),(t),(t),(t),(t),(s),(s)->(s),()',  
     nopython=True,
-    target='cuda'  # or 'parallel' for cpu
+    target=target_backend
 )
 def compute_ionization_vectorized(
     a0, tau, lambd, ell,
