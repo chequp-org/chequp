@@ -7,12 +7,8 @@ import subprocess
 import re
 import numpy as np
 import sys
-import yt
 import glob
 import os
-import openpmd_api
-import time
-import h5py
 from scipy.interpolate import RegularGridInterpolator
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
@@ -24,11 +20,11 @@ from checksum.checksumAPI import evaluate_checksum
 from scipy.constants import m_p, k
 from scipy.optimize import curve_fit
 
-def cleanup_outputs(extra_file = ""):
+def cleanup_outputs(extra_file=""):
     # Remove previously generated plotfiles and checkpoints
     os.system(f"rm -rf plt_2d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0 " + extra_file)
 
-def check_r_iso_t(sim_data, sol, tol_r: int = 10, tol_iso: float = 0.5):
+def check_r_iso_t(sim_data, sol, tol_r:int=10, tol_iso:float=0.5):
 
     def find_edge_radial_xy(data, n_angles=100, n_samples=1000):
         x, y = np.array(data['x'], dtype=float), np.array(data['y'], dtype=float)
@@ -95,7 +91,7 @@ def check_r_iso_t(sim_data, sol, tol_r: int = 10, tol_iso: float = 0.5):
     assert test_r, f"Shock radius test failed: rel. error = {error_r:.2f} % > {tol_r} %"
     assert test_iso, f"Shock isotropy test failed: mean isotropy = {error_iso:.2f} % > {tol_iso} %"
 
-def check_energy_conservation(sim_data, tol: float = 1.0):
+def check_energy_conservation(sim_data, tol:float=1.0):
     t = sim_data.output_times
     E_tot = sim_data.get_energy(t, level=2, energy_type='total')[0]
     rel_err = np.abs(E_tot - E_tot[0]) / E_tot[0] * 100.0
@@ -103,7 +99,7 @@ def check_energy_conservation(sim_data, tol: float = 1.0):
     value = np.max(rel_err)
     assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
 
-def check_rho_r(sim_data, sol, tol: int = 21):
+def check_rho_r(sim_data, sol, tol:int=21):
     """
     Compare radial density profiles at several output times to the analytical solution.
     Returns True if the mean relative L2 error is below 15%.
@@ -125,7 +121,7 @@ def check_rho_r(sim_data, sol, tol: int = 21):
     test = mean_error < tol
     assert test, f"Density profile test failed: mean rel. L2 error = {mean_error:.2f} % > {tol} %"
 
-def run_castro_simulation(model = 'gamma_law', runtime_options = ""):
+def run_castro_simulation(model='gamma_law', runtime_options=""):
     """
     Run the Castro simulation.
     Raise an error and print stdout/stderr if the command fails.
@@ -208,43 +204,6 @@ def test_2d_sedov_taylor():
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('2d_sedov_taylor.h5')
-
-def test_2d_desy_benchmark():
-    """
-    Test the code in the scenario that benchmarked with DESY team
-    (close - but not identical - to the one from Mewes et al., PRR 5, 033112, 2023)
-    """
-    # Generate openPMD inital conditions according to the agreed-upon benchmark
-    sigma1 = 38e-6  # in m
-    sigma2 = 35e-6  # in m
-    Te_max = 27 # in eV
-    Ta = 0.03 # in eV
-    # Create r array from 0 to 6e-4 with 1e-6 increment
-    r = np.arange(0, 6e-4 + 1e-6, 1e-6)
-    # Calculate ionization fraction, with minimal ionization fraction of 1e-3
-    # (the minimal fraction is needed for the electron temperature to be defined everywhere)
-    ioniz_fraction = (1. - 1.e-3)*np.exp(-np.power(r*r/(2*sigma1*sigma1), 12)) + 1.e-3
-    # Calculate electron temperature, with a minimal temperature of 0.03 eV
-    T_eV = (Te_max - Ta) * np.exp(-np.power(r*r/(2*sigma2*sigma2), 3)) + Ta
-    # Parse the species names for which Castro has been compiled
-    with open('../sim_folder/build/species.net', 'r') as f:
-        species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
-    populations = np.zeros((len(r), len(species_keys)))
-    # Set H0 and H1 fractions
-    populations[:, species_keys.index('H0')] = 1 - ioniz_fraction
-    populations[:, species_keys.index('H1')] = ioniz_fraction
-    # Save file
-    save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
-        T_eV, '1d_desy_benchmark.h5', species_keys)
-
-    # Run the code
-    run_castro_simulation("problem.initial_conditions_file=1d_desy_benchmark.h5")
-    # Evaluate checksum
-    evaluate_checksum("1d_desy_benchmark", "plt_1d_*")
-
-    # Remove generated plotfiles and checkpoints
-    cleanup_outputs('1d_desy_benchmark.h5')
-
+    
 if __name__ == "__main__":
     test_2d_sedov_taylor()
-    test_2d_desy_benchmark()
