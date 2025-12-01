@@ -1,7 +1,3 @@
-"""
-This script tests that the 1D code produce the correct Sedov-Taylor blast wave solution.
-It assumes that the code has already been compiled in ../sim_folder/build/
-"""
 import subprocess
 import re
 import numpy as np
@@ -19,12 +15,12 @@ from checksum.checksumAPI import evaluate_checksum
 from scipy.optimize import curve_fit
 from scipy.constants import e, m_p
 
-def cleanup_outputs(extra_file = ""):
+def cleanup_outputs(extra_file=""):
     # Remove previously generated plotfiles and checkpoints
 
     os.system("rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
-def check_energy_conservation(sim_data, tol: float = 1.0):
+def check_energy_conservation(sim_data, tol:float=1.0):
     t = sim_data.output_times
     E_tot = sim_data.get_energy(t, level=2, energy_type='total')[0]
     rel_err = np.abs(E_tot - E_tot[0]) / E_tot[0] * 100.0
@@ -32,14 +28,14 @@ def check_energy_conservation(sim_data, tol: float = 1.0):
     value = np.max(rel_err)
     assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
 
-def check_r_t_ST(sim_data, sol, tol: int = 10):
+def check_r_t_ST(sim_data, sol, tol:int=10):
     popt, _ = curve_fit(lambda t, a: a * np.sqrt(t), sim_data['time'][1:], sim_data['rmax'][1:])
     r_fit = popt[0] * np.sqrt(sim_data['time'])
     r_analytical = np.array(sol.blast_radius(sim_data['time']))
     rel_error = np.linalg.norm(r_fit*1e4 - r_analytical*1e4) / np.linalg.norm(r_analytical*1e4) * 100.
     assert rel_error < tol, f"Shock radius comparison to Sedov Taylor theory failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
-def check_rho_r_ST(sim_data, sol, tol: int = 15):
+def check_rho_r_ST(sim_data, sol, tol:int=15):
     indices = np.arange(0.7, 0.99, 0.05) * len(sim_data['time'])
     errors = []
     for idx in np.unique(indices):
@@ -59,7 +55,7 @@ def check_rho_r_ST(sim_data, sol, tol: int = 15):
     mean_rel_error = np.mean(np.array(errors)) * 100.
     assert mean_rel_error < tol, f"Density profile comparison to Sedov Taylor theory failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
 
-def run_castro_simulation(model = 'gamma_law', runtime_options = ""):
+def run_castro_simulation(model='gamma_law', runtime_options=""):
     """
     Run the Castro simulation.
     Raise an error and print stdout/stderr if the command fails.
@@ -167,12 +163,11 @@ comsol_data = {
     }
 }
 
-def check_r_t_CM(sim_data, tol: int = 10):
+def check_r_t_CM(sim_data, tol:int=10):
     """
     Compare radial density profiles at several output times to the COMSOL solution.
     Returns True if the mean relative L2 error is below tol%.
     """
-
     # Comsol data
     t_comsol, r_comsol = comsol_data['blast']['t'], comsol_data['blast']['r']
 
@@ -183,7 +178,7 @@ def check_r_t_CM(sim_data, tol: int = 10):
     rel_error = np.linalg.norm(r_sim[1:]*1e4 - r_comsol_interp*1e6) / np.linalg.norm(r_comsol_interp*1e6) * 100.
     assert rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
-def check_rho_r_CM(sim_data, tol: int = 50):
+def check_rho_r_CM(sim_data, tol:int=50):
     """
     Compare radial density profiles at several output times to the COMSOL solution.
     Returns True if the mean relative L2 error is below tol%.
@@ -228,13 +223,13 @@ def test_1d_desy_benchmark():
         T_eV, '1d_desy_benchmark.h5', species_keys)
 
     # Run the code
-    run_castro_simulation(model = 'gamma_law_2T', runtime_options="castro.add_ext_src=1 castro.diffuse_temp=1 amr.plot_int = 100 problem.initial_conditions_file=1d_desy_benchmark.h5")
+    run_castro_simulation(model='gamma_law_2T', runtime_options="castro.add_ext_src=1 castro.diffuse_temp=1 amr.plot_int = 100 problem.initial_conditions_file=1d_desy_benchmark.h5")
     # Physical tests #
     sim_data = CastroSimulation('.', 'plt_1d_*')
 
-    check_energy_conservation(sim_data, tol = 1.0)
-    check_r_t_CM(sim_data, tol = 12)
-    check_rho_r_CM(sim_data, tol = 50)
+    check_energy_conservation(sim_data,tol=1.0)
+    check_r_t_CM(sim_data, tol=12)
+    check_rho_r_CM(sim_data, tol=50)
 
     # Evaluate checksum
     evaluate_checksum("1d_desy_benchmark", "plt_1d_*", rtol=4.e-7)
