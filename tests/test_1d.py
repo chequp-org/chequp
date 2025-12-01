@@ -100,7 +100,7 @@ def test_1d_sedov_taylor():
     r = np.linspace(0, 5*sigma, 1024)
     sigma = 4e-6
     T0_eV = 1000
-    T_eV[-1] = 0
+    T_eV[-1] = 0 # put last value to zero as this is used outside of 5*sigma
     T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/sigma**2) # Gaussian profile to fasten convergence
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
