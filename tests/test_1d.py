@@ -97,11 +97,11 @@ def test_1d_sedov_taylor():
     print("Generating initial conditions...")
     # Generate openPMD inital conditions for a small-radius plasma
     # Gaussian temperature profile with sigma=4 microns, peak T=1000 eV
-    r = np.linspace(0, 5*sigma, 1024)
-    sigma = 4e-6
+    Twidth = 4e-6
+    r = np.linspace(0, 5*Twidth, 1024)
     T0_eV = 1000
     T_eV[-1] = 0 # put last value to zero as this is used outside of 5*sigma
-    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/sigma**2) # Gaussian profile to fasten convergence
+    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/Twidth**2) # Gaussian profile to fasten convergence
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
@@ -142,6 +142,10 @@ def test_1d_sedov_taylor():
     cleanup_outputs('1d_sedov_taylor.h5')
 
 
+
+# Those data came from a COMSOL simulation done by Mathis Mewes using the model HYQUP (Mewes et al., PRR 5, 033112, 2023)
+# The simulation only consider Atomic species H0, H1. The initial parameters are defined in test_1d_desy_benchmark.
+# Units: m for length, m-3 for density, K for temperature
 comsol_data = {
     "blast":{
         "t": np.array([0, 9.987819732034104e-10, 1.9975639464068208e-9, 5.006090133982948e-9, 8.002436053593179e-9, 9.987819732034105e-9]),
@@ -164,10 +168,10 @@ comsol_data = {
     }
 }
 
-def check_r_t_CM(sim_data, tol:int=10):
+def check_blast_radius_t_Comsol(sim_data, tol:int=10):
     """
-    Compare radial density profiles at several output times to the COMSOL solution.
-    Returns True if the mean relative L2 error is below tol%.
+    Compare the time evolution of the blast radius with the one obtain from the COMSOL simulation.
+    Raise an error if the L2 error is over the tol%.
     """
     # Comsol data
     t_comsol, r_comsol = comsol_data['blast']['t'], comsol_data['blast']['r']
@@ -179,10 +183,10 @@ def check_r_t_CM(sim_data, tol:int=10):
     rel_error = np.linalg.norm(r_sim[1:]*1e4 - r_comsol_interp*1e6) / np.linalg.norm(r_comsol_interp*1e6) * 100.
     assert rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
-def check_rho_r_CM(sim_data, tol:int=50):
+def check_density_profile_r_Comsol(sim_data, tol:int=50):
     """
     Compare radial density profiles at several output times to the COMSOL solution.
-    Returns True if the mean relative L2 error is below tol%.
+    Raise an error if the L2 error is over the tol%.
     """
     # Comsol data
     errors = []
@@ -218,19 +222,21 @@ def test_1d_desy_benchmark():
     populations = np.zeros((len(r), len(species_keys)))
     # Set H0 and H1 fractions
     populations[:, species_keys.index('H0')] = 1 - ioniz_fraction
-    populations[:, species_keys.index('H1')] = ioniz_fraction   
+    populations[:, species_keys.index('H1')] = ioniz_fraction
     # Save file
     save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
         T_eV, '1d_desy_benchmark.h5', species_keys)
 
     # Run the code
+    # The runtime options are the parameters that are temporary overwritten in the input file to lauch the simulation.
+    # This avoid to modify each time we want to run with differents parameters
     run_castro_simulation(model='gamma_law_2T', runtime_options="castro.add_ext_src=1 castro.diffuse_temp=1 amr.plot_int = 100 problem.initial_conditions_file=1d_desy_benchmark.h5")
-    # Physical tests #
+    # Physical tests
     sim_data = CastroSimulation('.', 'plt_1d_*')
 
     check_energy_conservation(sim_data,tol=1.0)
-    check_r_t_CM(sim_data, tol=12)
-    check_rho_r_CM(sim_data, tol=50)
+    check_blast_radius_t_Comsol(sim_data, tol=12)
+    check_density_profile_r_Comsol(sim_data, tol=50)
 
     # Evaluate checksum
     evaluate_checksum("1d_desy_benchmark", "plt_1d_*", rtol=4.e-7)
