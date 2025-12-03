@@ -1,7 +1,7 @@
 """
-This script tests that the 2D code produce the correct Sedov-Taylor blast wave solution.
+This script tests that the 2D code produces the correct Sedov-Taylor blast wave solution.
 
-It assumes that the code has already been compiled in ../sim_folder/build/
+It assumes that the code has already been compiled in ../sim_folder/build/ (using 1T model)
 """
 import subprocess
 import re
@@ -24,10 +24,14 @@ def cleanup_outputs(extra_file=""):
     # Remove previously generated plotfiles and checkpoints
     os.system(f"rm -rf plt_2d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0 " + extra_file)
 
-def check_r_iso_t(sim_data, sol, tol_r:int=10, tol_iso:float=0.5):
-
+def check_blast_radius_isotropy_t(sim_data, sol, tol_r:int=10, tol_iso:float=0.5):
+    """
+    This function compute the time evolution of the blast radius aswell as its isotrpy,
+    and verify that the error is below tol%.
+    """
     def find_edge_radial_xy(data, n_angles=100, n_samples=1000):
-        x, y = np.array(data['x'], dtype=float), np.array(data['y'], dtype=float)
+        x = np.array(data['x'], dtype=float)
+        y = np.array(data['y'], dtype=float)
         cx, cy = x[-1]/2, y[-1]/2
 
         # create interpolator on physical grid
@@ -44,20 +48,12 @@ def check_r_iso_t(sim_data, sol, tol_r:int=10, tol_iso:float=0.5):
 
         for i, th in enumerate(thetas):
             rs = np.linspace(0, r_max, n_samples)
-            xs_ray = cx + rs * np.cos(th)
-            ys_ray = cy + rs * np.sin(th)
+            xs_ray = cx + rs * np.cos(th) # Change of variable from cart to polar
+            ys_ray = cy + rs * np.sin(th) # Change of variable from cart to polar
             pts = np.column_stack([ys_ray, xs_ray])  # interpolator expects (y,x)
-            vals = interp(pts)
-            valid = np.isfinite(vals)
-            if valid.sum() < 5:
-                radii[i] = np.nan
-                x_edge[i] = np.nan
-                y_edge[i] = np.nan
-                continue
-            rs = rs[valid]; vals = vals[valid]
-
-            dv = np.gradient(vals, rs)
-            idx = np.nanargmax(np.abs(dv))
+            vals = interp(pts) # Get the polar grid 
+            dv = np.gradient(vals, rs) 
+            idx = np.nanargmax(np.abs(dv)) # Find where the blast radius is 
 
             radii[i] = rs[idx]
             x_edge[i] = cx + radii[i] * np.cos(th)
@@ -99,10 +95,10 @@ def check_energy_conservation(sim_data, tol:float=1.0):
     value = np.max(rel_err)
     assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
 
-def check_rho_r(sim_data, sol, tol:int=21):
+def check_density_profile_r(sim_data, sol, tol:int=21):
     """
     Compare radial density profiles at several output times to the analytical solution.
-    Returns True if the mean relative L2 error is below 15%.
+    Raise error if the mean relative L2 error is over 15%.
     """
     errors = []
     t_sim = sim_data.output_times
@@ -195,9 +191,9 @@ def test_2d_sedov_taylor():
     sim_data = CastroSimulation('.', 'plt_2d_')
     analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial) # E0 in mJ/m, rho_0 in g/cm^3 (computed by integrating the initial profile of temperature ponderated by the populations)
 
-    check_r_iso_t(sim_data, analytical_data, tol_r=10, tol_iso=0.5)
+    check_blast_radius_isotropy_t(sim_data, analytical_data, tol_r=10, tol_iso=0.5)
     check_energy_conservation(sim_data, tol=1.0)
-    check_rho_r(sim_data, analytical_data, tol=21)
+    check_density_profile_r(sim_data, analytical_data, tol=21)
 
     # Evaluate checksum
     evaluate_checksum("2d_sedov_taylor", "plt_2d_*")
