@@ -53,8 +53,10 @@ def check_density_profile_ST(sim_data, sol, tol:int=15):
     """
     t = np.array([sim_data.output_times[int(len(sim_data.output_times)*f)] for f in [0.7, 0.8, 0.9]])
     r = np.array([sim_data.get_field(t_, 'density', level=2)['r'] for t_ in t])
-    rho_sim = np.array([sim_data.get_field(t_, 'density', level=2)['q'] for t_ in t]) # This get the density profile rho(r) from the sim for the differents time
-    rho_analytical = np.array([sol.evaluate('density', r_, t_) for r_, t_ in zip(r, t)]) # This compute the theoretical density profile from Sedov Taylor for the time and the radius array
+    # This get the density profile rho(r) from the sim for the differents time
+    rho_sim = np.array([sim_data.get_field(t_, 'density', level=2)['q'] for t_ in t]) 
+    # This compute the theoretical density profile from Sedov Taylor for the time and the radius array
+    rho_analytical = np.array([sol.evaluate('density', r_, t_) for r_, t_ in zip(r, t)])
     # compare up to the first peak present in both profiles
     for rho_a, rho_s, r_ in zip(rho_analytical, rho_sim, r):
         peak_idx = min(np.argmax(rho_a), np.argmax(rho_s))
@@ -107,15 +109,18 @@ def test_1d_sedov_taylor():
     Twidth = 4e-6
     r = np.linspace(0, 5*Twidth, 1024)
     T0_eV = 1000
-    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/Twidth**2) # Gaussian profile to fasten convergence
-    T_eV[-1] = 0 # put last value to zero as this is used outside of 5*sigma
+    # Gaussian profile to fasten convergence
+    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/Twidth**2) 
+    # put last value to zero as this is used outside of 5*sigma
+    T_eV[-1] = 0 
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
     populations = np.zeros((len(r), len(species_keys)))
     # Set fraction to 1 for H+
+    # small neutral fraction to avoid issues with zero density
     populations[:, species_keys.index('H1')] = 1 - 1e-3
-    populations[:, species_keys.index('H0')] = 1e-3 # small neutral fraction to avoid issues with zero density
+    populations[:, species_keys.index('H0')] = 1e-3 
     # Save file
     save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
         T_eV, '1d_sedov_taylor.h5', species_keys)
