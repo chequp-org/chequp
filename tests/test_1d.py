@@ -188,15 +188,14 @@ def check_density_profile_r_Comsol(sim_data, tol:int=50):
     Compare radial density profiles at several output times to the COMSOL solution.
     Raise an error if the L2 error is over the tol%.
     """
-    # Comsol data
-    errors = []
     for t, t_comsol in zip([2e-9, 5e-9, 8e-9], ['2ns', '5ns', '8ns']):
-            r = np.array(sim_data.get_field(float(t), 'density', level=2)['r'], dtype=np.float64)
-            rho = np.array(sim_data.get_field(float(t), 'density', level=2)['q'], dtype=np.float64)
-            na_comsol_interp = np.interp(r, comsol_data[t_comsol]['r'], comsol_data[t_comsol]['na']/1e24)
-            errors.append(np.linalg.norm(rho/1.67e-6 - na_comsol_interp) / np.linalg.norm(na_comsol_interp))
-    mean_rel_error = np.mean(errors) * 100.
-    assert mean_rel_error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
+        r = np.array(sim_data.get_field(float(t), 'density', level=2)['r'], dtype=np.float64)
+        # consider only r > 20 microns to avoid low-density noisy region and below the blast radius
+        rho = np.array(sim_data.get_field(float(t), 'density', level=2)['q'], dtype=np.float64)
+        mask = (r*1e4 > 20) & (r*1e4 > r[np.argmax(rho)]*1e4)
+        na_comsol_interp = np.interp(r*1e4, comsol_data[t_comsol]['r']*1e6, comsol_data[t_comsol]['na']/1e24)
+        error = np.linalg.norm(rho[mask]/1.67e-6 - na_comsol_interp[mask]) / np.linalg.norm(na_comsol_interp[mask]) * 100.
+        assert error < tol, f"Shock radius comparison to COMSOL failed: rel. err. = {error:.1f} % > {tol} % tol."
 
 def test_1d_desy_benchmark():
     """
@@ -236,7 +235,7 @@ def test_1d_desy_benchmark():
 
     check_energy_conservation(sim_data,tol=1.0)
     check_blast_radius_t_Comsol(sim_data, tol=12)
-    check_density_profile_r_Comsol(sim_data, tol=50)
+    check_density_profile_r_Comsol(sim_data, tol=15)
 
     # Evaluate checksum
     evaluate_checksum("1d_desy_benchmark", "plt_1d_*", rtol=4.e-7)
