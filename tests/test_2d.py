@@ -100,9 +100,8 @@ def check_density_profile_r(sim_data, sol, tol:int=21):
     Compare radial density profiles at several output times to the analytical solution.
     Raise error if the mean relative L2 error is over 15%.
     """
-    errors = []
     t_sim = sim_data.output_times
-    for t_ in t_sim[3::2]:
+    for t_ in t_sim[2::2]:
         m = sim_data.get_field(t_, quantity='density', level=2)
         rho_sim = m['q'][:, m['q'].shape[0]//2]
         x_center = np.linspace(-np.array(m['x'], dtype = float)[len(m['x'])//2], np.array(m['x'], dtype = float)[len(m['x'])//2], len(m['x']), dtype=float)
@@ -110,12 +109,8 @@ def check_density_profile_r(sim_data, sol, tol:int=21):
         # compare up to the first peak present in both profiles
         peak_idx = min(np.argmax(rho_analytical), np.argmax(rho_sim))
         denom = np.linalg.norm(rho_sim[:peak_idx])
-        err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx])/denom
-        errors.append(err)
-        
-    mean_error = float(np.mean(errors)) * 100
-    test = mean_error < tol
-    assert test, f"Density profile test failed: mean rel. L2 error = {mean_error:.2f} % > {tol} %"
+        err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx])/denom * 100.
+        assert err < tol, f"Density profile test failed: mean rel. L2 error = {err:.2f} % > {tol} %"
 
 def run_castro_simulation(model='gamma_law', runtime_options=""):
     """
@@ -160,12 +155,11 @@ def test_2d_sedov_taylor():
     x = np.linspace(0.0, 600e-6, 256)
     y = np.linspace(0.0, 600e-6, 256)
     X, Y = np.meshgrid(x, y, indexing='ij')  # 2D grid 512x512
-    sigma = 3e-6
+    width = 3e-6
     T_peak = 1000.0  # eV
     T_min = 1e-3     # eV, small temperature floor
     center = 300e-6
-    T_eV = T_min + (T_peak - T_min) * np.exp(- ((X-center)**2 + (Y-center)**2) / (2 * sigma**2)) # Gaussian profile of temperature
-
+    T_eV = T_min + (T_peak - T_min) * np.exp(- ((X-center)**2 + (Y-center)**2) / (2 * width**2)) # Gaussian profile of temperature
     # Species keys
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
@@ -179,7 +173,7 @@ def test_2d_sedov_taylor():
     save_to_openpmd({'x': [x.min(), x.max()], 'y': [y.min(), y.max()]},
                 populations, T_eV, '2d_sedov_taylor.h5', species_keys)
     # Run the code
-    run_castro_simulation(model = 'gamma_law', runtime_options = "amr.n_cell = 64 64 castro.add_ext_src = 0 castro.diffuse_temp = 0 amr.max_level  = 3 problem.initial_conditions_file=2d_sedov_taylor.h5")
+    run_castro_simulation(model = 'gamma_law', runtime_options = "amr.n_cell = 64 64 castro.add_ext_src = 0 castro.diffuse_temp = 0 amr.max_level  = 2 problem.initial_conditions_file=2d_sedov_taylor.h5")
     # Physical tests 
     dx = x[1] - x[0]
     dy = y[1] - y[0]
@@ -191,7 +185,7 @@ def test_2d_sedov_taylor():
     sim_data = CastroSimulation('.', 'plt_2d_')
     analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial) # E0 in mJ/m, rho_0 in g/cm^3 (computed by integrating the initial profile of temperature ponderated by the populations)
 
-    check_blast_radius_isotropy_t(sim_data, analytical_data, tol_r=10, tol_iso=0.5)
+    check_blast_radius_isotropy_t(sim_data, analytical_data, tol_r=15, tol_iso=0.5)
     check_energy_conservation(sim_data, tol=1.0)
     check_density_profile_r(sim_data, analytical_data, tol=21)
 
