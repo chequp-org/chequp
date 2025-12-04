@@ -7,10 +7,6 @@ import os
 import time
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
-sys.path.append('../sim_folder/analysis/')
-from analysis_tool import CastroSimulation
-sys.path.append('../theory/sedov_theory/python/')
-from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
 from scipy.optimize import curve_fit
 from scipy.constants import e, m_p
@@ -98,6 +94,7 @@ def run_castro_simulation(model='gamma_law', runtime_options=""):
         print("STDERR:", e.stderr)
         raise
 
+
 def test_1d_sedov_taylor():
     """
     Test that code produce the exact Sedov-Taylor blast wave solution, in a simplified setup:
@@ -143,6 +140,8 @@ def test_1d_sedov_taylor():
     check_blast_radius_t_ST(sim_data, analytical_data, tol=10)
     check_density_profile_ST(sim_data, analytical_data, tol=12)
 
+    # Check the results
+    # TODO: Compare the results with Sedov-Taylor theory
     # Evaluate checksum
     evaluate_checksum("1d_sedov_taylor", "plt_1d_*", rtol=4.e-7)
 
@@ -251,6 +250,7 @@ def test_1d_desy_benchmark():
 
     # Remove generated plotfiles and checkpoints
     cleanup_outputs('1d_desy_benchmark.h5')
+
 
 if __name__ == "__main__":
     test_1d_sedov_taylor()
