@@ -207,7 +207,8 @@ def test_1d_desy_benchmark():
     sigma2 = 35e-6  # in m
     Te_max = 27 # in eV
     kb = 8.617333262145e-5  # eV/K
-    Ta = 2000 * kb  # Background temperature in eV (constrain from COMSOL simulation)
+    # Background temperature in eV (constrain from COMSOL simulation)
+    Ta = 2000 * kb  
     # Create r array from 0 to 6e-4 with 1e-6 increment
     r = np.arange(0, 6e-4 + 1e-6, 1e-6)
     # Calculate ionization fraction, with minimal ionization fraction of 1e-3
