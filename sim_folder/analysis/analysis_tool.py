@@ -4,6 +4,7 @@ import numpy as np
 import yt
 import tqdm
 import json
+from pathlib import Path
 yt.set_log_level("error")
 from scipy.constants import m_p, k, elementary_charge
 
