@@ -120,7 +120,7 @@ def test_1d_sedov_taylor():
     # Set fraction to 1 for H+
     # small neutral fraction to avoid issues with zero density
     populations[:, species_keys.index('H1')] = 1 - 1e-3
-    populations[:, species_keys.index('H0')] = 1e-3 
+    populations[:, species_keys.index('H0')] = 1e-3
     # Save file
     save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
         T_eV, '1d_sedov_taylor.h5', species_keys)
