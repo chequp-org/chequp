@@ -60,7 +60,7 @@ def check_density_profile_ST(sim_data, sol, tol:int=15):
         peak_idx = min(np.argmax(rho_a), np.argmax(rho_s))
         if r_[peak_idx] > 1e-2: # dont compared for low blast radius
             denom = np.linalg.norm(rho_s[:peak_idx])
-            err = np.linalg.norm(rho_a[:peak_idx] - rho_s[:peak_idx]) / denom
+            err = np.linalg.norm(rho_a[:peak_idx] - rho_s[:peak_idx]) / denom * 100.
             assert err < tol, f"Density profile comparison to Sedov Taylor theory failed: rel. err. = {err:.1f} % > {tol} % tol."
 
 def run_castro_simulation(model='gamma_law', runtime_options=""):
@@ -136,7 +136,7 @@ def test_1d_sedov_taylor():
 
     check_energy_conservation(sim_data, tol=1.0)
     check_blast_radius_t_ST(sim_data, analytical_data, tol=10)
-    check_density_profile_ST(sim_data, analytical_data, tol=15)
+    check_density_profile_ST(sim_data, analytical_data, tol=12)
 
     # Evaluate checksum
     evaluate_checksum("1d_sedov_taylor", "plt_1d_*", rtol=4.e-7)
