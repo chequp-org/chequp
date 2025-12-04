@@ -1,7 +1,3 @@
-"""
-This script tests that the 1D code produce the correct Sedov-Taylor blast wave solution.
-It assumes that the code has already been compiled in ../sim_folder/build/
-"""
 import subprocess
 import re
 import numpy as np
@@ -19,78 +15,62 @@ from checksum.checksumAPI import evaluate_checksum
 from scipy.constants import m_p, e
 from scipy.optimize import curve_fit
 
-def cleanup_outputs(extra_file = ""):
+def cleanup_outputs(extra_file=""):
     # Remove previously generated plotfiles and checkpoints
 
     os.system("rm -rf plt_1d_* chk* amr_diag.out species_diag.out grid_diag.out Backtrace.0" + extra_file)
 
-def make_ex(model = 'gamma_law', dim = '1'):
-    makefile_path = "../sim_folder/build/GNUmakefile"
-    replacements = {
-        rf"^EOS_DIR\s*:=.*": f"EOS_DIR     := {model}",
-        rf"^DIM\s*=.*": f"DIM        = {dim}",
-    }
-    with open(makefile_path, "r") as f:
-        content = f.read()
-    for pattern, new_value in replacements.items():
-        content = re.sub(pattern, new_value, content, flags=re.MULTILINE)
-    with open(makefile_path, "w") as f:
-        f.write(content)
-    cmd = """
-    cd ../sim_folder/build
-    make realclean
-    module purge
-    module load mpi/mpich-x86_64
-    make -j 96
+def check_energy_conservation(sim_data, tol:float=1.0):
     """
-    result = subprocess.run(
-        ["bash", "-c", cmd],
-        stdout=subprocess.DEVNULL,   # silence stdout
-        stderr=subprocess.DEVNULL    # silence stderr
-    )
-    
-def check_energy_conservation(sim_data, tol: float = 1.0):
+    This function check that the total energy is conserved within a given tol
+    Raise an assertion error if the test fails
+    """
     t = sim_data.output_times
-    E_tot = sim_data.get_energy(t, level=2, energy_type='total')[0]
-    rel_err = np.abs(E_tot - E_tot[0]) / E_tot[0] * 100.0
+    E_tot = sim_data.get_energy(t, level=2)[0]
+    rel_err = (E_tot - E_tot[0]) / E_tot[0] * 100.0
     test = np.all(rel_err < tol)
     value = np.max(rel_err)
     assert test, f"Energy conservation test failed: Avg. Deviation = {value:.1e} % > {tol}% tol."
 
-def check_r_t_ST(sim_data, sol, tol: int = 10):
+def check_blast_radius_t_ST(sim_data, sol, tol:int=10):
+    """
+    This function check that the blast radius time evolution fit with the theory given by Sedov Taylor
+    Raise an assertion error if the test fails
+    """
     t = sim_data.output_times
-    r_blast = [sim_data.get_field(t_, 'density', level=2)['r'][np.argmax(sim_data.get_field(t_, 'density', level=2)['q'])] for t_ in t]
+    density_profiles = [sim_data.get_field(t_, 'density', level=2) for t_ in t]
+    r_blast = [profile['r'][np.argmax(profile['q'])] for profile in density_profiles]
     popt, _ = curve_fit(lambda time, a: a * np.sqrt(time), t[1:], r_blast[1:])
     r_fit = popt[0] * np.sqrt(t)
     r_analytical = np.array(sol.blast_radius(t))
     rel_error = np.linalg.norm(r_fit*1e4 - r_analytical*1e4) / np.linalg.norm(r_analytical*1e4) * 100.
     assert rel_error < tol, f"Shock radius comparison to Sedov Taylor theory failed: rel. err. = {rel_error:.1f} % > {tol} % tol."
 
-def check_rho_r_ST(sim_data, sol, tol: int = 15):
+def check_density_profile_ST(sim_data, sol, tol:int=15):
+    """
+    This function check for different time (7, 8, 9 ns) that the density profile match with the one given by Sedov Taylor theory
+    The function only compare radius below the blast radius (where the density peak is)
+    """
     t = np.array([sim_data.output_times[int(len(sim_data.output_times)*f)] for f in [0.7, 0.8, 0.9]])
     r = np.array([sim_data.get_field(t_, 'density', level=2)['r'] for t_ in t])
-    rho_sim = np.array([sim_data.get_field(t_, 'density', level=2)['q'] for t_ in t])
-    rho_analytical = np.array([sol.evaluate('density', r_, t_) for r_, t_ in zip(r, t)])
-    errors = []
+    rho_sim = np.array([sim_data.get_field(t_, 'density', level=2)['q'] for t_ in t]) # This get the density profile rho(r) from the sim for the differents time
+    rho_analytical = np.array([sol.evaluate('density', r_, t_) for r_, t_ in zip(r, t)]) # This compute the theoretical density profile from Sedov Taylor for the time and the radius array
     # compare up to the first peak present in both profiles
     for rho_a, rho_s, r_ in zip(rho_analytical, rho_sim, r):
         peak_idx = min(np.argmax(rho_a), np.argmax(rho_s))
         if r_[peak_idx] > 1e-2: # dont compared for low blast radius
             denom = np.linalg.norm(rho_s[:peak_idx])
             err = np.linalg.norm(rho_a[:peak_idx] - rho_s[:peak_idx]) / denom
-            errors.append(err)
+            assert err < tol, f"Density profile comparison to Sedov Taylor theory failed: rel. err. = {err:.1f} % > {tol} % tol."
 
-    mean_rel_error = np.mean(np.array(errors)) * 100.
-    assert mean_rel_error < tol, f"Density profile comparison to Sedov Taylor theory failed: rel. err. = {mean_rel_error:.1f} % > {tol} % tol."
-
-def run_castro_simulation(runtime_options):
+def run_castro_simulation(model='gamma_law', runtime_options=""):
     """
     Run the Castro simulation.
     Raise an error and print stdout/stderr if the command fails.
     """
     # Find the Castro executable
     build_dir = "../sim_folder/build"
-    executables = glob.glob( os.path.join(build_dir, "Castro1d*") )
+    executables = glob.glob( os.path.join(build_dir, f"Castro1d*.{model}.ex") )
     if len(executables) == 0:
         raise FileNotFoundError(f"No Castro1d executable found in {build_dir}")
     elif len(executables) > 1:
@@ -122,13 +102,12 @@ def test_1d_sedov_taylor():
     - no ionization reactions (castro.add_ext_src=0)
     - no temperature diffusion (castro.diffuse_temp=0)
     """
-    print("Generating initial conditions...")
     # Generate openPMD inital conditions for a small-radius plasma
     # Gaussian temperature profile with sigma=4 microns, peak T=1000 eV
-    sigma = 4e-6
-    r = np.linspace(0, 5*sigma, 1024)
+    Twidth = 4e-6
+    r = np.linspace(0, 5*Twidth, 1024)
     T0_eV = 1000
-    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/sigma**2) # Gaussian profile to fasten convergence
+    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/Twidth**2) # Gaussian profile to fasten convergence
     T_eV[-1] = 0 # put last value to zero as this is used outside of 5*sigma
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
@@ -136,27 +115,28 @@ def test_1d_sedov_taylor():
     populations = np.zeros((len(r), len(species_keys)))
     # Set fraction to 1 for H+
     populations[:, species_keys.index('H1')] = 1 - 1e-3
-    populations[:, species_keys.index('H0')] = 1e-3
+    populations[:, species_keys.index('H0')] = 1e-3 # small neutral fraction to avoid issues with zero density
     # Save file
     save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
         T_eV, '1d_sedov_taylor.h5', species_keys)
 
     # Run the code
-    make_ex(model = 'gamma_law', dim = '1')
-    run_castro_simulation("amr.n_cell=128 castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
+    # The runtime options are the parameters that are temporary overwritten in the input file to lauch the simulation.
+    # This avoid to modify each time we want to run with differents parameters
+    run_castro_simulation(model='gamma_law', runtime_options="amr.n_cell=128 castro.add_ext_src=0 castro.diffuse_temp=0 problem.initial_conditions_file=1d_sedov_taylor.h5")
     # Physical tests #
     sim_data = CastroSimulation('.', 'plt_1d_') # load simulation data
 
     # Comparison with Sedov Taylor theory
     rho_initial = 1.67e-6  # in g.cm^-3
     mp_g = m_p*1e3 # in g
-    sigma_cm = sigma*1e2 # in cm
+    sigma_cm = Twidth*1e2 # in cm
     deposited_energy = 3*np.pi/2 * T0_eV*e * sigma_cm**2 * rho_initial/mp_g * 1e7 # in erg/cm (computed by integrating initial conditions)
     analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial)
 
     check_energy_conservation(sim_data, tol=1.0)
-    check_r_t_ST(sim_data, analytical_data, tol=10)
-    check_rho_r_ST(sim_data, analytical_data, tol=15)
+    check_blast_radius_t_ST(sim_data, analytical_data, tol=10)
+    check_density_profile_ST(sim_data, analytical_data, tol=15)
 
     # Evaluate checksum
     evaluate_checksum("1d_sedov_taylor", "plt_1d_*", rtol=4.e-7)
