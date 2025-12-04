@@ -32,7 +32,8 @@ def check_blast_radius_isotropy_t(sim_data, sol, tol_r:int=10, tol_iso:float=0.5
     def find_edge_radial_xy(data, n_angles=100, n_samples=1000):
         x = np.array(data['x'], dtype=float)
         y = np.array(data['y'], dtype=float)
-        cx, cy = x[-1]/2, y[-1]/2
+        cx = x[-1]/2
+        cy = y[-1]/2
 
         # create interpolator on physical grid
         interp = RegularGridInterpolator((y, x), data['q'], bounds_error=False, fill_value=np.nan)
