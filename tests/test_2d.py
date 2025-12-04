@@ -48,13 +48,15 @@ def check_blast_radius_isotropy_t(sim_data, sol, tol_r:int=10, tol_iso:float=0.5
 
         for i, th in enumerate(thetas):
             rs = np.linspace(0, r_max, n_samples)
-            xs_ray = cx + rs * np.cos(th) # Change of variable from cart to polar
-            ys_ray = cy + rs * np.sin(th) # Change of variable from cart to polar
-            pts = np.column_stack([ys_ray, xs_ray])  # interpolator expects (y,x)
+            # Change of variable from cart to polar
+            xs_ray = cx + rs * np.cos(th)
+            ys_ray = cy + rs * np.sin(th)
+            # interpolator expects (y,x)
+            pts = np.column_stack([ys_ray, xs_ray])
             vals = interp(pts) # Get the polar grid 
-            dv = np.gradient(vals, rs) 
-            idx = np.nanargmax(np.abs(dv)) # Find where the blast radius is 
-
+            dv = np.gradient(vals, rs)
+            # Find where the blast radius is 
+            idx = np.nanargmax(np.abs(dv))
             radii[i] = rs[idx]
             x_edge[i] = cx + radii[i] * np.cos(th)
             y_edge[i] = cy + radii[i] * np.sin(th)
@@ -78,7 +80,8 @@ def check_blast_radius_isotropy_t(sim_data, sol, tol_r:int=10, tol_iso:float=0.5
         L_r.append(R_fit)
         L_r_analytical.append(r_analytical)
         L_iso.append(iso)
-    mask = np.array(t_sim) >= 1e-9 # avoid early times with poor resolution
+    # avoid early times with poor resolution
+    mask = np.array(t_sim) >= 1e-9 
     error_r = np.linalg.norm(np.array(L_r)[mask] - np.array(L_r_analytical)[mask]) / np.linalg.norm(np.array(L_r_analytical)[mask]) * 100.
     error_iso = np.mean(np.array(L_iso)[mask])
     test_r = error_r < tol_r
@@ -159,7 +162,8 @@ def test_2d_sedov_taylor():
     T_peak = 1000.0  # eV
     T_min = 1e-3     # eV, small temperature floor
     center = 300e-6
-    T_eV = T_min + (T_peak - T_min) * np.exp(- ((X-center)**2 + (Y-center)**2) / (2 * width**2)) # Gaussian profile of temperature
+    # Gaussian profile of temperature
+    T_eV = T_min + (T_peak - T_min) * np.exp(- ((X-center)**2 + (Y-center)**2) / (2 * width**2)) 
     # Species keys
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
@@ -183,7 +187,8 @@ def test_2d_sedov_taylor():
     deposited_energy = 3/2 * rho_initial / m_p * f_ion * eV_to_erg * np.sum(T_eV) * dA_cm2
     rho_initial = 1.67e-6  # in g/cm^3
     sim_data = CastroSimulation('.', 'plt_2d_')
-    analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial) # E0 in mJ/m, rho_0 in g/cm^3 (computed by integrating the initial profile of temperature ponderated by the populations)
+    # E0 in mJ/m, rho_0 in g/cm^3 (computed by integrating the initial profile of temperature ponderated by the populations)
+    analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial) 
 
     check_blast_radius_isotropy_t(sim_data, analytical_data, tol_r=15, tol_iso=0.5)
     check_energy_conservation(sim_data, tol=1.0)
