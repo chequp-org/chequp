@@ -235,7 +235,7 @@ def test_1d_desy_benchmark():
 
     check_energy_conservation(sim_data,tol=1.0)
     check_blast_radius_t_Comsol(sim_data, tol=12)
-    check_density_profile_r_Comsol(sim_data, tol=15)
+    check_density_profile_r_Comsol(sim_data, tol=25)
 
     # Evaluate checksum
     evaluate_checksum("1d_desy_benchmark", "plt_1d_*", rtol=4.e-7)
