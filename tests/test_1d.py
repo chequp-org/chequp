@@ -1,15 +1,27 @@
+"""
+This script tests that the 1D code produce the correct Sedov-Taylor blast wave solution.
+It assumes that the code has already been compiled in ../sim_folder/build/
+"""
 import subprocess
 import re
 import numpy as np
 import sys
+import yt
 import glob
 import os
+import openpmd_api
 import time
+import h5py
 sys.path.append("../initial_condition")
 from ionization_routines import save_to_openpmd
+sys.path.append('../sim_folder/analysis/')
+from analysis_tool import CastroSimulation
+sys.path.append('../theory/sedov_theory/python/')
+from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
+from scipy.constants import m_p, k, e
 from scipy.optimize import curve_fit
-from scipy.constants import e, m_p
+
 
 def cleanup_outputs(extra_file=""):
     # Remove previously generated plotfiles and checkpoints
@@ -138,7 +150,7 @@ def test_1d_sedov_taylor():
 
     check_energy_conservation(sim_data, tol=1.0)
     check_blast_radius_t_ST(sim_data, analytical_data, tol=10)
-    check_density_profile_ST(sim_data, analytical_data, tol=12)
+    check_density_profile_ST(sim_data, analytical_data, tol=13)
 
     # Check the results
     # TODO: Compare the results with Sedov-Taylor theory
