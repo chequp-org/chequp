@@ -153,7 +153,7 @@ class CastroSimulation(object):
             # Calculate radial coordinates of cell centers
             m_edges = np.linspace(ds.domain_left_edge[0], ds.domain_right_edge[0],
                                 ds.domain_dimensions[0] * 2**level + 1)
-            m['r'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dytype=float)
+            m['r'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dtype=float)
 
         # Handle 2D simulations
         elif self.dim == 2:
