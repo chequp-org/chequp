@@ -8,6 +8,14 @@
 using namespace amrex;
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
+// Return the term ∇ ⋅(k_th ∇T) at point (i,j,k)
+amrex::Real compute_temp_diffusion_term(
+    int i, int j, int k, Array4<const Real> const& state )
+{
+
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_INLINE
 void problem_source (int i, int j, int k,
                      GeometryData const& geomdata,
                      Array4<const Real> const& state,
@@ -64,6 +72,11 @@ void problem_source (int i, int j, int k,
 
     // Calculate the collision frequency for energy transfer between electrons and heavies
     const amrex::Real v_e_E = 2*SI::m_e/SI::m_H * (v_ei + v_en);
+
+    // Add contribution for temperature diffusion
+    const amrex::Real temp_diffusion_term = compute_temp_diffusion_term(i,j,k,state);
+    src(i,j,k,UEDEN) += temp_diffusion_term;
+    src(i,j,k,UEINT) += temp_diffusion_term;
 
     // Update fraction of internal energy stored in ions
     src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN) + rho * v_e_E * ( 1 - (1+X_H1)*f );
