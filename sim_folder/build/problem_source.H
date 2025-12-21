@@ -8,11 +8,99 @@
 using namespace amrex;
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
+amrex::Real conductivity_coeffs( int i, int j, int k, Array4<const Real> const& state )
+{
+    // TODO: Reproduces the same code as `fill_temp_cond` in `diffusion_util.cpp`
+
+    return 0.0;
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_INLINE
 // Return the term ∇ ⋅(k_th ∇T) at point (i,j,k)
 amrex::Real compute_temp_diffusion_term(
-    int i, int j, int k, Array4<const Real> const& state )
+    int i, int j, int k, Array4<const Real> const& state, const Real* problo, const Real* dx, const int coord )
 {
+    // Reproduces the same code as `getTempDiffusionTerm` in `Castro_diffusion.cpp`
 
+    amrex::Real temp_diffusion_term = 0.0;
+    for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
+        int il = i;
+        int jl = j;
+        int kl = k;
+
+        int ir = i;
+        int jr = j;
+        int kr = k;
+
+        Real dxinv2 = 1.0/(dx[idir]*dx[idir]);
+        Real kth_r;
+        Real kth_l;
+
+        if (idir == 0) {
+            il = i - 1;
+            ir = i + 1;
+        }
+#if AMREX_SPACEDIM >= 2
+        else if (idir == 1) {
+            jl = j - 1;
+            jr = j + 1;
+        }
+#endif
+#if AMREX_SPACEDIM == 3
+        else {
+            kl = k - 1;
+            kr = k + 1;
+        }
+#endif
+        // Conductivity at the cell edges: average of the conductivity from cell centers to the edges
+        // TODO: This could be made more efficient by avoiding to recalculate
+        // conductivity_coeffs(i,j,k,state) multiple times
+        kth_r = 0.5*(conductivity_coeffs(ir,jr,kr,state) + conductivity_coeffs(i,j,k,state));
+        kth_l = 0.5*(conductivity_coeffs(il,jl,kl,state) + conductivity_coeffs(i,j,k,state));
+
+#if AMREX_SPACEDIM < 3
+        // Apply geometric terms for curvilinear coordinates
+
+        if ((coord != 0) && (idir == 0)) {
+            // In curilinear radial direction
+
+            Real rr = problo[idir] + static_cast<Real>(ir) * dx[idir];
+            Real rl = problo[idir] + static_cast<Real>(i) * dx[idir];
+            Real rc = problo[idir] + (static_cast<Real>(i) + 0.5_rt) * dx[idir];
+
+            if (coord == 1) {
+                // Cylindrical radial equation looks like: 1/r d(r kth dT/dr)/dr
+
+                kth_r *= rr;
+                kth_l *= rl;
+                dxinv2 *= 1.0_rt / rc;
+            } else {
+                // Spherical radial equation looks like: 1/r^2 d(r^2 kth dT/dr)/dr
+
+                kth_r *= rr * rr;
+                kth_l *= rl * rl;
+                dxinv2 *= 1.0_rt / (rc * rc) ;
+            }
+        } else if ((coord == 2) && (idir == 1)) {
+            // In spherical theta direction
+            // Spherical theta equation looks like: 1/r^2 sin(θ) d(sin(θ) kth dT/dθ)/dθ
+
+            Real rc = problo[0] + (static_cast<Real>(i) + 0.5_rt) * dx[0];
+            Real thetar = problo[idir] + static_cast<Real>(jr) * dx[idir];
+            Real thetal = problo[idir] + static_cast<Real>(j) * dx[idir];
+            Real thetac = problo[idir] + (static_cast<Real>(j) + 0.5_rt) * dx[idir];
+
+            kth_r *= std::sin(thetar);
+            kth_l *= std::sin(thetal);
+            dxinv2 *= 1.0_rt / (rc * rc * std::sin(thetac));
+        }
+#endif
+        temp_diffusion_term += dxinv2 *
+            (kth_r * (state(ir,jr,kr,UTEMP) - state(i ,j ,k ,UTEMP)) -
+             kth_l * (state(i ,j ,k ,UTEMP) - state(il,jl,kl,UTEMP)));
+    }
+
+    return temp_diffusion_term;
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
@@ -75,7 +163,7 @@ void problem_source (int i, int j, int k,
 
     // Add contribution for temperature diffusion
     if (diffuse_temp) {
-        const amrex::Real temp_diffusion_term = compute_temp_diffusion_term(i,j,k,state);
+        const amrex::Real temp_diffusion_term = compute_temp_diffusion_term(i,j,k,state,prob_lo,dx,coord);
         src(i,j,k,UEDEN) += temp_diffusion_term;
         src(i,j,k,UEINT) += temp_diffusion_term;
     }
