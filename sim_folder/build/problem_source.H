@@ -74,9 +74,11 @@ void problem_source (int i, int j, int k,
     const amrex::Real v_e_E = 2*SI::m_e/SI::m_H * (v_ei + v_en);
 
     // Add contribution for temperature diffusion
-    const amrex::Real temp_diffusion_term = compute_temp_diffusion_term(i,j,k,state);
-    src(i,j,k,UEDEN) += temp_diffusion_term;
-    src(i,j,k,UEINT) += temp_diffusion_term;
+    if (diffuse_temp) {
+        const amrex::Real temp_diffusion_term = compute_temp_diffusion_term(i,j,k,state);
+        src(i,j,k,UEDEN) += temp_diffusion_term;
+        src(i,j,k,UEINT) += temp_diffusion_term;
+    }
 
     // Update fraction of internal energy stored in ions
     src(i,j,k,UFX) = - f/e * src(i,j,k,UEDEN) + rho * v_e_E * ( 1 - (1+X_H1)*f );
