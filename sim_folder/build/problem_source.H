@@ -7,16 +7,50 @@
 
 using namespace amrex;
 
+// Returns the thermal conductivity coefficient k_th at point (i,j,k)
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
-amrex::Real conductivity_coeffs( int i, int j, int k, Array4<const Real> const& state )
+amrex::Real get_conductivity_coeff( int i, int j, int k, Array4<const Real> const& state )
 {
-    // TODO: Reproduces the same code as `fill_temp_cond` in `diffusion_util.cpp`
+    // Reproduces the same code as `fill_temp_cond` in `diffusion_util.cpp`
 
-    return 0.0;
+    eos_t eos_state;
+    eos_state.rho  = state(i,j,k,URHO);
+    Real rhoinv = 1.0_rt/eos_state.rho;
+
+    eos_state.T = state(i,j,k,UTEMP);   // needed as an initial guess
+    eos_state.e = state(i,j,k,UEINT) * rhoinv;
+    for (int n = 0; n < NumSpec; n++) {
+      eos_state.xn[n] = state(i,j,k,UFS+n) * rhoinv;
+    }
+#if NAUX_NET > 0
+    for (int n = 0; n < NumAux; n++) {
+      eos_state.aux[n] = state(i,j,k,UFX+n) * rhoinv;
+    }
+#endif
+
+    if (eos_state.e < 0.0_rt) {
+      eos_state.T = castro::small_temp;
+      eos(eos_input_rt, eos_state);
+    } else {
+      eos(eos_input_re, eos_state);
+    }
+
+    if (eos_state.rho > castro::diffuse_cutoff_density) {
+      conductivity(eos_state);
+
+      if (eos_state.rho < castro::diffuse_cutoff_density_hi) {
+        Real multiplier = (eos_state.rho - castro::diffuse_cutoff_density) /
+          (castro::diffuse_cutoff_density_hi - castro::diffuse_cutoff_density);
+        eos_state.conductivity = eos_state.conductivity * multiplier;
+      }
+    } else {
+      eos_state.conductivity = 0.0_rt;
+    }
+    return castro::diffuse_cond_scale_fac * eos_state.conductivity;
 }
 
+// Returns the term ∇ ⋅(k_th ∇T) at point (i,j,k)
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
-// Return the term ∇ ⋅(k_th ∇T) at point (i,j,k)
 amrex::Real compute_temp_diffusion_term(
     int i, int j, int k, Array4<const Real> const& state, const Real* problo, const Real* dx, const int coord )
 {
@@ -55,8 +89,8 @@ amrex::Real compute_temp_diffusion_term(
         // Conductivity at the cell edges: average of the conductivity from cell centers to the edges
         // TODO: This could be made more efficient by avoiding to recalculate
         // conductivity_coeffs(i,j,k,state) multiple times
-        kth_r = 0.5*(conductivity_coeffs(ir,jr,kr,state) + conductivity_coeffs(i,j,k,state));
-        kth_l = 0.5*(conductivity_coeffs(il,jl,kl,state) + conductivity_coeffs(i,j,k,state));
+        kth_r = 0.5*(get_conductivity_coeff(ir,jr,kr,state) + get_conductivity_coeff(i,j,k,state));
+        kth_l = 0.5*(get_conductivity_coeff(il,jl,kl,state) + get_conductivity_coeff(i,j,k,state));
 
 #if AMREX_SPACEDIM < 3
         // Apply geometric terms for curvilinear coordinates
