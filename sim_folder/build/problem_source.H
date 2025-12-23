@@ -4,6 +4,7 @@
 #include <prob_parameters.H>
 #include <fundamental_constants.H>
 #include <collision_frequencies.H>
+#include <conductivity.H>
 
 using namespace amrex;
 
