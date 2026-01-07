@@ -138,12 +138,14 @@ void problem_source (int i, int j, int k,
     get_collision_frequencies(n_e, n_n, T_e, T_h, v_ei, v_en);
 
     // Step (11)
-    // Calculate the collision frequency for energy transfer between electrons and heavies
-    const amrex::Real v_e_E = 2*SI::m_e/SI::m_H * (v_ei + v_en);
-    
     // Update fraction of internal energy stored in ions
     Real Sc = 0.0;
-    Real v_e[NumSpec] = {v_e_E, v_e_E, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    Real v_e[NumSpec];
+    for (int mu = 0; mu < NumSpec; mu++) {
+        if (aion[mu] == 1) {
+            v_e[mu] = 2*SI::m_e/(aion[mu] * C::m_u) * (std::pow(zion[mu],4) * v_ei + v_en);
+        }
+    }
 
     for (int mu = 0; mu < NumSpec; mu++) {
         Sc += rho * v_e[mu] * ( 1 - (1+X_stage[mu])*f);
