@@ -30,19 +30,40 @@ void problem_source(
     const int n_step = 2;
 
     // Step coefficients
-    Real A_I[NumSpec][n_step] = { { problem::a_direct_ioniz, problem::a_twostep_ioniz },
-                                { 0.0, 0.0 } };
-    Real q_I[NumSpec][n_step] = { { problem::q_direct_ioniz, problem::q_twostep_ioniz },
-                                { 0.0, 0.0 } };
-    Real eps_I[NumSpec][n_step] = { { problem::e_direct_ioniz_eV, problem::e_twostep_ioniz_eV },
-                                    { 0.0, 0.0 } };
+    Real A_I[NumSpec][n_step];
+    Real q_I[NumSpec][n_step];
+    Real eps_I[NumSpec][n_step];
     // No recombination
-    Real A_T[NumSpec][n_step] = { {0.0, 0.0}, {0.0, 0.0} };
-    Real q_T[NumSpec][n_step] = { {0.0, 0.0}, {0.0, 0.0} };
-    Real eps_T[NumSpec][n_step] = { {0.0, 0.0}, {0.0, 0.0} };
+    Real A_T[NumSpec][n_step];
+    Real q_T[NumSpec][n_step];
+    Real eps_T[NumSpec][n_step];
 
     // Degeneracy
-    Real g[NumSpec] = {1.0, 1.0};
+    Real g[NumSpec];
+    // Initialize to zero
+    for (int mu = 0; mu < NumSpec; mu++) {
+        for (int step = 0; step < n_step; step++) {
+            A_I[mu][step] = 0.0;
+            q_I[mu][step] = 0.0;
+            eps_I[mu][step] = 0.0;
+            A_T[mu][step] = 0.0;
+            q_T[mu][step] = 0.0;
+            eps_T[mu][step] = 0.0;
+        }
+        g[mu] = 0.0;
+    }
+
+    A_I[0][0] = problem::a_direct_ioniz;
+    q_I[0][0] = problem::q_direct_ioniz;
+    eps_I[0][0] = problem::e_direct_ioniz_eV;
+    A_I[0][1] = problem::a_twostep_ioniz;
+    q_I[0][1] = problem::q_twostep_ioniz;
+    eps_I[0][1] = problem::e_twostep_ioniz_eV;
+
+    Real X_e = 0.0;
+    for (int mu = 0; mu < NumSpec; mu++) {
+        X_e += zion[mu] * X_stage[mu];
+    }
 
     // Reaction matrix
     Real S_r[NumSpec][NumSpec];
@@ -51,22 +72,22 @@ void problem_source(
 
             Real val = 0.0;
 
-            // Loss of H0
-            if (alpha == 0 && beta == 0) {
+            // Loss Ionization
+            if (alpha == beta) {
                 for (int step = 0; step < n_step; step++) {
-                    val -= A_I[0][step] *
-                        std::pow(C::k_B*T_e / C::ev2erg, q_I[0][step]) *
-                        std::exp(-eps_I[0][step] * C::ev2erg / (C::k_B*T_e)) *
-                        X_stage[beta] * X_stage[beta + 1];
+                    val -= A_I[beta][step] *
+                        std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
+                        std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
+                        X_stage[beta] * X_e;
                 }
             }
 
-            // Gain of H+
-            if (alpha == 1 && beta == 0) {
+            // Gain Ionization
+            if (alpha == beta + 1) {
                 for (int step = 0; step < n_step; step++) {
-                    val += A_I[0][step] *
-                        std::pow(C::k_B*T_e / C::ev2erg, q_I[0][step]) *
-                        std::exp(-eps_I[0][step] * C::ev2erg / (C::k_B*T_e)) * X_stage[beta] * X_stage[beta + 1];
+                    val += A_I[beta][step] *
+                        std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
+                        std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) * X_stage[beta] * X_e;
                 }
             }
 
@@ -92,8 +113,7 @@ void problem_source(
             e_ion += S_r[alpha][beta] * eps_I[alpha][0] * C::ev2erg / (aion[alpha] * C::m_p);
         }
     }
-    Real R_H1 = S_r[0][0]; // Ionization rate of H0 to H+
-    src(i,j,k,UEDEN) = R_H1 * (problem::e_loss_ioniz_eV*C::ev2erg / C::m_p);
+    src(i,j,k,UEDEN) = e_ion;
     src(i,j,k,UEINT) = src(i,j,k,UEDEN);
 
 
@@ -115,14 +135,11 @@ void problem_source(
     // Step (11) : Update fraction of internal energy stored in ions
     Real Sc = 0.0;
     Real v_e_E[NumSpec];
-    for (int mu = 0; mu < NumSpec; mu++) v_e_E[mu] = 0.0;
-
     for (int mu = 0; mu < NumSpec; mu++) {
-        if (mu == 1){
-        v_e_E[mu] = 2 * SI::m_e / SI::m_H *
-                    (std::pow(zion[mu],4) * v_ei + v_en);
-        }
+        v_e_E[mu] = 0.0;
     }
+
+    v_e_E[1] = 2 * SI::m_e / SI::m_H * (std::pow(zion[1],4) * v_ei + v_en);
 
     for (int mu = 0; mu < NumSpec; mu++) {
         Sc += rho * v_e_E[mu] * (1 - (1 + X_stage[mu]) * f);
