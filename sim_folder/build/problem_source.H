@@ -22,8 +22,10 @@ void problem_source(
 
     // Species fractions (H0 and H+)
     Real X_stage[NumSpec];
+    int ActiveS[NumSpec]; // Binary array to know which species are active (1) or not (0)
     for (int mu = 0; mu < NumSpec; mu++) {
         X_stage[mu] = state(i,j,k,UFS+mu) / rho;
+        if (X_stage[mu] > 1.e-20) {ActiveS[mu] = 1;} else {ActiveS[mu] = 0;}
     }
 
     // Electron fraction
@@ -88,21 +90,24 @@ void problem_source(
             n_n += rho * X_stage[mu] / (aion[mu] * C::m_u) * 1.e6;
         }
     }
-
     // Step (8) : Get collision frequencies
-    amrex::Real v_ei, v_en;
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature
+    Real v_ei;
+    Real v_en[NumSpec];
     get_collision_frequencies(n_e, n_n, T_e, T_h, v_ei, v_en);
 
     // Step (11) : Update fraction of internal energy stored in ions
     Real Sc = 0.0;
     Real v_e_E[NumSpec];
-    for (int mu = 0; mu < NumSpec; mu++) {
-        v_e_E[mu] = 0.0;
-    }
-    // Hydrogen 
-    v_e_E[1] = 2 * SI::m_e / SI::m_H * (std::pow(zion[1],4) * v_ei + v_en);
 
+    for (int mu = 0; mu < NumSpec; mu++) {
+        if (ActiveS[mu] == 1) {
+        v_e_E[mu] = 2 * SI::m_e / SI::m_vec[mu] * (std::pow(zion[mu],4) * v_ei + v_en[mu]) ;
+        }
+        else {
+            v_e_E[mu] = 0.0;
+        }
+    }
     for (int mu = 0; mu < NumSpec; mu++) {
         Sc += rho * v_e_E[mu] * (1 - (1 + X_stage[mu]) * f);
     }

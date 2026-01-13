@@ -39,7 +39,8 @@ actual_conductivity (T& state)
     const amrex::Real T_e = state.T;
 
     // Get collision frequencies
-    amrex::Real v_ei, v_en;
+    amrex::Real v_ei;
+    amrex::Real v_en[NumSpec];
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
     get_collision_frequencies(n_e, n_n, T_e, T_h, v_ei, v_en);
 
@@ -47,7 +48,7 @@ actual_conductivity (T& state)
     // The coefficient 3.16 comes from matching the Spitzer-Harm conductivity
     // in the fully ionized case (v_en = 0)
     const amrex::Real conductivitySI =  SI::k_B * SI::k_B * n_e * T_e
-        / (SI::m_e * amrex::Real((2*M_PI/15) * v_en + amrex::Real(1/3.16) * v_ei));
+        / (SI::m_e * amrex::Real((2*M_PI/15) * v_en[1] + amrex::Real(1/3.16) * v_ei));
     // SI to cgs conversion factor for thermal conductivity
     const amrex::Real si_to_cgs_conversion_factor = 1e5; // (10^7 erg/J) / (10^2 cm/m)
 
