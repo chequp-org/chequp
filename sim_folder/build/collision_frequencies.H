@@ -13,6 +13,31 @@ namespace SI {
     const double m_H = 1.67262192369e-27; // Hydrogen mass in kg
 }
 
+namespace Acoeff {
+    const int n_step = 2; // Number of ionization steps
+    const amrex::Real A_I[NumSpec][n_step] = {
+        // Hydrogen
+        {7.1e-15 * 1e6, 12.4e-15 * 1e6}, {0.0, 0.0},
+        // Nitrogen
+        {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
+    };
+
+    const amrex::Real q_I[NumSpec][n_step] = {
+        // Hydrogen
+        {0.4, 0.3}, {0.0, 0.0},
+        // Nitrogen
+        {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
+    };
+
+    const amrex::Real eps_I[NumSpec][n_step] = {
+        // Hydrogen
+        {13.6, 10.6}, {0.0, 0.0},
+        // Nitrogen
+        {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
+    };
+
+}
+
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void get_collision_frequencies(amrex::Real n_e, amrex::Real n_n, amrex::Real T_e, amrex::Real T_h,
                               amrex::Real& v_ei, amrex::Real& v_en)

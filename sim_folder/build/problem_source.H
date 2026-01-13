@@ -26,40 +26,7 @@ void problem_source(
         X_stage[mu] = state(i,j,k,UFS+mu) / rho;
     }
 
-    // Ionization steps
-    const int n_step = 2;
-
-    // Step coefficients
-    Real A_I[NumSpec][n_step];
-    Real q_I[NumSpec][n_step];
-    Real eps_I[NumSpec][n_step];
-    // No recombination
-    Real A_T[NumSpec][n_step];
-    Real q_T[NumSpec][n_step];
-    Real eps_T[NumSpec][n_step];
-
-    // Degeneracy
-    Real g[NumSpec];
-    // Initialize to zero
-    for (int mu = 0; mu < NumSpec; mu++) {
-        for (int step = 0; step < n_step; step++) {
-            A_I[mu][step] = 0.0;
-            q_I[mu][step] = 0.0;
-            eps_I[mu][step] = 0.0;
-            A_T[mu][step] = 0.0;
-            q_T[mu][step] = 0.0;
-            eps_T[mu][step] = 0.0;
-        }
-        g[mu] = 0.0;
-    }
-
-    A_I[0][0] = problem::a_direct_ioniz;
-    q_I[0][0] = problem::q_direct_ioniz;
-    eps_I[0][0] = problem::e_direct_ioniz_eV;
-    A_I[0][1] = problem::a_twostep_ioniz;
-    q_I[0][1] = problem::q_twostep_ioniz;
-    eps_I[0][1] = problem::e_twostep_ioniz_eV;
-
+    // Electron fraction
     Real X_e = 0.0;
     for (int mu = 0; mu < NumSpec; mu++) {
         X_e += zion[mu] * X_stage[mu];
@@ -67,31 +34,27 @@ void problem_source(
 
     // Reaction matrix
     Real S_r[NumSpec][NumSpec];
+    // Loop over target state alpha (row)
     for (int alpha = 0; alpha < NumSpec; alpha++) {
         for (int beta = 0; beta < NumSpec; beta++) {
-
             Real val = 0.0;
-
-            // Loss Ionization
-            if (alpha == beta) {
-                for (int step = 0; step < n_step; step++) {
-                    val -= A_I[beta][step] *
-                        std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
-                        std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
-                        X_stage[beta] * X_e;
+            // --- Electron-impact ionization ---
+            if (alpha == beta) { // Diagonal: loss
+                for (int step = 0; step < Acoeff::n_step; step++) {
+                    val -= Acoeff::A_I[beta][step] *
+                        std::pow(C::k_B*T_e / C::ev2erg, Acoeff::q_I[beta][step]) *
+                        std::exp(-Acoeff::eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) * X_e;
                 }
             }
-
-            // Gain Ionization
-            if (alpha == beta + 1) {
-                for (int step = 0; step < n_step; step++) {
-                    val += A_I[beta][step] *
-                        std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
-                        std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) * X_stage[beta] * X_e;
+            if (alpha == beta + 1) { // Lower diagonal: gain from previous ionization
+                for (int step = 0; step < Acoeff::n_step; step++) {
+                    val += Acoeff::A_I[beta][step] *
+                        std::pow(C::k_B*T_e / C::ev2erg, Acoeff::q_I[beta][step]) *
+                        std::exp(-Acoeff::eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) * X_e;
                 }
             }
-
-            S_r[alpha][beta] = val * rho * rho / (aion[alpha] * C::m_p);
+            // Convert to source term per unit mass
+            S_r[alpha][beta] = val * rho * rho / (aion[alpha] * C::m_p) * X_stage[beta];
         }
     }
 
@@ -110,12 +73,11 @@ void problem_source(
     Real e_ion = 0.0;
     for (int alpha = 0; alpha < NumSpec; alpha++) {
         for (int beta = alpha; beta < NumSpec; beta++) {
-            e_ion += S_r[alpha][beta] * eps_I[alpha][0] * C::ev2erg / (aion[alpha] * C::m_p);
+            e_ion += S_r[alpha][beta] * Acoeff::eps_I[alpha][0] * C::ev2erg / (aion[alpha] * C::m_p);
         }
     }
     src(i,j,k,UEDEN) = e_ion;
     src(i,j,k,UEINT) = src(i,j,k,UEDEN);
-
 
     // Step (7) : Electron and neutral density
     Real n_e = 0.0;
@@ -138,7 +100,7 @@ void problem_source(
     for (int mu = 0; mu < NumSpec; mu++) {
         v_e_E[mu] = 0.0;
     }
-
+    // Hydrogen 
     v_e_E[1] = 2 * SI::m_e / SI::m_H * (std::pow(zion[1],4) * v_ei + v_en);
 
     for (int mu = 0; mu < NumSpec; mu++) {
