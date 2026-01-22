@@ -28,7 +28,7 @@ actual_conductivity (T& state)
     // for a similar calculation
 
     std::vector<int> idx_spec; // Indices of the species to consider
-    std::istringstream iss(problem::species);
+    std::istringstream iss(problem::species); // get the species from the input
     std::string sp;
 
     while (iss >> sp) {
@@ -39,20 +39,20 @@ actual_conductivity (T& state)
             idx_spec.insert(idx_spec.end(), index_species[idx].begin(), index_species[idx].end()); // Append the indices for this species
         }
     }
-    std::sort(idx_spec.begin(), idx_spec.end());
+    std::sort(idx_spec.begin(), idx_spec.end()); // sort indices for simplicity
     const int dimS = idx_spec.size(); // Total number of species considered
 
     // Electron and neutral density
-    amrex::Real n_e = 0.0;
-    amrex::Real n_n_spe[ion_names.size()] = {0.0, 0.0, 0.0, 0.0};
-    amrex::Real start_idx[ion_names.size()] = {1, 3, 9, 12};
+    amrex::Real n_e = 0.0; // 
+    amrex::Real n_n_spe[ion_names.size()] = {0.0, 0.0, 0.0, 0.0}; // neutral density for each atomic species
+    amrex::Real start_idx[ion_names.size()] = {1, 3, 9, 12}; // starting index for each atomic species
     for (int mu = 0; mu < dimS; mu++) {
-        int k = idx_spec[mu];
+        int k = idx_spec[mu]; // species index with the shifted index
         n_e += zion[k] * state.rho * state.xn[mu] / (aion[k] * C::m_u) * 1.e6; // electron density
         if (zion[k] == 0) {
             // find species s corresponding to k
             for (int s = 0; s < ion_names.size(); s++) {
-                if (k == start_idx[s] - 1) {
+                if (k == start_idx[s] - 1) { // neutral species found
                     n_n_spe[s] += state.rho * state.xn[mu] / (aion[k] * C::m_u) * 1.e6; // neutral density for species s
                     break; // specie found, exit loop
                 }
