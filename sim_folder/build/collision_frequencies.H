@@ -12,37 +12,14 @@ namespace SI {
     const double m_e = 9.1093837015e-31; // Electron mass in kg
     const double m_H = 1.67262192369e-27; // Hydrogen mass in kg
     const double m_N = 2.3258671e-26; // Nitrogen mass in kg
+    const double m_He = 6.6464764e-27; // Helium mass in kg 
+    const double m_Ar = 6.6335209e-26; // Argon mass in kg
     const amrex::Real m_vec[NumSpec] = {SI::m_H, SI::m_H, SI::m_N, SI::m_N, SI::m_N, SI::m_N, SI::m_N, SI::m_N};
 }
 
-namespace Acoeff {
-    const int n_step = 2; // Number of ionization steps
-    const amrex::Real A_I[NumSpec][n_step] = {
-        // Hydrogen
-        {7.1e-15 * 1e6, 12.4e-15 * 1e6}, {0.0, 0.0},
-        // Nitrogen
-        {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
-    };
-
-    const amrex::Real q_I[NumSpec][n_step] = {
-        // Hydrogen
-        {0.4, 0.3}, {0.0, 0.0},
-        // Nitrogen
-        {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
-    };
-
-    const amrex::Real eps_I[NumSpec][n_step] = {
-        // Hydrogen
-        {13.6, 10.6}, {0.0, 0.0},
-        // Nitrogen
-        {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}
-    };
-
-}
-
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void get_collision_frequencies(amrex::Real n_e, amrex::Real n_n, amrex::Real T_e, amrex::Real T_h,
-                               amrex::Real& v_ei, amrex::Real* v_en)
+void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Real T_e, amrex::Real T_h,
+                               amrex::Real& v_ei, amrex::Real* v_en, std::vector<int>& idx_spec)
 {   
     // ------ Constant variables ------
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
@@ -65,10 +42,11 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real n_n, amrex::Real T_e
     const amrex::Real E_bar = 4.0 / M_PI * SI::k_B * T_e;
 
     // ----- Following variables are now in vector form -------
-    const amrex::Real m_vec[NumSpec] = {SI::m_H, SI::m_H, SI::m_N, SI::m_N, SI::m_N, SI::m_N, SI::m_N, SI::m_N};
-    amrex::Real mu_en[NumSpec];
-    for (int mu = 0; mu < NumSpec; mu++) {
-        mu_en[mu] = SI::m_e * m_vec[mu] / (SI::m_e + m_vec[mu]);
+    int number_of_atomic_species = 4;
+    const amrex::Real mass_vec[number_of_atomic_species] = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
+    amrex::Real mu_en[number_of_atomic_species];
+    for (int mu = 0; mu < number_of_atomic_species; mu++) {
+        mu_en[mu] = SI::m_e * mass_vec[mu] / (SI::m_e + mass_vec[mu]);
     }
     // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
     //   Morgan database, www.lxcat.net 
@@ -86,15 +64,22 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real n_n, amrex::Real T_e
             + 2.59407262e-03*amrex::Math::powi<4>(log_E_eV);
     }
     const amrex::Real sigma_m2_H = std::exp(log_sigma_m2_H);
+    const amrex::Real sigma_m2_N = 0.0; // TO BE UPDATED
 
-    // ---- (PROCESS: E + N -> E + N, Elastic) ---
+    // - Calculate v_en for each species
 
-    // TO BE DONE LATER FOR ALL SPECIES 
-
-    // - Calculate frequency of electron-neutral collisions
-    amrex::Real sigma_m2[NumSpec] = {0.0, sigma_m2_H, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}; // TO BE UPDATED FOR ALL SPECIES
-    for (int mu = 0; mu < NumSpec; mu++) {
-        v_en[mu] = n_n * 4.0/3.0 * std::sqrt(2*E_bar/mu_en[mu]) * sigma_m2[mu];
+    amrex::Real start_idx[number_of_atomic_species] = {1, 3, 9, 12}; // Starting index for each atomic species in m_vec
+    amrex::Real sigma_m2[number_of_atomic_species] = {sigma_m2_H, sigma_m2_N, 0.0, 0.0}; // TO BE UPDATED FOR ALL SPECIES
+    int dimS = idx_spec.size();
+    for (int mu = 0; mu < dimS; mu++) {
+        int k = idx_spec[mu];
+        v_en[mu] = 0.0; // default zero
+        for (int s = 0; s < number_of_atomic_species; s++) {
+            if (k >= start_idx[s] && k < start_idx[s+1] -1 ) { // species s found
+                v_en[mu] = n_n_spe[s] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[s]) * sigma_m2[s]; // electron-neutral collision frequency
+                break; // found species, exit loop
+            }
+        }
     }
 }
 
