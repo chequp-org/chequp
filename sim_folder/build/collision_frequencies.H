@@ -63,16 +63,16 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
             -1.72242991e-02*amrex::Math::powi<3>(log_E_eV)
             + 2.59407262e-03*amrex::Math::powi<4>(log_E_eV);
     }
-    const amrex::Real sigma_m2_H = std::exp(log_sigma_m2_H);
+    const amrex::Real sigma_m2_H = std::exp(log_sigma_m2_H); // in m^2
     const amrex::Real sigma_m2_N = 0.0; // TO BE UPDATED
 
     // - Calculate v_en for each species
 
     amrex::Real start_idx[number_of_atomic_species] = {1, 3, 9, 12}; // Starting index for each atomic species in m_vec
     amrex::Real sigma_m2[number_of_atomic_species] = {sigma_m2_H, sigma_m2_N, 0.0, 0.0}; // TO BE UPDATED FOR ALL SPECIES
-    int dimS = idx_spec.size();
+    int dimS = idx_spec.size(); // Total number of species and their ionized level considered
     for (int mu = 0; mu < dimS; mu++) {
-        int k = idx_spec[mu];
+        int k = idx_spec[mu]; // species index with the shifted index
         v_en[mu] = 0.0; // default zero
         for (int s = 0; s < number_of_atomic_species; s++) {
             if (k >= start_idx[s] && k < start_idx[s+1] -1 ) { // species s found

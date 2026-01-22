@@ -17,18 +17,18 @@ void problem_source(
 {
     using namespace problem;
     std::vector<int> idx_spec; // Indices of the species to consider
-    std::istringstream iss(problem::species);
+    std::istringstream iss(problem::species); // get the species from the input
     std::string sp;
 
     while (iss >> sp) {
-        // Search for the species in the ion_names array
+        // Search for the species in the ion_names array defined in IonizationTable.H
         auto it = std::find(ion_names.begin(), ion_names.end(), sp);
         if (it != ion_names.end()) {
             int idx = std::distance(ion_names.begin(), it);  // get the index
             idx_spec.insert(idx_spec.end(), index_species[idx].begin(), index_species[idx].end()); // Append the indices for this species
         }
     }
-    std::sort(idx_spec.begin(), idx_spec.end());
+    std::sort(idx_spec.begin(), idx_spec.end()); // sort indices for simplicity
     const int dimS = idx_spec.size(); // Total number of species considered
     // Density and electron temperature
     Real rho = state(i,j,k,URHO);
@@ -37,12 +37,12 @@ void problem_source(
     // Step (1) : Get current mass fractions
     Real X_stage[dimS];
     for (int mu = 0; mu < dimS; mu++) {
-        X_stage[mu] = state(i,j,k,UFS+idx_spec[mu]) / rho;
+        X_stage[mu] = state(i,j,k,UFS+idx_spec[mu]) / rho; // update the correct mass fraction with the shifted index
     }
     // Electron fraction
     Real X_e = 0.0;
     for (int mu = 0; mu < dimS; mu++) {
-        X_e += zion[idx_spec[mu]] * X_stage[mu];
+        X_e += zion[idx_spec[mu]] * X_stage[mu]; // electron fraction
     }
     // Reaction matrix that have the dimension of the species considered
     Real S_r[dimS][dimS];
@@ -76,7 +76,7 @@ void problem_source(
         for (int beta = 0; beta < dimS; beta++) {
             sum += S_r[alpha][beta];
         }
-        src(i,j,k,UFS+idx_spec[alpha]) = sum;
+        src(i,j,k,UFS+idx_spec[alpha]) = sum; // Update the source term for each species
     }
 
     // Energy source
@@ -88,21 +88,21 @@ void problem_source(
             e_ion += S_r[alpha][beta] * Acoeff::eps_I[idx_spec[alpha]][0] * C::ev2erg / (aion[idx_spec[beta]] * C::m_p);
         }
     }
-    src(i,j,k,UEDEN) = e_ion;
+    src(i,j,k,UEDEN) = e_ion; // Energy source due to ionization
     src(i,j,k,UEINT) = src(i,j,k,UEDEN);
 
     // Electron and neutral density
     Real n_e = 0.0;
-    Real n_n_spe[ion_names.size()] = {0.0, 0.0, 0.0, 0.0};
-    Real start_idx[ion_names.size()] = {1, 3, 9, 12};
+    Real n_n_spe[ion_names.size()] = {0.0, 0.0, 0.0, 0.0}; // neutral density for each atomic species
+    Real start_idx[ion_names.size()] = {1, 3, 9, 12}; // starting index for each atomic species
     for (int mu = 0; mu < dimS; mu++) {
         int k = idx_spec[mu];
-        n_e += zion[k] * rho * X_stage[mu] / (aion[k] * C::m_u) * 1.e6;
+        n_e += zion[k] * rho * X_stage[mu] / (aion[k] * C::m_u) * 1.e6; // electron density in m^-3
         if (zion[k] == 0) {
             // find species s corresponding to k
             for (int s = 0; s < ion_names.size(); s++) {
                 if (k == start_idx[s] - 1) {
-                    n_n_spe[s] = rho * X_stage[mu] / (aion[k] * C::m_u) * 1.e6;
+                    n_n_spe[s] = rho * X_stage[mu] / (aion[k] * C::m_u) * 1.e6; // neutral density for species s in m^-3
                     break;
                 }
             }
