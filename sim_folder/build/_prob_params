@@ -8,16 +8,4 @@ dens_ambient           real                 1.e0_rt                      y
 
 temp_ambient           real                 300_rt                       y
 
-a_direct_ioniz         real                 0.0_rt                       y
-
-q_direct_ioniz         real                 1.0_rt                       y
-
-e_direct_ioniz_eV      real                 1.0_rt                       y
-
-a_twostep_ioniz        real                 0.0_rt                       y
-
-q_twostep_ioniz        real                 1.0_rt                       y
-
-e_twostep_ioniz_eV     real                 1.0_rt                       y
-
-e_loss_ioniz_eV        real                 0.0_rt                       y
+species                string               "H"                          y                      
