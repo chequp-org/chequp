@@ -27,19 +27,8 @@ actual_conductivity (T& state)
     // See https://github.com/AMReX-Astro/Microphysics/blob/main/EOS/gamma_law/actual_eos.H#L62
     // for a similar calculation
 
-    std::vector<int> idx_spec; // Indices of the species to consider
-    std::istringstream iss(problem::species); // get the species from the input
-    std::string sp;
-
-    while (iss >> sp) {
-        // Search for the species in the ion_names array
-        auto it = std::find(ion_names.begin(), ion_names.end(), sp);
-        if (it != ion_names.end()) {
-            int idx = std::distance(ion_names.begin(), it);  // get the index
-            idx_spec.insert(idx_spec.end(), index_species[idx].begin(), index_species[idx].end()); // Append the indices for this species
-        }
-    }
-    std::sort(idx_spec.begin(), idx_spec.end()); // sort indices for simplicity
+    std::vector<int> idx_spec;
+    get_idx_spec(idx_spec);
     const int dimS = idx_spec.size(); // Total number of species considered
 
     // Electron and neutral density

@@ -16,19 +16,8 @@ void problem_source(
     const Real time)
 {
     using namespace problem;
-    std::vector<int> idx_spec; // Indices of the species to consider
-    std::istringstream iss(problem::species); // get the species from the input
-    std::string sp;
-
-    while (iss >> sp) {
-        // Search for the species in the ion_names array defined in IonizationTable.H
-        auto it = std::find(ion_names.begin(), ion_names.end(), sp);
-        if (it != ion_names.end()) {
-            int idx = std::distance(ion_names.begin(), it);  // get the index
-            idx_spec.insert(idx_spec.end(), index_species[idx].begin(), index_species[idx].end()); // Append the indices for this species
-        }
-    }
-    std::sort(idx_spec.begin(), idx_spec.end()); // sort indices for simplicity
+    std::vector<int> idx_spec;
+    get_idx_spec(idx_spec); // get the indices of the species considered
     const int dimS = idx_spec.size(); // Total number of species considered
     // Density and electron temperature
     Real rho = state(i,j,k,URHO);

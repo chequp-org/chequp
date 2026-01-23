@@ -5,6 +5,7 @@
 #include <AMReX_REAL.H>
 #include <map>
 
+
 // The following array defines the ionization stages indices for each species, which are fix and defined in species.net
 const std::vector<std::vector<int>> index_species = {
     {0, 1},                     // H
@@ -16,6 +17,25 @@ const std::vector<std::vector<int>> index_species = {
 const int dimS = 31 * 2 ; // Total number of species (ionization stages) * 2 (step ionization)
 
 const std::vector<std::string> ion_names = {"H", "N", "He", "Ar"};
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void get_idx_spec(std::vector<int>& idx_spec)
+{
+    idx_spec.clear();
+    std::istringstream iss(problem::species); // in the input file, species are given as a string
+    std::string sp;
+
+    while (iss >> sp) {
+        auto it = std::find(ion_names.begin(), ion_names.end(), sp);
+        if (it != ion_names.end()) { // if the species is found
+            int idx = std::distance(ion_names.begin(), it);
+            idx_spec.insert(idx_spec.end(),
+                            index_species[idx].begin(),
+                            index_species[idx].end());
+        }
+    }
+    std::sort(idx_spec.begin(), idx_spec.end()); // sort the indices
+}
 
 namespace Acoeff {
 
