@@ -54,6 +54,24 @@ void problem_source(
                         std::exp(-Acoeff::eps_I[idx_spec[beta]][step] * C::ev2erg / (C::k_B*T_e)) * X_e;
                 }
             }
+            // --- Three body recombination ---
+            // Thermal de Broglie wavelength
+            Real const lambda_DB = C::hbar * std::sqrt( 2*M_PI/(C::m_e*C::k_B*T_e) ); // in cm
+            Real const reverse_rate_factor = rho * std::pow(lambda_DB, 3) / (aion[idx_spec[beta]] * C::m_p * Acoeff::g_deg[idx_spec[beta]]);
+
+            if (alpha == beta) { // Diagonal: loss
+                for (int step = 0; step < Acoeff::n_step; step++) {
+                    val -= Acoeff::A_I[idx_spec[beta]][step] *
+                        std::pow(C::k_B*T_e / C::ev2erg, Acoeff::q_I[idx_spec[beta]][step]) * X_e * X_e * reverse_rate_factor;
+                }
+            }
+            if (alpha + 1 == beta) { // Upper diagonal: gain from next ionization
+                for (int step = 0; step < Acoeff::n_step; step++) {
+                    val += Acoeff::A_I[idx_spec[beta]][step] *
+                        std::pow(C::k_B*T_e / C::ev2erg, Acoeff::q_I[idx_spec[beta]][step]) * X_e * X_e * reverse_rate_factor;
+                }
+            }
+
             // Convert to source term per unit mass
             S_r[alpha][beta] = val * rho * rho / (aion[idx_spec[beta]] * C::m_p) * X_stage[beta];
         }
