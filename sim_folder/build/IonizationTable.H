@@ -14,7 +14,7 @@ const std::vector<std::vector<int>> index_species = {
     {11, 12, 13, 14} // Ar
 };
 
-const int dimS = 31 * 2 ; // Total number of species (ionization stages) * 2 (step ionization)
+const int tot_num_spec = 17 * 2 ; // Total number of species (ionization stages) * 2 (step ionization)
 
 const std::vector<std::string> ion_names = {"H", "N", "He", "Ar"};
 
@@ -48,7 +48,7 @@ namespace Acoeff {
     // A coefficients 
     // ------------------------------------------------------------------
     // Units: converted from cm^3/s to m^3/s (× 1e-6)
-    static constexpr amrex::Real A_I[dimS][n_step] = {
+    static constexpr amrex::Real A_I[tot_num_spec][n_step] = {
         // Hydrogen (H)
         {7.1e-9, 12.4e-9},
         // Additional dummy value for indexing issue
@@ -82,7 +82,7 @@ namespace Acoeff {
     // ------------------------------------------------------------------
     // q coefficients
     // ------------------------------------------------------------------
-    static constexpr amrex::Real q_I[dimS][n_step] = {
+    static constexpr amrex::Real q_I[tot_num_spec][n_step] = {
         // Hydrogen (H)
         {0.4, 0.3},
         // Additional dummy value for indexing issue
@@ -116,7 +116,7 @@ namespace Acoeff {
     // ------------------------------------------------------------------
     // Ionization energies (eV)
     // ------------------------------------------------------------------
-    static constexpr amrex::Real eps_I[dimS][n_step] = {
+    static constexpr amrex::Real eps_I[tot_num_spec][n_step] = {
         // Hydrogen (H)
         {13.6, 10.6},
         // Additional dummy value for indexing issue
