@@ -19,7 +19,7 @@ const int dimS = 31 * 2 ; // Total number of species (ionization stages) * 2 (st
 const std::vector<std::string> ion_names = {"H", "N", "He", "Ar"};
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void get_idx_spec(std::vector<int>& idx_spec)
+void get_idx_spec(std::vector<int>& idx_spec) // This function fills idx_spec with the indices of the species considered, based on what is defined in problem::species 
 {
     idx_spec.clear();
     std::istringstream iss(problem::species); // in the input file, species are given as a string
