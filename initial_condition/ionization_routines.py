@@ -185,7 +185,7 @@ def compute_ionization_vectorized(
 
 def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
     """
-    Save with all species populations to an openPMD file
+    Save with all species densities (m^-3) to an openPMD file
     """
     # create openpmd file
     series = io.Series(output_file, io.Access.create)
@@ -210,12 +210,13 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
     T_scalar.position = [0.0] * len(grid_extent)
     T_scalar.store_chunk(T_eV * (e/k))  # Convert eV to K
 
-    # Save the species fractions
+    # Save the species densities
     for i, species_key in enumerate(species_keys):
-        pop = it.meshes[species_key + "_fraction"]
+        pop = it.meshes[species_key + "_density"]
         pop.grid_spacing = grid_spacing
         pop.grid_global_offset = grid_global_offset
         pop.axis_labels = axis_labels
+        pop.unit_dimension = {io.Unit_Dimension.L: -3} #m^-3
         dataset = io.Dataset(all_populations[..., i].dtype, all_populations[..., i].shape)
         pop_scalar = pop[io.Mesh_Record_Component.SCALAR]
         pop_scalar.reset_dataset(dataset)
