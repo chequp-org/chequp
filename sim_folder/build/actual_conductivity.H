@@ -42,7 +42,7 @@ actual_conductivity (T& state)
     const int dim_sim_species = idx_spec.size(); // Total number of species considered
 
     // Electron and neutral density
-    amrex::Real n_e = 0.0; // 
+    amrex::Real n_e = 0.0;
     amrex::Real n_n_spe[num_atom_species] = {}; // neutral density for each atomic species
     for (int mu = 0; mu < dim_sim_species; mu++) {
         int const k = idx_spec[mu]; // species index with the shifted index
