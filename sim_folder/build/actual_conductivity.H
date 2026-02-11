@@ -52,7 +52,7 @@ actual_conductivity (T& state)
             for (std::size_t s = 0; s < num_atom_species; s++) {
                 if (k == start_idx[s] - 1) { // neutral species found
                     n_n_spe[s] += state.rho * state.xn[mu] / (aion[k] * C::m_u) * 1.e6; // neutral density for species s
-                    break; // specie found, exit loop
+                    break; // species found, exit loop
                 }
             }
         }
