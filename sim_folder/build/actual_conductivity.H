@@ -77,7 +77,7 @@ actual_conductivity (T& state)
     for (int mu = 0; mu < dim_sim_species; mu++) {
             if (state.xn[mu] > 1e-20) {
             v_en_tot += v_en[mu];
-            v_ei_tot += v_ei * std::pow(zion[idx_spec[mu]],4); ;
+            v_ei_tot += v_ei * std::pow(zion[idx_spec[mu]],4);
         }
     }
     const amrex::Real conductivitySI =  SI::k_B * SI::k_B * n_e * T_e
