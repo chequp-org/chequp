@@ -4,7 +4,7 @@
 #include <prob_parameters.H>
 #include <fundamental_constants.H>
 #include <collision_frequencies.H>
-#include <IonizationTable.H>
+#include <ionization_table.H>
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
 void problem_source(
@@ -18,26 +18,26 @@ void problem_source(
     using namespace problem;
     std::vector<int> idx_spec;
     get_idx_spec(idx_spec); // get the indices of the species considered
-    const int dimS = idx_spec.size(); // Total number of species considered
+    const int dim_sim_species = idx_spec.size(); // Total number of species considered
     // Density and electron temperature
     Real rho = state(i,j,k,URHO);
     Real T_e = state(i,j,k,UTEMP);
 
     // Step (1) : Get current mass fractions
-    Real X_stage[dimS];
-    for (int mu = 0; mu < dimS; mu++) {
+    Real X_stage[dim_sim_species];
+    for (int mu = 0; mu < dim_sim_species; mu++) {
         X_stage[mu] = state(i,j,k,UFS+idx_spec[mu]) / rho; // update the correct mass fraction with the shifted index
     }
     // Electron fraction
     Real X_e = 0.0;
-    for (int mu = 0; mu < dimS; mu++) {
+    for (int mu = 0; mu < dim_sim_species; mu++) {
         X_e += zion[idx_spec[mu]] * X_stage[mu]; // electron fraction
     }
     // Reaction matrix that have the dimension of the species considered
-    Real S_r[dimS][dimS];
+    Real S_r[dim_sim_species][dim_sim_species];
     // Loop over target state alpha (row)
-    for (int alpha = 0; alpha < dimS; alpha++) {
-        for (int beta = 0; beta < dimS; beta++) {
+    for (int alpha = 0; alpha < dim_sim_species; alpha++) {
+        for (int beta = 0; beta < dim_sim_species; beta++) {
             Real val = 0.0;
             // --- Electron-impact ionization ---
             if (alpha == beta) { // Diagonal: loss
@@ -60,9 +60,9 @@ void problem_source(
     }
 
     // Update sources
-    for (int alpha = 0; alpha < dimS; alpha++) {
+    for (int alpha = 0; alpha < dim_sim_species; alpha++) {
         Real sum = 0.0;
-        for (int beta = 0; beta < dimS; beta++) {
+        for (int beta = 0; beta < dim_sim_species; beta++) {
             sum += S_r[alpha][beta];
         }
         src(i,j,k,UFS+idx_spec[alpha]) = sum; // Update the source term for each species
@@ -72,8 +72,8 @@ void problem_source(
     Real f = state(i,j,k,UFX)/rho;      // fraction of energy in heavy ions
     Real e = state(i,j,k,UEINT)/rho;    // internal energy per unit mass
     Real e_ion = 0.0; // ionization energy per unit mass
-    for (int alpha = 0; alpha < dimS; alpha++) {
-        for (int beta = alpha; beta < dimS; beta++) {
+    for (int alpha = 0; alpha < dim_sim_species; alpha++) {
+        for (int beta = alpha; beta < dim_sim_species; beta++) {
             e_ion += S_r[alpha][beta] * Acoeff::eps_I[idx_spec[alpha]][0] * C::ev2erg / (aion[idx_spec[beta]] * C::m_p);
         }
     }
@@ -83,13 +83,12 @@ void problem_source(
     // Electron and neutral density
     Real n_e = 0.0;
     Real n_n_spe[ion_names.size()] = {0.0, 0.0, 0.0, 0.0}; // neutral density for each atomic species
-    Real start_idx[ion_names.size()] = {1, 3, 9, 12}; // starting index for each atomic species
-    for (int mu = 0; mu < dimS; mu++) {
+    for (int mu = 0; mu < dim_sim_species; mu++) {
         int k = idx_spec[mu];
         n_e += zion[k] * rho * X_stage[mu] / (aion[k] * C::m_u) * 1.e6; // electron density in m^-3
         if (zion[k] == 0) {
             // find species s corresponding to k
-            for (int s = 0; s < ion_names.size(); s++) {
+            for (std::size_t s = 0; s < ion_names.size(); s++) {
                 if (k == start_idx[s] - 1) {
                     n_n_spe[s] = rho * X_stage[mu] / (aion[k] * C::m_u) * 1.e6; // neutral density for species s in m^-3
                     break;
@@ -100,24 +99,30 @@ void problem_source(
     // Get collision frequencies
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature
     amrex::Real v_ei; // electron-ion collision frequency
-    amrex::Real v_en[dimS]; // electron-neutral collision frequency for all species
+    amrex::Real v_en[dim_sim_species]; // electron-neutral collision frequency for all species
     get_collision_frequencies(n_e, n_n_spe, T_e, T_h, v_ei, v_en, idx_spec);
 
     // Step (11) : Update fraction of internal energy stored in ions
     amrex::Real Sc = 0.0;
-    amrex::Real v_e_E[dimS]; // momentum transfer collision frequency for each species
-    for (int mu = 0; mu < dimS; mu++) {
+    amrex::Real v_e_E[dim_sim_species]; // momentum transfer collision frequency for each species
+    for (int mu = 0; mu < dim_sim_species; mu++) {
         if (X_stage[mu] < 1e-20) {
             v_e_E[mu] = 0.0; // if the species is not present, set collision frequency to zero
         }
         else{
-        v_e_E[mu] = 2 * SI::m_e / SI::m_vec[idx_spec[mu]] * (std::pow(zion[idx_spec[mu]],4) * v_ei + v_en[mu]) ; // momentum transfer collision frequency for each species
+        const int k = idx_spec[mu];
+        for (std::size_t s = 0; s < num_atom_species; s++) {
+            if (k >= start_idx[s] && k < start_idx[s+1] -1 ) { // species s found
+                v_e_E[mu] = 2 * SI::m_e / mass_vec[s] * (std::pow(zion[k],4) * v_ei + v_en[mu]) ; // momentum transfer collision frequency for each species
+                break; // found species, exit loop
+            }
         }
     }
-    for (int mu = 0; mu < dimS; mu++) {
+    for (int mu = 0; mu < dim_sim_species; mu++) {
         Sc += rho * v_e_E[mu] * (1 - (1 + X_stage[mu]) * f); // Compute collision source term for the energy equation
     }
     src(i,j,k,UFX) = -f/e * src(i,j,k,UEDEN) + Sc; // Update source term for energy
+    }
 }
 
 #endif

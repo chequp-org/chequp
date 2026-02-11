@@ -8,7 +8,7 @@
 #include <prob_parameters.H>
 #include <collision_frequencies.H>
 #include <AMReX_Math.H>
-#include <IonizationTable.H>
+#include <ionization_table.H>
 
 
 AMREX_FORCE_INLINE
@@ -19,6 +19,16 @@ actual_conductivity_init()
 }
 
 template <typename T>
+/**
+ * @brief Calculates the thermal conductivity of a fluid state.
+ *
+ * Computes electron thermal conductivity based on collision frequencies
+ * with ions and neutrals, using the matrix formalism for hydrogen-like atoms.
+ * The result is converted from SI to CGS units and stored in state.conductivity.
+ *
+ * @param[in,out] state The thermodynamic state containing density, temperature,
+ *                       species fractions, and where conductivity is stored.
+ */
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void
 actual_conductivity (T& state)
@@ -29,18 +39,17 @@ actual_conductivity (T& state)
 
     std::vector<int> idx_spec;
     get_idx_spec(idx_spec);
-    const int dimS = idx_spec.size(); // Total number of species considered
+    const int dim_sim_species = idx_spec.size(); // Total number of species considered
 
     // Electron and neutral density
     amrex::Real n_e = 0.0; // 
-    amrex::Real n_n_spe[ion_names.size()] = {0.0, 0.0, 0.0, 0.0}; // neutral density for each atomic species
-    amrex::Real start_idx[ion_names.size()] = {1, 3, 9, 12}; // starting index for each atomic species
-    for (int mu = 0; mu < dimS; mu++) {
-        int k = idx_spec[mu]; // species index with the shifted index
+    amrex::Real n_n_spe[num_atom_species] = {}; // neutral density for each atomic species
+    for (int mu = 0; mu < dim_sim_species; mu++) {
+        int const k = idx_spec[mu]; // species index with the shifted index
         n_e += zion[k] * state.rho * state.xn[mu] / (aion[k] * C::m_u) * 1.e6; // electron density
         if (zion[k] == 0) {
             // find species s corresponding to k
-            for (int s = 0; s < ion_names.size(); s++) {
+            for (std::size_t s = 0; s < num_atom_species; s++) {
                 if (k == start_idx[s] - 1) { // neutral species found
                     n_n_spe[s] += state.rho * state.xn[mu] / (aion[k] * C::m_u) * 1.e6; // neutral density for species s
                     break; // specie found, exit loop
@@ -57,7 +66,7 @@ actual_conductivity (T& state)
     // Get collision frequencies
    
     amrex::Real v_ei;
-    amrex::Real v_en[dimS];
+    amrex::Real v_en[dim_sim_species];
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
     get_collision_frequencies(n_e, n_n_spe, T_e, T_h, v_ei, v_en, idx_spec);
     // Calculate thermal conductivity using Eq. B1 in https://arxiv.org/pdf/2305.16779
@@ -65,7 +74,7 @@ actual_conductivity (T& state)
     // in the fully ionized case (v_en = 0)
     amrex::Real v_en_tot = 0.0; // total electron-neutral collision frequency
     amrex::Real v_ei_tot = 0.0; // total electron-ion collision frequency
-    for (int mu = 0; mu < dimS; mu++) {
+    for (int mu = 0; mu < dim_sim_species; mu++) {
             if (state.xn[mu] > 1e-20) {
             v_en_tot += v_en[mu];
             v_ei_tot += v_ei * std::pow(zion[idx_spec[mu]],4); ;
