@@ -36,24 +36,20 @@ actual_conductivity (T& state)
     // Infer electron density by summing over species and assuming overall neutrality
     // See https://github.com/AMReX-Astro/Microphysics/blob/main/EOS/gamma_law/actual_eos.H#L62
     // for a similar calculation
-
-    std::vector<int> idx_spec;
-    get_idx_spec(idx_spec);
-    const int dim_sim_species = idx_spec.size(); // Total number of species considered
-
     // Electron and neutral density
     amrex::Real n_e = 0.0;
     amrex::Real n_n_spe[num_atom_species] = {}; // neutral density for each atomic species
-    for (int mu = 0; mu < dim_sim_species; mu++) {
-        int const k = idx_spec[mu]; // species index with the shifted index
-        n_e += zion[k] * state.rho * state.xn[mu] / (aion[k] * C::m_u) * 1.e6; // electron density
-        if (zion[k] == 0) {
-            // find species s corresponding to k
-            for (std::size_t s = 0; s < num_atom_species; s++) {
-                if (k == start_idx[s] - 1) { // neutral species found
-                    n_n_spe[s] += state.rho * state.xn[mu] / (aion[k] * C::m_u) * 1.e6; // neutral density for species s
-                    break; // species found, exit loop
-                }
+    for (int mu = 0; mu < NumSpec; mu++) {
+        n_e += zion[mu] * state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // electron density
+        if (zion[mu] == 0) {
+            if (mu <= 1) {
+                n_n_spe[0] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // neutral density for Hydrogen
+            } else if (mu <= 7) {
+                n_n_spe[1] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // neutral density for Nitrogen
+            } else if (mu <= 10) {
+                n_n_spe[2] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // neutral density for Helium
+            } else {
+                n_n_spe[3] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // neutral density for Argon
             }
         }
     }
@@ -66,18 +62,18 @@ actual_conductivity (T& state)
     // Get collision frequencies
    
     amrex::Real v_ei;
-    amrex::Real v_en[dim_sim_species];
+    amrex::Real v_en[NumSpec];
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
-    get_collision_frequencies(n_e, n_n_spe, T_e, T_h, v_ei, v_en, idx_spec);
+    get_collision_frequencies(n_e, n_n_spe, T_e, T_h, v_ei, v_en);
     // Calculate thermal conductivity using Eq. B1 in https://arxiv.org/pdf/2305.16779
     // The coefficient 3.16 comes from matching the Spitzer-Harm conductivity
     // in the fully ionized case (v_en = 0)
     amrex::Real v_en_tot = 0.0; // total electron-neutral collision frequency
     amrex::Real v_ei_tot = 0.0; // total electron-ion collision frequency
-    for (int mu = 0; mu < dim_sim_species; mu++) {
+    for (int mu = 0; mu < NumSpec; mu++) {
             if (state.xn[mu] > 1e-20) {
             v_en_tot += v_en[mu];
-            v_ei_tot += v_ei * std::pow(zion[idx_spec[mu]],4);
+            v_ei_tot += v_ei * std::pow(zion[mu],4);
         }
     }
     const amrex::Real conductivitySI =  SI::k_B * SI::k_B * n_e * T_e

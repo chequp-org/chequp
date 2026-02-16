@@ -16,39 +16,12 @@ namespace SI {
     const double m_He = 6.6464764e-27; // Helium mass in kg 
     const double m_Ar = 6.6335209e-26; // Argon mass in kg
 }
-const std::vector<amrex::Real> mass_vec = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
-/**
- * @brief Computes electron-ion and electron-neutral collision frequencies.
- *
- * This function calculates collision frequencies for electron interactions with ions and neutral atoms
- * based on kinetic theory. The electron-ion collision frequency is computed using the Coulomb logarithm,
- * while electron-neutral collision frequencies use cross-section data from the Morgan database.
- *
- * @param[in] n_e Electron number density [m^-3]
- * @param[in] n_n_spe Array of neutral species number densities [m^-3]
- * @param[in] T_e Electron temperature [K]
- * @param[in] T_h Heavy particle temperature (ion temperature) [K]
- * @param[out] v_ei Electron-ion collision frequency [s^-1]
- * @param[out] v_en Array of electron-neutral collision frequencies for each species [s^-1]
- * @param[in] idx_spec Vector of species indices to consider in the simulation
- *
- * @details
- * The electron-ion collision frequency is computed using Equation A1 from
- * https://arxiv.org/pdf/2305.16779, with a lower limit applied to the Coulomb logarithm (Lambda_ei >= 0.5*ln(2)).
- *
- * The electron-neutral collision frequencies are computed using Equation A5 from the same reference.
- * Cross-sections for electron-neutral collisions (E + H -> E + H, Elastic) are obtained from polynomial
- * fits of the Morgan database (www.lxcat.net). Cross-sections for other species are to be updated.
- *
- * @note This function is GPU-compatible and marked for inlining.
- * @note Cross-sections for nitrogen and other species are currently set to zero and require implementation.
- *
- * @see https://arxiv.org/pdf/2305.16779
- * @see www.lxcat.net
- */
+__host__ __device__
+constexpr std::array<amrex::Real, 4> mass_vec = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
+
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Real T_e, amrex::Real T_h,
-                               amrex::Real& v_ei, amrex::Real* v_en, std::vector<int>& idx_spec)
+                               amrex::Real& v_ei, amrex::Real* v_en)
 {   
     // Constant variables
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
@@ -71,10 +44,10 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
     const amrex::Real E_bar = 4.0 / M_PI * SI::k_B * T_e;
 
     // Following variables are now in vector form
-    amrex::Real mu_en[num_atom_species] = {};
-    for (std::size_t mu = 0; mu < num_atom_species; mu++) {
-        mu_en[mu] = SI::m_e * mass_vec[mu] / (SI::m_e + mass_vec[mu]);
-    }
+    amrex::Real mu_en[num_atom_species] = {SI::m_e * SI::m_H / (SI::m_e +  SI::m_H),
+                                        SI::m_e * SI::m_N / (SI::m_e +  SI::m_N),
+                                        SI::m_e * SI::m_He / (SI::m_e +  SI::m_He),
+                                        SI::m_e * SI::m_Ar / (SI::m_e +  SI::m_Ar)};
     // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
     //   Morgan database, www.lxcat.net 
     
@@ -96,15 +69,16 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
     // - Calculate v_en for each species
 
     amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, 0.0, 0.0}; // TO BE UPDATED FOR ALL SPECIES
-    int dim_sim_species = idx_spec.size(); // Total number of species and their ionized level considered
-    for (int mu = 0; mu < dim_sim_species; mu++) {
-        int k = idx_spec[mu]; // species index with the shifted index
+    for (int mu = 0; mu < NumSpec; mu++) {
         v_en[mu] = 0.0; // default zero
-        for (std::size_t s = 0; s < num_atom_species; s++) {
-            if (k >= start_idx[s] && k < start_idx[s+1] -1 ) { // species s found
-                v_en[mu] = n_n_spe[s] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[s]) * sigma_m2[s]; // electron-neutral collision frequency
-                break; // found species, exit loop
-            }
+        if (mu<=1){
+            v_en[mu] = n_n_spe[0] * sigma_m2_H * std::sqrt(8.0 * SI::k_B * T_e / (M_PI * mu_en[0])); // electron-neutral collision frequency for Hydrogen
+        } else if (mu <= 7) {
+            v_en[mu] = n_n_spe[1] * sigma_m2_N * std::sqrt(8.0 * SI::k_B * T_e / (M_PI * mu_en[1])); // electron-neutral collision frequency for Nitrogen
+        } else if (mu <= 10) {
+            v_en[mu] = 0.0; // placeholder for Helium
+        } else {
+            v_en[mu] = 0.0; // placeholder for Argon
         }
     }
 }
