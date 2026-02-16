@@ -63,12 +63,26 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
             -1.72242991e-02*amrex::Math::powi<3>(log_E_eV)
             + 2.59407262e-03*amrex::Math::powi<4>(log_E_eV);
     }
+    amrex::Real log_sigma_m2_Ar;
+    const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
+    log_sigma_m2_Ar = -4.59e1
+        +9.15e-1*log_E_eV
+        -3.63e-1*amrex::Math::powi<2>(log_E_eV)
+        +5.30e-1*amrex::Math::powi<3>(log_E_eV)
+        +7.68e-2*amrex::Math::powi<4>(log_E_eV)
+        -1.96e-1*amrex::Math::powi<5>(log_E_eV)
+        +3.19e-2*amrex::Math::powi<6>(log_E_eV)
+        +1.32e-2*amrex::Math::powi<7>(log_E_eV)
+        -5.07e-3*amrex::Math::powi<8>(log_E_eV)
+        +6.17e-4*amrex::Math::powi<9>(log_E_eV)
+        -2.62e-5*amrex::Math::powi<10>(log_E_eV);
+    const amrex::Real sigma_m2_Ar = std::exp(log_sigma_m2_Ar); // in m^2
     const amrex::Real sigma_m2_H = std::exp(log_sigma_m2_H); // in m^2
     const amrex::Real sigma_m2_N = 0.0; // TO BE UPDATED
 
     // - Calculate v_en for each species
 
-    amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, 0.0, 0.0}; // TO BE UPDATED FOR ALL SPECIES
+    amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, 0.0, sigma_m2_Ar}; // TO BE UPDATED FOR ALL SPECIES
     for (int mu = 0; mu < NumSpec; mu++) {
         v_en[mu] = 0.0; // default zero
         if (mu<=1){
@@ -76,9 +90,9 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
         } else if (mu <= 7) {
             v_en[mu] = n_n_spe[1] * sigma_m2_N * std::sqrt(8.0 * SI::k_B * T_e / (M_PI * mu_en[1])); // electron-neutral collision frequency for Nitrogen
         } else if (mu <= 10) {
-            v_en[mu] = 0.0; // placeholder for Helium
+            v_en[mu] = n_n_spe[2] * sigma_m2_N * std::sqrt(8.0 * SI::k_B * T_e / (M_PI * mu_en[2])); // electron-neutral collision frequency for Nitrogen
         } else {
-            v_en[mu] = 0.0; // placeholder for Argon
+            v_en[mu] = n_n_spe[3] * sigma_m2_Ar * std::sqrt(8.0 * SI::k_B * T_e / (M_PI * mu_en[3])); // electron-neutral collision frequency for Argon
         }
     }
 }
