@@ -10,8 +10,8 @@ COMP	   = gnu
 USE_MPI    = TRUE
 USE_OMP    = FALSE
 USE_HDF5   = TRUE
-USE_CUDA   = TRUE
-CUDA_ARCH  = 80
+USE_CUDA   = TRUE # Set False if you want to compile without GPU support
+CUDA_ARCH  = 80 # Remove this for CPU-only
 USE_MHD    = FALSE
 
 BL_NO_FORT := TRUE

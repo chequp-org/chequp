@@ -16,9 +16,8 @@ namespace SI {
     const double m_He = 6.6464764e-27; // Helium mass in kg 
     const double m_Ar = 6.6335209e-26; // Argon mass in kg
 }
-__host__ __device__
+AMREX_GPU_HOST_DEVICE
 constexpr std::array<amrex::Real, 4> mass_vec = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
-
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Real T_e, amrex::Real T_h,
                                amrex::Real& v_ei, amrex::Real* v_en)
@@ -40,7 +39,7 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
         (amrex::Math::powi<2>(4.0 * M_PI * SI::epsilon0) * (SI::k_B * T_e) * std::sqrt(SI::k_B * T_e));
 
     // Compute frequency of electron-neutral collisions (Eq. A5 in https://arxiv.org/pdf/2305.16779)
-    // - Find mean energy and reduced mass
+    // Find mean energy and reduced mass
     const amrex::Real E_bar = 4.0 / M_PI * SI::k_B * T_e;
 
     // Following variables are now in vector form
@@ -48,7 +47,7 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
                                         SI::m_e * SI::m_N / (SI::m_e +  SI::m_N),
                                         SI::m_e * SI::m_He / (SI::m_e +  SI::m_He),
                                         SI::m_e * SI::m_Ar / (SI::m_e +  SI::m_Ar)};
-    // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
+    //  Calculate cross section for electron-neutral collisions, using polynomial fit of the
     //   Morgan database, www.lxcat.net 
     
     // PROCESS: E + H -> E + H, Elastic)
@@ -65,20 +64,22 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
     }
     const amrex::Real sigma_m2_H = std::exp(log_sigma_m2_H); // in m^2
     const amrex::Real sigma_m2_N = 0.0; // TO BE UPDATED
+    const amrex::Real sigma_m2_He = 0.0; // TO BE UPDATED
+    const amrex::Real sigma_m2_Ar = 0.0; // TO BE UPDATED
 
-    // - Calculate v_en for each species
+    // Calculate v_en for each species
 
-    amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, 0.0, 0.0}; // TO BE UPDATED FOR ALL SPECIES
+    amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, sigma_m2_He, sigma_m2_Ar}; // TO BE UPDATED FOR ALL SPECIES
     for (int mu = 0; mu < NumSpec; mu++) {
         v_en[mu] = 0.0; // default zero
-        if (mu<=1){
-            v_en[mu] = n_n_spe[0] * sigma_m2_H * std::sqrt(8.0 * SI::k_B * T_e / (M_PI * mu_en[0])); // electron-neutral collision frequency for Hydrogen
-        } else if (mu <= 7) {
-            v_en[mu] = n_n_spe[1] * sigma_m2_N * std::sqrt(8.0 * SI::k_B * T_e / (M_PI * mu_en[1])); // electron-neutral collision frequency for Nitrogen
-        } else if (mu <= 10) {
-            v_en[mu] = 0.0; // placeholder for Helium
+        if (mu>0){
+            v_en[mu] = n_n_spe[0] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[0]) * sigma_m2[0]; // electron-neutral collision frequency for Hydrogen
+        } else if (mu > 1 && mu <= 10) {
+            v_en[mu] = n_n_spe[1] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[1]) * sigma_m2[1]; // electron-neutral collision frequency for Nitrogen
+        } else if (mu > 10 && mu <= 13) {
+            v_en[mu] = n_n_spe[2] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[2]) * sigma_m2[2]; // electron-neutral collision frequency for Helium
         } else {
-            v_en[mu] = 0.0; // placeholder for Argon
+            v_en[mu] = n_n_spe[3] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[3]) * sigma_m2[3]; // electron-neutral collision frequency for Argon
         }
     }
 }
