@@ -291,7 +291,10 @@ class CastroSimulation(object):
                     for spe in [f for f in self.fields_list if f[-1].isdigit()]:
                         m_rho_X = self.get_field(_t, f'{spe}', level)
                         # Add ionization energy: n_species * ionization_potential
-                        m_rho_E['q'] += self.data_species[spe[-2:]]['ion_energy'] * qe * m_rho_X['q'] / m_p * 1e-3
+                        try:
+                            m_rho_E['q'] += self.data_species[spe[-2:]]['ion_energy'] * qe * m_rho_X['q'] / m_p * 1e-3
+                        except KeyError:
+                            m_rho_E['q'] += self.data_species[spe[-3:]]['ion_energy'] * qe * m_rho_X['q'] / m_p * 1e-3
                         
             elif energy_type == 'ion':
                 # Calculate only ionization energy
@@ -300,7 +303,10 @@ class CastroSimulation(object):
                 if bool(self.parameters_list["castro.add_ext_src"]):
                     for spe in [f for f in self.fields_list if f[-1].isdigit()]:
                         m_rho_X = self.get_field(_t, f'{spe}', level)
-                        m_rho_E['q'] += self.data_species[spe[-2:]]['ion_energy'] * qe * m_rho_X['q'] / m_p * 1e-3
+                        try:
+                            m_rho_E['q'] += self.data_species[spe[-2:]]['ion_energy'] * qe * m_rho_X['q'] / m_p * 1e-3
+                        except KeyError:
+                            m_rho_E['q'] += self.data_species[spe[-3:]]['ion_energy'] * qe * m_rho_X['q'] / m_p * 1e-3
                 else:
                     raise ValueError("Ionization energy requested but 'castro.add_ext_src' is not activated")
                     
