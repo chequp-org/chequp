@@ -31,7 +31,6 @@ void problem_source(
         X_e += zion[mu] * X_stage[mu]; // electron fraction
     }
     // Reaction matrix that have the dimension of the species considered
-    Real S_r[NumSpec][NumSpec];
     Real e_ion = 0.0; // ionization energy per unit mass
     // Loop over target state alpha (row)
     for (int alpha = 0; alpha < NumSpec; alpha++) {
@@ -53,11 +52,9 @@ void problem_source(
                         std::exp(-Acoeff::eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) * X_e;
                 }
             }
-            // Convert to source term per unit mass
-            S_r[alpha][beta] = val * rho * rho / (aion[beta] * C::m_p) * X_stage[beta];
-            sum += S_r[alpha][beta];
+            sum += val * rho * rho / (aion[beta] * C::m_p) * X_stage[beta];;
             if (beta >= alpha){
-                    e_ion += S_r[alpha][beta] * Acoeff::eps_I[alpha][0] * C::ev2erg / (aion[beta] * C::m_p);
+                    e_ion += (val * rho * rho / (aion[beta] * C::m_p) * X_stage[beta]) * Acoeff::eps_I[alpha][0] * C::ev2erg / (aion[beta] * C::m_p);
             }
         }
         src(i,j,k,UFS+alpha) = sum; // Update the source term for each species
@@ -80,11 +77,9 @@ void problem_source(
         if (mu <= 10) return 2;     // Helium
         return 3;                    // Argon
     };
-    
     for (int mu = 0; mu < NumSpec; mu++) {
         Real density_factor = rho * X_stage[mu] / (aion[mu] * C::m_u) * 1.e6;
         n_e += zion[mu] * density_factor;
-        
         if (zion[mu] == 0) {
             n_n_spe[get_atom_species(mu)] += density_factor;
         }
