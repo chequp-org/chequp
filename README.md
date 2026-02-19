@@ -79,7 +79,7 @@ make -j 4 -s EOS_DIR=gamma_law DIM=1
 make -j 4 -s EOS_DIR=gamma_law_2T DIM=1
 make -j 4 -s EOS_DIR=gamma_law DIM=2
 ```
-(Remember to add `COMP=clang` to the compilation lines )
+(Remember to add `COMP=clang` to the compilation lines, on MacOS.)
 
 - Move to the folder `tests` and run the tests
 ```
