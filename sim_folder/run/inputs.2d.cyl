@@ -60,8 +60,6 @@ amr.plot_file       = plt_2d_
 amr.plot_int        = 10
 
 # PROBLEM PARAMETERS
-problem.species = "H"
-
 problem.initial_conditions_file = "plasma_from_file_2d.h5"
 problem.p_ambient = 1.e-6
 problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc

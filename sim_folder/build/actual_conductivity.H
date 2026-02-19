@@ -42,15 +42,7 @@ actual_conductivity (T& state)
     for (int mu = 0; mu < NumSpec; mu++) {
         n_e += zion[mu] * state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // electron density
         if (zion[mu] == 0) {
-            if (mu <= 1) {
-                n_n_spe[0] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // neutral density for Hydrogen
-            } else if (mu <= 7) {
-                n_n_spe[1] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // neutral density for Nitrogen
-            } else if (mu <= 10) {
-                n_n_spe[2] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // neutral density for Helium
-            } else {
-                n_n_spe[3] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6; // neutral density for Argon
-            }
+            n_n_spe[get_atom_species(mu)] += state.rho * state.xn[mu] / (aion[mu] * C::m_u) * 1.e6;
         }
     }
 

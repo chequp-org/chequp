@@ -68,18 +68,12 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
     const amrex::Real sigma_m2_Ar = 0.0; // TO BE UPDATED
 
     // Calculate v_en for each species
-
     amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, sigma_m2_He, sigma_m2_Ar}; // TO BE UPDATED FOR ALL SPECIES
     for (int mu = 0; mu < NumSpec; mu++) {
         v_en[mu] = 0.0; // default zero
-        if (mu>0){
-            v_en[mu] = n_n_spe[0] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[0]) * sigma_m2[0]; // electron-neutral collision frequency for Hydrogen
-        } else if (mu > 1 && mu <= 10) {
-            v_en[mu] = n_n_spe[1] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[1]) * sigma_m2[1]; // electron-neutral collision frequency for Nitrogen
-        } else if (mu > 10 && mu <= 13) {
-            v_en[mu] = n_n_spe[2] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[2]) * sigma_m2[2]; // electron-neutral collision frequency for Helium
-        } else {
-            v_en[mu] = n_n_spe[3] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[3]) * sigma_m2[3]; // electron-neutral collision frequency for Argon
+        const int idx_spec = get_atom_species(mu);
+        if (zion[mu] > 0){
+            v_en[mu] = n_n_spe[idx_spec] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[idx_spec]) * sigma_m2[idx_spec];
         }
     }
 }

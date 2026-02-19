@@ -23,9 +23,9 @@ void problem_source(
     // Step (1) : Get current mass fractions
     Real X_stage[NumSpec];
     constexpr Real X_min = 1e-20;
-    bool active_mask[NumSpec] = {false};
-    int active_spec[NumSpec];
-    int n_active = 0;
+    bool active_mask[NumSpec] = {false}; // Mask to track which species are active (above threshold) and their neighbors
+    int active_spec[NumSpec]; // Array to store indices of active species
+    int n_active = 0; // Counter for number of active species
     for (int mu = 0; mu < NumSpec; mu++) {
         X_stage[mu] = state(i,j,k,UFS+mu) / rho; // update the correct mass fraction with the shifted index
         if (X_stage[mu] > X_min) {
@@ -43,11 +43,12 @@ void problem_source(
     // Electron fraction
     Real X_e = 0.0;
     for (int im = 0; im < n_active; im++) {
-        int mu = active_spec[im];
+        int mu = active_spec[im]; // Get the actual species index from the active_spec array
         X_e += zion[mu] * X_stage[mu]; // electron fraction
     }
-    // Reaction matrix that have the dimension of the species considered
     Real e_ion = 0.0; // ionization energy per unit mass
+    // For loop over active species to compute source terms, 
+    // only considering ionization of active species and their neighbors to optimize performance
     // Loop over target state alpha (row)
     for (int ia = 0; ia < n_active; ia++) {
         int alpha = active_spec[ia];
@@ -55,7 +56,7 @@ void problem_source(
         for (int ib = 0; ib < n_active; ib++) {
             int beta = active_spec[ib];
             Real val = 0.0;
-            // --- Electron-impact ionization ---
+            // Electron-impact ionization
             if (alpha == beta) { // Diagonal: loss
                 for (int step = 0; step < Acoeff::n_step; step++) {
                     val -= Acoeff::A_I[beta][step] *
@@ -87,16 +88,8 @@ void problem_source(
     // Electron and neutral density
     Real n_e = 0.0;
     Real n_n_spe[num_atom_species] = {};
-    
-    // Helper lambda to map species index to atomic species
-    auto get_atom_species = [](int mu) -> int {
-        if (mu <= 1) return 0;      // Hydrogen
-        if (mu <= 7 && mu > 1) return 1;      // Nitrogen
-        if (mu <= 10 && mu > 7) return 2;     // Helium
-        return 3;                    // Argon
-    };
     for (int im = 0; im < n_active; im++) {
-        int mu = active_spec[im];
+        int mu = active_spec[im]; // Get the actual species index from the active_spec array
         Real density_factor = rho * X_stage[mu] / (aion[mu] * C::m_u) * 1.e6;
         n_e += zion[mu] * density_factor;
         if (zion[mu] == 0) {
@@ -116,12 +109,14 @@ void problem_source(
         int mu = active_spec[im];
         if (X_stage[mu] > 1e-20){
             int s = get_atom_species(mu);
-            v_e_E[mu] = 2 * SI::m_e / mass_vec[s] * (std::pow(zion[mu], 4) * v_ei + v_en[s]);
+            // momentum transfer collision frequency for species mu
+            v_e_E[mu] = 2 * SI::m_e / mass_vec[s] * (std::pow(zion[mu], 4) * v_ei + v_en[s]); 
         }
     }
     for (int im = 0; im < n_active; im++) {
-        int mu = active_spec[im];
-        Sc += rho * v_e_E[mu] * (1 - (1 + X_stage[mu]) * f); // Compute collision source term for the energy equation
+        int mu = active_spec[im]; // Get the actual species index from the active_spec array
+        // Compute collision source term for the energy equation, using the momentum transfer collision frequency v_e_E[mu]
+        Sc += rho * v_e_E[mu] * (1 - (1 + X_stage[mu]) * f); 
     }
     src(i,j,k,UFX) = -f/e * src(i,j,k,UEDEN) + Sc; // Update source term for energy
 }
