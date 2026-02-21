@@ -5,15 +5,13 @@
 #include <AMReX_REAL.H>
 #include <map>
 
-
-
 const int tot_num_spec = 14 * 2 ; // Total number of species (ionization stages) * 2 (step ionization)
 
-constexpr std::size_t num_atom_species = 4;
+constexpr int num_atom_species = 4;
 
 // Helper lambda to map species index to atomic species
 AMREX_GPU_HOST_DEVICE
-inline int get_atom_species(int mu) {
+inline int get_atom_index(int mu) {
     if (mu <= 1 && mu >= 0) return 0;      // Hydrogen
     if (mu <= 7 && mu > 1) return 1;      // Nitrogen
     if (mu <= 10 && mu > 7) return 2;     // Helium

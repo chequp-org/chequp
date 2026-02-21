@@ -19,12 +19,11 @@ namespace SI {
 AMREX_GPU_HOST_DEVICE
 constexpr std::array<amrex::Real, 4> mass_vec = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Real T_e, amrex::Real T_h,
-                               amrex::Real& v_ei, amrex::Real* v_en)
-{   
-    // Constant variables
+void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_e, amrex::Real T_h,
+                              amrex::Real& v_ei, amrex::Real* v_en)
+{
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
-    // Calculate Lambda_ei
+    // - Calculate Lambda_ei
     const amrex::Real rawLambdaEi = std::log(
         amrex::Real(3.0 / (2.0 * std::sqrt(M_PI))) * std::sqrt(
             amrex::Math::powi<3>(4.0 * M_PI * SI::epsilon0 * SI::k_B * T_e) /
@@ -39,30 +38,25 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
         (amrex::Math::powi<2>(4.0 * M_PI * SI::epsilon0) * (SI::k_B * T_e) * std::sqrt(SI::k_B * T_e));
 
     // Compute frequency of electron-neutral collisions (Eq. A5 in https://arxiv.org/pdf/2305.16779)
-    // Find mean energy and reduced mass
+    // - Find mean energy and reduced mass
     const amrex::Real E_bar = 4.0 / M_PI * SI::k_B * T_e;
-
-    // Following variables are now in vector form
-    amrex::Real mu_en[num_atom_species] = {SI::m_e * SI::m_H / (SI::m_e +  SI::m_H),
-                                        SI::m_e * SI::m_N / (SI::m_e +  SI::m_N),
-                                        SI::m_e * SI::m_He / (SI::m_e +  SI::m_He),
-                                        SI::m_e * SI::m_Ar / (SI::m_e +  SI::m_Ar)};
-    //  Calculate cross section for electron-neutral collisions, using polynomial fit of the
-    //   Morgan database, www.lxcat.net 
-    
-    // PROCESS: E + H -> E + H, Elastic)
-    amrex::Real log_sigma_m2_H;
+    amrex::Real mu_en[num_atom_species] = {};
+    for (int mu = 0; mu < num_atom_species; mu++) {
+            mu_en[mu] = SI::m_e * mass_vec[mu] / (SI::m_e + mass_vec[mu]);}
+    // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
+    //   Morgan database, www.lxcat.net (PROCESS: E + H -> E + H, Elastic)
+    amrex::Real log_sigma_m2;
     if (E_bar < 0.1*SI::q_e) {
-        log_sigma_m2_H = -4.28906183e+01;
+        log_sigma_m2 = -4.28906183e+01;
     } else {
         const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
-        log_sigma_m2_H = -4.28906183e+01
+        log_sigma_m2 = -4.28906183e+01
             -3.20501602e-01*log_E_eV
             -9.75994914e-02*amrex::Math::powi<2>(log_E_eV)
             -1.72242991e-02*amrex::Math::powi<3>(log_E_eV)
             + 2.59407262e-03*amrex::Math::powi<4>(log_E_eV);
     }
-    const amrex::Real sigma_m2_H = std::exp(log_sigma_m2_H); // in m^2
+    const amrex::Real sigma_m2_H = std::exp(log_sigma_m2);
     const amrex::Real sigma_m2_N = 0.0; // TO BE UPDATED
     const amrex::Real sigma_m2_He = 0.0; // TO BE UPDATED
     const amrex::Real sigma_m2_Ar = 0.0; // TO BE UPDATED
@@ -71,9 +65,9 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n_spe, amrex::Rea
     amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, sigma_m2_He, sigma_m2_Ar}; // TO BE UPDATED FOR ALL SPECIES
     for (int mu = 0; mu < NumSpec; mu++) {
         v_en[mu] = 0.0; // default zero
-        const int idx_spec = get_atom_species(mu);
+        const int idx_spec = get_atom_index(mu);
         if (zion[mu] > 0){
-            v_en[mu] = n_n_spe[idx_spec] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[idx_spec]) * sigma_m2[idx_spec];
+            v_en[mu] = n_n[idx_spec] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[idx_spec]) * sigma_m2[idx_spec];
         }
     }
 }
