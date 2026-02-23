@@ -29,7 +29,7 @@ actual_conductivity (T& state)
         sum += zion[n] * state.xn[n] * aion_inv[n];
     }
     const amrex::Real n_e_cgs = state.rho * sum / C::m_u;
-    const amrex::Real n_n_cgs = state.rho * (1-sum) / C::m_u;
+    const amrex::Real n_n_cgs = state.rho * state.xn[0] * aion_inv[0] / C::m_u;
     const amrex::Real n_e = n_e_cgs * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
     const amrex::Real n_n = n_n_cgs * 1.e6; // Convert from cm^-3 to m^-3, since we will use an SI unit formula
 
