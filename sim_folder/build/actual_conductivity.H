@@ -24,15 +24,15 @@ actual_conductivity (T& state)
 {
     // Infer electron density by summing over species and assuming overall neutrality
     // See https://github.com/AMReX-Astro/Microphysics/blob/main/EOS/gamma_law/actual_eos.H#L62
-    // for a similar calculation
+    amrex::Real n_n_species[num_atom_species] = {};
     amrex::Real n_e = 0.0;
-    amrex::Real sum = 0;
-    for (int n=0; n < NumSpec; n++) {
-        sum += zion[n] * state.xn[n] * aion_inv[n];
-        n_e += zion[n] * state.xn[n] * state.rho / C::m_u * 1.e6;
+    for (int mu=0; mu < NumSpec; mu++) {
+        n_e += zion[mu] * state.xn[mu] * state.rho / C::m_u * 1.e6;
+        if (zion[mu] == 0) {
+            int idx_atom = get_atom_index(mu);
+            n_n_species[idx_atom] = state.rho * state.xn[mu] * aion_inv[mu] / C::m_u * 1.e6; // number density of neutral species mu in m^-3
+        }
     }
-    amrex::Real n_n_species[num_atom_species] = {}; // Assuming all neutrals are hydrogen for now, so we can use n_n directly for the first species. This will need to be updated when we have multiple neutral species.
-    n_n_species[0] = (1 - sum) * state.rho / C::m_u * 1.e6; // number density of neutral hydrogen in m^-3
     // Electron temperature
     // In a single-temperature model (gamma_law), this will extract the average temperature
     // In a two-temperature model (e.g. gamma_law_2T), this will extract the electron temperature
@@ -45,12 +45,19 @@ actual_conductivity (T& state)
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
 
     get_collision_frequencies(n_e, n_n_species, T_e, T_h, v_ei, v_en);
-
+    amrex::Real v_en_tot = 0.0;
+    amrex::Real v_ei_tot = 0.0;
+    for (int mu = 0; mu < NumSpec; mu++) {
+        if (state.xn[mu] > X_min) {
+            v_en_tot += v_en[mu];
+            v_ei_tot += v_ei * std::pow(zion[mu],4);
+        }
+    }
     // Calculate thermal conductivity using Eq. B1 in https://arxiv.org/pdf/2305.16779
     // The coefficient 3.16 comes from matching the Spitzer-Harm conductivity
     // in the fully ionized case (v_en = 0)
     const amrex::Real conductivitySI =  SI::k_B * SI::k_B * n_e * T_e
-        / (SI::m_e * amrex::Real((2*M_PI/15) * v_en[1] + amrex::Real(1/3.16) * v_ei));
+        / (SI::m_e * amrex::Real((2*M_PI/15) * v_en_tot + amrex::Real(1/3.16) * v_ei_tot));
     // SI to cgs conversion factor for thermal conductivity
     const amrex::Real si_to_cgs_conversion_factor = 1e5; // (10^7 erg/J) / (10^2 cm/m)
 

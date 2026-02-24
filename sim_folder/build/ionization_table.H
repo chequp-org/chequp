@@ -9,6 +9,8 @@ const int tot_num_spec = 14 * 2 ; // Total number of species (ionization stages)
 
 constexpr int num_atom_species = 4;
 
+constexpr amrex::Real X_min = 1e-20; // Threshold for considering a species to be present
+
 // Helper lambda to map species index to atomic species
 AMREX_GPU_HOST_DEVICE
 inline int get_atom_index(int mu) {
