@@ -21,7 +21,7 @@ In order to analyze the results, create a Python environment with `numpy`, `scip
 
 ## Switch between two-temperature and single-temperature model
 
-The choice of a single-temperature model or two-temperature model depends on the ex file that you are using to run Castro. 
+The choice of a single-temperature model or two-temperature model depends on the ex file that you are using to run Castro.
 To compiled both model use:
 ```
 cd sim_folder/build
@@ -70,10 +70,20 @@ jupyter notebook Analysis.ipynb
 
 To run the test suite:
 
-- In the folder `sim_folder/build`, compile the code in 1D
-
-- In the folder `tests`, run:
+- Prepare the test by installing the dependencies and compiling Castro
 ```
+conda activate castro_sim
+conda install -y -c conda-forge pytest scipy numpy numba tqdm pandas openpmd-api yt h5py
+cd sim_folder/build
+make -j 4 -s EOS_DIR=gamma_law DIM=1
+make -j 4 -s EOS_DIR=gamma_law_2T DIM=1
+make -j 4 -s EOS_DIR=gamma_law DIM=2
+```
+(Remember to add `COMP=clang` to the compilation lines, on MacOS.)
+
+- Move to the folder `tests` and run the tests
+```
+cd ../../tests
 py.test
 ```
 
