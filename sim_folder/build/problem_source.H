@@ -71,17 +71,17 @@ void problem_source (int i, int j, int k,
 
             // Electron-impact ionization collision frequency
             Real coll_I = 0.0;
-            for (int step = 0; step < Acoeff::n_step; step++) {
-                coll_I += Acoeff::A_I[beta][step] *
-                    std::pow(C::k_B*T_e / C::ev2erg, Acoeff::q_I[beta][step]) *
-                    std::exp(-Acoeff::eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
+            for (int step = 0; step < n_step; step++) {
+                coll_I += A_I[beta][step] *
+                    std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
+                    std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
                     X_stage[beta] * X_e;
             }
 
             if (alpha == beta) {
                 // Species being ionized
                 val = -coll_I;
-                e_ion += val * (rho * rho / C::m_p) * (Acoeff::eps_I[beta][0]*C::ev2erg / C::m_p);
+                e_ion += val * (rho * rho / C::m_p) * (eps_I[beta][0]*C::ev2erg / C::m_p);
             }
             else if (alpha == beta + 1) {
                 // Species created by ionization of beta
