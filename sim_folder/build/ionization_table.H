@@ -23,7 +23,9 @@ inline int get_atom_index(int mu) {
 
 static constexpr int n_step = 2; // number of ionization steps per species
 // Units: converted from cm^3/s to m^3/s (× 1e-6)
-// Fit from Broks et al. 2023 (https://arxiv.org/pdf/2305.16779) for H0 and H1
+// Fit from Broks et  al. 2023 (https://arxiv.org/pdf/2305.16779) for H0 and H1
+// Arrhenius fit R(Te) ∝ A_I * Te **q_I * exp(-eps_I / Te)
+// eps_I: ionization energy
 AMREX_GPU_HOST_DEVICE inline amrex::Real A_I[tot_num_spec][n_step] = {
     // Hydrogen (H)
     {7.1e-9, 12.4e-9}, //H0

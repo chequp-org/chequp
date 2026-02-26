@@ -26,31 +26,22 @@ void problem_source (int i, int j, int k,
     Real X_stage[NumSpec];
     
     // Create mask to identify active species
-    // This helps reduce computational cost by only processing species with significant populations
     bool active_mask[NumSpec] = {false};
     int active_spec[NumSpec];
     int n_active = 0;
 
     // Extract mass fractions and mark active species
     for (int mu = 0; mu < NumSpec; mu++) {
-        // Get mass fraction for species mu from conserved state variable
         X_stage[mu] = state(i,j,k,UFS+mu) / rho;
         
-        // Set very small mass fractions to zero to avoid numerical issues
-        if (X_stage[mu] < X_min) {
-            X_stage[mu] = 0.0;
-        }
-        
         // Mark species and neighbors as active if mass fraction is above threshold
-        // Include neighbors to account for ionization/recombination between adjacent species
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
-            // Also activate the previous species (neutral form) for ionization processes
             if (mu > 0) active_mask[mu-1] = true;
+            if (mu < NumSpec-1) active_mask[mu+1] = true;
         }
         
-        // Build list of active species indices for later iteration
-        // This avoids looping over all species when only a few are significant
+        // Build list of active species indices
         if (active_mask[mu]) {
             active_spec[n_active++] = mu;
         }
@@ -69,11 +60,13 @@ void problem_source (int i, int j, int k,
 
     // Calculate ionization source terms
     Real e_ion = 0.0;
-    for (int alpha = 0; alpha < NumSpec; alpha++) {
+    int alpha, beta;
+    for (int ia = 0; ia < n_active; ia++) {
+        alpha = active_spec[ia];
         Real sum = 0.0;
-        for (int beta = 0; beta < NumSpec; beta++) {
+        for (int ib = 0; ib < n_active; ib++) {
+            beta = active_spec[ib];
             Real val = 0.0;
-
             // Electron-impact ionization collision frequency
             Real coll_I = 0.0;
             for (int step = 0; step < n_step; step++) {
