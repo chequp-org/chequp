@@ -64,10 +64,6 @@ void problem_source (int i, int j, int k,
 
     // Initialize sources
     Real e_ion = 0.0;
-    for (int ia = 0; ia < n_active; ia++) {
-        int alpha = active_spec[ia];
-        src(i,j,k,UFS+alpha) = 0.0;
-    }
 
     // Loop over ionizing species only once
     for (int ib = 0; ib < n_active; ib++) {
