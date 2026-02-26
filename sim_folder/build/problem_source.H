@@ -26,26 +26,31 @@ void problem_source (int i, int j, int k,
     Real X_stage[NumSpec];
     
     // Create mask to identify active species
+    // This helps reduce computational cost by only processing species with significant populations
     bool active_mask[NumSpec] = {false};
     int active_spec[NumSpec];
     int n_active = 0;
 
     // Extract mass fractions and mark active species
     for (int mu = 0; mu < NumSpec; mu++) {
+        // Get mass fraction for species mu from conserved state variable
         X_stage[mu] = state(i,j,k,UFS+mu) / rho;
         
-        // Set very small mass fractions to zero
+        // Set very small mass fractions to zero to avoid numerical issues
         if (X_stage[mu] < X_min) {
             X_stage[mu] = 0.0;
         }
         
         // Mark species and neighbors as active if mass fraction is above threshold
+        // Include neighbors to account for ionization/recombination between adjacent species
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
+            // Also activate the previous species (neutral form) for ionization processes
             if (mu > 0) active_mask[mu-1] = true;
         }
         
-        // Build list of active species indices
+        // Build list of active species indices for later iteration
+        // This avoids looping over all species when only a few are significant
         if (active_mask[mu]) {
             active_spec[n_active++] = mu;
         }

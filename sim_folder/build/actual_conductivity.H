@@ -17,10 +17,18 @@ actual_conductivity_init()
     // Initialization function if needed
 }
 
+/**
+ * @brief Calculate the thermal conductivity based on electron-ion and electron-neutral collision frequencies.
+ *
+ * @param[in,out] state The state object containing density (rho), temperature (T), species mass fractions (xn), and where conductivity will be stored.
+ *
+ * @details This function computes thermal conductivity using the matrix formalism approach, accounting for both
+ * electron-ion (Coulomb) and electron-neutral collisions. The result is converted from SI to CGS units.
+ * Assumes overall charge neutrality to infer electron density from species composition.
+ */
 template <typename T>
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void
-actual_conductivity (T& state)
+void actual_conductivity (T& state)
 {
     // Infer electron density by summing over species and assuming overall neutrality
     // See https://github.com/AMReX-Astro/Microphysics/blob/main/EOS/gamma_law/actual_eos.H#L62

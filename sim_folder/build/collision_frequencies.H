@@ -18,6 +18,22 @@ namespace SI {
 }
 AMREX_GPU_HOST_DEVICE
 constexpr std::array<amrex::Real, 4> mass_vec = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
+/**
+ * @brief Computes electron-ion and electron-neutral collision frequencies.
+ *
+ * Calculates collision frequencies based on the matrix formalism for Hydrogen.
+ * Uses Coulomb logarithm for electron-ion collisions and cross-section data from LXCat
+ * for electron-neutral collisions.
+ *
+ * @param[in] n_e Electron density [m^-3]
+ * @param[in] n_n Array of neutral densities [m^-3]
+ * @param[in] T_e Electron temperature [K]
+ * @param[in] T_h Ion temperature [K]
+ * @param[out] v_ei Electron-ion collision frequency [Hz]
+ * @param[out] v_en Array of electron-neutral collision frequencies [Hz]
+ *
+ * @see https://arxiv.org/pdf/2305.16779
+ */
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_e, amrex::Real T_h,
                               amrex::Real& v_ei, amrex::Real* v_en)
