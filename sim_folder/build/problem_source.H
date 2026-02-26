@@ -19,6 +19,10 @@ void problem_source (int i, int j, int k,
 
     // Extract density and electron temperature
     Real rho = state(i,j,k,URHO);
+
+    // Electron temperature
+    // In a single-temperature model (gamma_law), this will extract the average temperature
+    // In a two-temperature model (e.g. gamma_law_2T), this will extract the electron temperature
     const amrex::Real T_e = state(i,j,k,UTEMP);
 
     // Initialize species mass fractions and identify active species
@@ -58,36 +62,41 @@ void problem_source (int i, int j, int k,
         X_e += zion[mu] * X_stage[mu];
     }
 
-    // Calculate ionization source terms
+    // Initialize sources
     Real e_ion = 0.0;
-    int alpha, beta;
     for (int ia = 0; ia < n_active; ia++) {
-        alpha = active_spec[ia];
-        Real sum = 0.0;
-        for (int ib = 0; ib < n_active; ib++) {
-            beta = active_spec[ib];
-            Real val = 0.0;
-            // Electron-impact ionization collision frequency
-            Real coll_I = 0.0;
-            for (int step = 0; step < n_step; step++) {
-                coll_I += A_I[beta][step] *
-                    std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
-                    std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
-                    X_stage[beta] * X_e;
-            }
+        int alpha = active_spec[ia];
+        src(i,j,k,UFS+alpha) = 0.0;
+    }
 
-            if (alpha == beta) {
-                // Species being ionized
-                val = -coll_I;
-                e_ion += val * (rho * rho / C::m_p) * (eps_I[beta][0]*C::ev2erg / C::m_p);
-            }
-            else if (alpha == beta + 1) {
-                // Species created by ionization of beta
-                val = coll_I;
-            }
-            sum += val * (rho * rho / C::m_p);
+    // Loop over ionizing species only once
+    for (int ib = 0; ib < n_active; ib++) {
+
+        int beta = active_spec[ib];
+
+        // Reaction rate
+        Real coll_I = 0.0;
+        for (int step = 0; step < n_step; step++) {
+            coll_I += A_I[beta][step] *
+                std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
+                std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
+                X_stage[beta] * X_e;
         }
-        src(i,j,k,UFS+alpha) = sum;
+
+        Real coeff = coll_I * (rho * rho / C::m_p);
+
+        // Loss
+        src(i,j,k,UFS+beta) -= coeff;
+
+        // Gain
+        int beta_next = beta + 1;
+        if (beta_next < NumSpec) {
+            src(i,j,k,UFS+beta_next) += coeff;
+        }
+
+        // Energy lose by ionization
+        e_ion -= coll_I * (rho * rho / C::m_p) *
+                (eps_I[beta][0] * C::ev2erg / C::m_p);
     }
 
     // Update energy source terms
