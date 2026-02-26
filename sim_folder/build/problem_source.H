@@ -78,7 +78,7 @@ void problem_source (int i, int j, int k,
                 X_stage[beta] * X_e;
         }
 
-        Real coeff = coll_I * (rho * rho / C::m_p);
+        Real const coeff = coll_I * (rho * rho / C::m_p);
 
         // Loss
         src(i,j,k,UFS+beta) -= coeff;
