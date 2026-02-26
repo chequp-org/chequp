@@ -66,9 +66,9 @@ void problem_source (int i, int j, int k,
     Real e_ion = 0.0;
 
     // Loop over ionizing species only once
-    for (int ib = 0; ib < n_active; ib++) {
+    for (int n = 0; n < n_active; n++) {
 
-        int beta = active_spec[ib];
+        int beta = active_spec[n];
 
         // Reaction rate
         Real coll_I = 0.0;
