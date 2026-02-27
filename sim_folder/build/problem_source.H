@@ -68,17 +68,24 @@ void problem_source (int i, int j, int k,
     for (int ispe = 0; ispe < n_active; ispe++) {
         // Access active index
         int beta = active_spec[ispe];
+        // Physical constants for three-body recombination
+        // De Broglie wavelength for electrons (in cm)
+        Real const lambda_DeBroglie = C::hbar * std::sqrt( 2*M_PI/(C::m_e*C::k_B*T_e) );
+        Real const reverse_rate_factor = rho * std::pow(lambda_DeBroglieB, 3) / (aion[ispe] * C::m_p * g_deg[ispe]);
         // Reaction rate
         Real coll_I = 0.0;
+        Real three_body_R = 0.0;
         for (int step = 0; step < n_step; step++) {
             coll_I += A_I[beta][step] *
                 std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
                 std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
                 X_stage[beta] * X_e;
+            three_body_R += A_I[beta][step] *
+                        std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) * 
+                        X_e * X_e * X_e * reverse_rate_factor;
         }
 
-        Real const coeff = coll_I * (rho * rho / C::m_p);
-
+        Real const coeff = (coll_I - three_body_R) * (rho * rho / C::m_p);
         // Loss
         src(i,j,k,UFS+beta) -= coeff;
 
@@ -89,7 +96,7 @@ void problem_source (int i, int j, int k,
         }
 
         // Energy lose by ionization
-        e_ion -= coll_I * (rho * rho / C::m_p) *
+        e_ion -= (coll_I - three_body_R) * (rho * rho / C::m_p) *
                 (eps_I[beta][0] * C::ev2erg / C::m_p);
     }
 

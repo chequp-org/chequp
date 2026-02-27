@@ -101,4 +101,37 @@ AMREX_GPU_HOST_DEVICE inline amrex::Real eps_I[tot_num_spec][n_step] = {
     {0.0, 0.0} //Ar3
 };
 
+// Quantum degeneracy for each species (g = 2J + 1, where J is the total angular momentum quantum number)
+AMREX_GPU_HOST_DEVICE inline amrex::Real g_deg[tot_num_spec] = {
+    // Hydrogen (H)
+    2.0,  // H I
+    // Additional dummy value for indexing issue
+    1.0,
+
+    // Nitrogen (N)
+    4.0,  // N I
+    5.0,  // N II
+    6.0,  // N III
+    7.0,  // N IV
+    8.0,  // N V
+    9.0,  // N VI
+    // Additional dummy value for indexing issue
+    1.0,
+
+    // Helium (He)
+    1.0,  // He I
+    2.0,  // He II
+    // Additional dummy value for indexing issue
+    1.0,
+
+    // Argon (Ar)
+    18.0, // Ar I
+    19.0, // Ar II
+    20.0, // Ar III
+    21.0, // Ar IV
+    // Additional dummy value for indexing issue
+    1.0
+};
+
+
 #endif // #ifndef IONIZATION_TABLE_H_
