@@ -57,18 +57,17 @@ void problem_source (int i, int j, int k,
 
     // Calculate electron fraction from active species
     Real X_e = 0.0;
-    for (int i = 0; i < n_active; i++) {
-        int mu = active_spec[i];
+    for (int ispe = 0; ispe < n_active; ispe++) {
+        int mu = active_spec[ispe];
         X_e += zion[mu] * X_stage[mu];
     }
-
     // Initialize sources
     Real e_ion = 0.0;
 
     // Loop over ionizing species only once
-    for (int n = 0; n < n_active; n++) {
+    for (int ispe = 0; ispe < n_active; ispe++) {
         // Access active index
-        int beta = active_spec[n];
+        int beta = active_spec[ispe];
         // Reaction rate
         Real coll_I = 0.0;
         for (int step = 0; step < n_step; step++) {
@@ -102,8 +101,8 @@ void problem_source (int i, int j, int k,
     amrex::Real n_e = 0.0;
     amrex::Real n_n_species[num_atom_species] = {};
 
-    for (int i = 0; i < n_active; i++) {
-        int mu = active_spec[i];
+    for (int ispe = 0; ispe < n_active; ispe++) {
+        int mu = active_spec[ispe];
         n_e += zion[mu] * X_stage[mu] * rho / C::m_u * 1.e6;
         if (zion[mu] == 0) {
             int idx_atom = get_atom_index(mu);
@@ -119,16 +118,16 @@ void problem_source (int i, int j, int k,
 
     // Calculate momentum transfer collision frequencies
     amrex::Real v_e_E[NumSpec] = {};
-    for (int i = 0; i < n_active; i++) {
-        int mu = active_spec[i];
+    for (int ispe = 0; ispe < n_active; ispe++) {
+        int mu = active_spec[ispe];
         v_e_E[mu] = 2 * SI::m_e / mass_vec[get_atom_index(mu)] *
                     (std::pow(zion[mu], 4) * v_ei + v_en[mu]);
     }
 
     // Calculate energy transfer source term
     amrex::Real Sc = 0.0;
-    for (int im = 0; im < n_active; im++) {
-        int mu = active_spec[im];
+    for (int ispe = 0; ispe < n_active; ispe++) {
+        int mu = active_spec[ispe];
         Sc += rho * v_e_E[mu] * (1 - (1 + X_stage[mu]) * f);
     }
 
