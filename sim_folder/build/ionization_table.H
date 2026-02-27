@@ -101,6 +101,7 @@ AMREX_GPU_HOST_DEVICE inline amrex::Real eps_I[tot_num_spec][n_step] = {
     {0.0, 0.0} //Ar3
 };
 
+// Quantum degeneracy for each species (g = 2J + 1, where J is the total angular momentum quantum number)
 AMREX_GPU_HOST_DEVICE inline amrex::Real g_deg[tot_num_spec] = {
     // Hydrogen (H)
     2.0,  // H I
