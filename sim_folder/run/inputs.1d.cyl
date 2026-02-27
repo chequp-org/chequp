@@ -63,17 +63,6 @@ problem.initial_conditions_file = "example_1d_initial_conditions.h5"
 problem.p_ambient = 1.e-6
 problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
 
-# PARAMETERS OF ARRHENIUS LAW FOR DIRECT IONIZATION
-problem.a_direct_ioniz = 7.1e-9 // cm^3.s-1
-problem.q_direct_ioniz = 0.4
-problem.e_direct_ioniz_eV = 13.6 // eV
-# PARAMETERS OF ARRHENIUS LAW FOR TWO-STEP IONIZATION
-problem.a_twostep_ioniz = 12.4e-9 // cm^3.s-1
-problem.q_twostep_ioniz = 0.3
-problem.e_twostep_ioniz_eV = 10.6 // eV
-# ENERGY LOST PER IONIZATION PROCESS
-problem.e_loss_ioniz_eV = 13.6 // eV
-
 # EOS
 eos.eos_assume_neutral = 0
 eos.eos_gamma = 1.66666667
