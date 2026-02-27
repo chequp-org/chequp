@@ -71,7 +71,7 @@ void problem_source (int i, int j, int k,
         // Physical constants for three-body recombination
         // De Broglie wavelength for electrons (in cm)
         Real const lambda_DeBroglie = C::hbar * std::sqrt( 2*M_PI/(C::m_e*C::k_B*T_e) );
-        Real const reverse_rate_factor = rho * std::pow(lambda_DeBroglieB, 3) / (aion[ispe] * C::m_p * g_deg[ispe]);
+        Real const reverse_rate_factor = rho * std::pow(lambda_DeBroglie, 3) / (aion[ispe] * C::m_p * g_deg[ispe]);
         // Reaction rate
         Real coll_I = 0.0;
         Real three_body_R = 0.0;
