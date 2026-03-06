@@ -7,14 +7,14 @@
 #include <ionization_table.H>
 
 namespace SI {
-    const double k_B = 1.380649e-23; // Boltzmann constant in J/K
-    const double q_e = 1.602176634e-19; // Elementary charge in C
-    const double epsilon0 = 8.854187817e-12; // Permittivity of free space in F/m
-    const double m_e = 9.1093837015e-31; // Electron mass in kg
-    const double m_H = 1.67262192369e-27; // Hydrogen mass in kg
-    const double m_N = 2.3258671e-26; // Nitrogen mass in kg
-    const double m_He = 6.6464764e-27; // Helium mass in kg 
-    const double m_Ar = 6.6335209e-26; // Argon mass in kg
+    constexpr double k_B = 1.380649e-23; // Boltzmann constant in J/K
+    constexpr double q_e = 1.602176634e-19; // Elementary charge in C
+    constexpr double epsilon0 = 8.854187817e-12; // Permittivity of free space in F/m
+    constexpr double m_e = 9.1093837015e-31; // Electron mass in kg
+    constexpr double m_H = 1.67262192369e-27; // Hydrogen mass in kg
+    constexpr double m_N = 2.3258671e-26; // Nitrogen mass in kg
+    constexpr double m_He = 6.6464764e-27; // Helium mass in kg
+    constexpr double m_Ar = 6.6335209e-26; // Argon mass in kg
 }
 AMREX_GPU_HOST_DEVICE
 constexpr std::array<amrex::Real, 4> mass_vec = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
