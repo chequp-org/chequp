@@ -247,7 +247,8 @@ def load_intensity_profile(filename):
 def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges, species_keys,
-            initial_populations, output_file=None, grid_extent=None):
+            initial_populations, output_file=None, grid_extent=None,
+            n_total=1e24):
     """
     Process nD intensity array for multi-species plasma
 
@@ -265,10 +266,11 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
         Dictionary with elements of species_keys as keys and initial population fractions as values
         If an element from species_keys is not in the dictionary, it is assumed to be 0
     output_file : str, optional
-        Filename to save openPMD output with radius, temperature and populations
-    r_coords : array-like, optional
-        Radial coordinates (m). Required for 1D data if output_file is specified.
-        For 2D data, used to determine radial sampling for CSV output.
+        Filename to save openPMD output with radius, temperature and densities
+    grid_extent : dict, optional
+        Grid extent for openPMD output
+    n_total : float
+        Total number density in m^-3 for converting fractions to densities (default: 1e24)
 
     Returns:
     --------
@@ -302,8 +304,9 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     all_populations = all_populations_flat.reshape(a0_array.shape + (len(species_keys),))
     T_array = T_flat.reshape(a0_array.shape)
 
-    # Save detailed CSV output with all species
+    # Save openPMD output with species densities
     if output_file and grid_extent is not None:
-        save_to_openpmd(grid_extent, all_populations, T_array, output_file, species_keys)
+        all_densities = all_populations * n_total
+        save_to_openpmd(grid_extent, all_densities, T_array, output_file, species_keys)
 
     return all_populations, T_array

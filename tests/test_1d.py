@@ -19,8 +19,11 @@ from analysis_tool import CastroSimulation
 sys.path.append('../theory/sedov_theory/python/')
 from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
-from scipy.constants import m_p, k, e
+from scipy.constants import m_p, k, e, atomic_mass
 from scipy.optimize import curve_fit
+
+# Atomic mass unit in CGS — must match C::m_u in Castro's fundamental_constants.H
+m_u_cgs = atomic_mass * 1e3  # kg -> g
 
 
 def cleanup_outputs(extra_file=""):
@@ -125,13 +128,15 @@ def test_1d_sedov_taylor():
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
-    populations = np.zeros((len(r), len(species_keys)))
-    # Set fraction to 1 for H+
+    # n_total chosen so that rho = n_total * aion * m_u = 1.67e-6 g/cm^3
+    rho_initial = 1.67e-6  # g/cm^3
+    n_total = (rho_initial / m_u_cgs) * 1e6  # m^-3
+    densities = np.zeros((len(r), len(species_keys)))
     # small neutral fraction to avoid issues with zero density
-    populations[:, species_keys.index('H1')] = 1 - 1e-3
-    populations[:, species_keys.index('H0')] = 1e-3
+    densities[:, species_keys.index('H1')] = (1 - 1e-3) * n_total
+    densities[:, species_keys.index('H0')] = 1e-3 * n_total
     # Save file
-    save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
+    save_to_openpmd( {'r': [r.min(), r.max()]}, densities,
         T_eV, '1d_sedov_taylor.h5', species_keys)
 
     # Run the code
@@ -142,7 +147,6 @@ def test_1d_sedov_taylor():
     sim_data = CastroSimulation('.', 'plt_1d_') # load simulation data
 
     # Comparison with Sedov Taylor theory
-    rho_initial = 1.67e-6  # in g.cm^-3
     mp_g = m_p*1e3 # in g
     sigma_cm = Twidth*1e2 # in cm
     deposited_energy = 3*np.pi/2 * T0_eV*e * sigma_cm**2 * rho_initial/mp_g * 1e7 # in erg/cm (computed by integrating initial conditions)
@@ -238,12 +242,14 @@ def test_1d_desy_benchmark():
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
-    populations = np.zeros((len(r), len(species_keys)))
-    # Set H0 and H1 fractions
-    populations[:, species_keys.index('H0')] = 1 - ioniz_fraction
-    populations[:, species_keys.index('H1')] = ioniz_fraction
+    # n_total chosen so that rho = n_total * aion * m_u = 1.67e-6 g/cm^3
+    n_total = (1.67e-6 / m_u_cgs) * 1e6  # m^-3
+    densities = np.zeros((len(r), len(species_keys)))
+    # Set H0 and H1 number densities
+    densities[:, species_keys.index('H0')] = (1 - ioniz_fraction) * n_total
+    densities[:, species_keys.index('H1')] = ioniz_fraction * n_total
     # Save file
-    save_to_openpmd( {'r': [r.min(), r.max()]}, populations,
+    save_to_openpmd( {'r': [r.min(), r.max()]}, densities,
         T_eV, '1d_desy_benchmark.h5', species_keys)
 
     # Run the code
