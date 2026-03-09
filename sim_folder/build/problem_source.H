@@ -5,6 +5,7 @@
 #include <fundamental_constants.H>
 #include <collision_frequencies.H>
 #include <ionization_table.H>
+#include <collisional_ionization.H>
 
 using namespace amrex;
 
@@ -41,8 +42,10 @@ void problem_source (int i, int j, int k,
         // Mark species and neighbors as active if mass fraction is above threshold
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
-            if (mu > 0) active_mask[mu-1] = true;
-            if (mu < NumSpec-1) active_mask[mu+1] = true;
+            // Activate previous species if it belongs to the same atom
+            if (mu > 0 && get_atom_index(mu) == get_atom_index(mu-1)) active_mask[mu-1] = true;
+            // Activate next species if it belongs to the same atom
+            if (mu < NumSpec-1 && get_atom_index(mu) == get_atom_index(mu+1)) active_mask[mu+1] = true;
         }
         
         // Build list of active species indices
@@ -68,23 +71,9 @@ void problem_source (int i, int j, int k,
     for (int ispe = 0; ispe < n_active; ispe++) {
         // Access active index
         int beta = active_spec[ispe];
-        // Physical constants for three-body recombination
-        // De Broglie wavelength for electrons (in cm)
-        Real const lambda_DeBroglie = C::hbar * std::sqrt( 2*M_PI/(C::m_e*C::k_B*T_e) );
-        Real const reverse_rate_factor = rho * std::pow(lambda_DeBroglie, 3) / (aion[ispe] * C::m_p * g_deg[ispe]);
         // Reaction rate
-        Real coll_I = 0.0;
-        Real three_body_R = 0.0;
-        for (int step = 0; step < n_step; step++) {
-            coll_I += A_I[beta][step] *
-                std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
-                std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
-                X_stage[beta] * X_e;
-            three_body_R += A_I[beta][step] *
-                        std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) * 
-                        X_e * X_e * X_e * reverse_rate_factor;
-        }
-
+        Real coll_I = (coll_ion::get_rate_direct_ion(beta, T_e) + coll_ion::get_rate_ex_ion(beta, T_e)) * X_stage[beta] * X_e;
+        Real three_body_R = coll_ion::get_rate_3body(beta, rho, T_e) * X_e * X_e * X_e;
         Real const coeff = (coll_I - three_body_R) * (rho * rho / C::m_p);
         // Loss
         src(i,j,k,UFS+beta) -= coeff;
