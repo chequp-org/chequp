@@ -159,7 +159,7 @@ void problem_source (int i, int j, int k,
     // Initialize species mass fractions and identify active species
     // Initialize species mass fractions
     Real X_stage[NumSpec];
-    
+
     // Create mask to identify active species
     bool active_mask[NumSpec] = {false};
     int active_spec[NumSpec];
@@ -168,14 +168,14 @@ void problem_source (int i, int j, int k,
     // Extract mass fractions and mark active species
     for (int mu = 0; mu < NumSpec; mu++) {
         X_stage[mu] = state(i,j,k,UFS+mu) / rho;
-        
+
         // Mark species and neighbors as active if mass fraction is above threshold
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
             if (mu > 0) active_mask[mu-1] = true;
             if (mu < NumSpec-1) active_mask[mu+1] = true;
         }
-        
+
         // Build list of active species indices
         if (active_mask[mu]) {
             active_spec[n_active++] = mu;
@@ -212,7 +212,7 @@ void problem_source (int i, int j, int k,
                 std::exp(-eps_I[beta][step] * C::ev2erg / (C::k_B*T_e)) *
                 X_stage[beta] * X_e;
             three_body_R += A_I[beta][step] *
-                        std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) * 
+                        std::pow(C::k_B*T_e / C::ev2erg, q_I[beta][step]) *
                         X_e * X_e * X_e * reverse_rate_factor;
         }
 
@@ -271,6 +271,9 @@ void problem_source (int i, int j, int k,
 
     // Add contribution for temperature diffusion
     if (diffuse_temp) {
+        auto coord = geomdata.Coord();
+        const Real* prob_lo = geomdata.ProbLo();
+        const Real* dx = geomdata.CellSize();
         const amrex::Real temp_diffusion_term = compute_temp_diffusion_term(i,j,k,state,prob_lo,dx,coord);
         src(i,j,k,UEDEN) += temp_diffusion_term;
         src(i,j,k,UEINT) += temp_diffusion_term;
@@ -278,5 +281,53 @@ void problem_source (int i, int j, int k,
 
     src(i,j,k,UFX) = -f/e * src(i,j,k,UEDEN) + Sc;
 }
+
+template <class... Ts>
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void ignore__unused (const Ts&...) {}
+
+inline void
+fill_ext_source2 (const Real time, const Real dt,
+                  const MultiFab& state_old, const MultiFab& state_new,
+                  MultiFab& ext_src, const GeometryData& geomdata)
+{
+
+    ignore__unused(state_old);
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(ext_src, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.tilebox();
+
+        Array4<Real const> const snew = state_new.array(mfi);
+        Array4<Real> const src = ext_src.array(mfi);
+
+        amrex::ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            problem_source(i, j, k, geomdata, snew, src, dt, time);
+        });
+    }
+}
+
+// attack the line "amrex::ignore_unused(state_old);" in Castro_problem_source.cpp
+// to call our version of fill_ext_source instead
+// state_new_ghost.ParallelCopy(state_new, 0, 0, state_new.nComp(), 0, 1);
+#define ignore_unused \
+    Real x = 0; \
+    ignore__unused(x); \
+    if (state_new.nGrowVect().allGE(amrex::IntVect(1))) { \
+        fill_ext_source2(time, dt, state_old, state_new, ext_src, geom.data()); \
+        return; \
+    } else { \
+        amrex::MultiFab state_new_ghost(state_new.boxArray(), state_new.DistributionMap(), \
+                                        state_new.nComp(), amrex::IntVect(1)); \
+        expand_state(state_new_ghost, time, state_new_ghost.nGrow()); \
+        fill_ext_source2(time, dt, state_old, state_new_ghost, ext_src, geom.data()); \
+        return; \
+    } \
+    ignore__unused
 
 #endif
