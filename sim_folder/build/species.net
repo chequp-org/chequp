@@ -8,5 +8,12 @@
   N_ion_3    N3        14.0      3.0
   N_ion_4    N4        14.0      4.0
   N_ion_5    N5	       14.0	     5.0
+  He_neutral He0       4.0       0.0
+  He_ion_1   He1       4.0       1.0
+  He_ion_2   He2       4.0       2.0
+  Ar_neutral Ar0       39.9      0.0
+  Ar_ion_1   Ar1       39.9      1.0
+  Ar_ion_2   Ar2       39.9      2.0
+  Ar_ion_3   Ar3       39.9      3.0
 # auxiliary variables
 __aux_f_heavies
