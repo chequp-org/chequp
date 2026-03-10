@@ -4,7 +4,7 @@
 #include <cmath>
 #include <AMReX.H>
 #include <AMReX_Math.H>
-#include <ionization_table.H>
+#include <collisional_ionization.H>
 
 namespace SI {
     const double k_B = 1.380649e-23; // Boltzmann constant in J/K
