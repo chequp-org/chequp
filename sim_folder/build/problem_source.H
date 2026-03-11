@@ -41,8 +41,9 @@ void problem_source (int i, int j, int k,
         // Mark species and neighbors as active if mass fraction is above threshold
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
-            if (mu > 0) active_mask[mu-1] = true;
-            if (mu < NumSpec-1) active_mask[mu+1] = true;
+            // Activate next species if it belongs to the same atom
+            if (mu > 0 && get_atom_index(mu) == get_atom_index(mu-1)) active_mask[mu-1] = true;
+            if (mu < NumSpec-1 && get_atom_index(mu) == get_atom_index(mu+1)) active_mask[mu+1] = true;
         }
         
         // Build list of active species indices
