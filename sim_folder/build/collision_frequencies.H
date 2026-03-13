@@ -3,8 +3,6 @@
 
 #include <cmath>
 #include <AMReX.H>
-#include <map>
-#include <vector>
 #include <AMReX_Math.H>
 #include <ionization_table.H>
 
