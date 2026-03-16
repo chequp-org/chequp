@@ -62,67 +62,134 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_
     // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
     //   Morgan database, www.lxcat.net
     // Hydrogen
-    amrex::Real log_sigma_m2_H;
-    if (E_bar < 0.1*SI::q_e) {
-        log_sigma_m2_H = -4.28906183e+01;
-    } else {
-        const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
-        log_sigma_m2_H = -4.28906183e+01
-            -3.20501602e-01*log_E_eV
-            -9.75994914e-02*amrex::Math::powi<2>(log_E_eV)
-            -1.72242991e-02*amrex::Math::powi<3>(log_E_eV)
-            + 2.59407262e-03*amrex::Math::powi<4>(log_E_eV);
-    }
-    amrex::Real sigma_m2_H = std::exp(log_sigma_m2_H);
+    // H - Rational function fit
+    const amrex::Real log_E_norm_H = (std::log(E_bar / SI::q_e) - 2.606962e+00) / 4.605170e+00;
+    amrex::Real numerator_H = -4.451560e+01 + -4.477831e+01*amrex::Math::powi<1>(log_E_norm_H) + -6.605789e+02*amrex::Math::powi<2>(log_E_norm_H) + 9.020842e+01*amrex::Math::powi<3>(log_E_norm_H) + -1.798055e+02*amrex::Math::powi<4>(log_E_norm_H);
+    amrex::Real denominator_H = 1.0 + 8.890529e-01*amrex::Math::powi<1>(log_E_norm_H) + 1.461417e+01*amrex::Math::powi<2>(log_E_norm_H) + -3.442456e+00*amrex::Math::powi<3>(log_E_norm_H) + 3.765710e+00*amrex::Math::powi<4>(log_E_norm_H);
+    amrex::Real sigma_m2_H = std::exp(numerator_H / denominator_H);
+
+
     // Nitrogen 
+    // N - Lookup table with linear interpolation in log-log space
+    // Total points: 8
+
+    // Lookup table: log(E_eV) values
+    static const amrex::Real log_E_table_N[] = {
+        -2.1931927162e+00, -1.8124112570e+00, -6.0842007720e-01, 6.4433501615e-01, 1.1833332669e+00, 
+        1.5887983750e+00, 2.3227601999e+00, 4.9130298154e+00
+    };
+
+    // Lookup table: log(sigma_m2) values
+    static const amrex::Real log_sigma_table_N[] = {
+        -4.1798399478e+01, -4.2169818779e+01, -4.3041034358e+01, -4.3320742142e+01, -4.3450829719e+01, 
+        -4.3621938169e+01, -4.3706800093e+01, -4.3783406605e+01, -4.4693000603e+01, -4.5276580652e+01
+    };
+
+    static const int table_size_N = 8;
+
+    // Calculate log(E_eV)
+    const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
     amrex::Real log_sigma_m2_N;
-    if (E_bar < 0.1*SI::q_e) {
-        log_sigma_m2_N = -4.34e+01;
-    } else {
-        const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
-        log_sigma_m2_N = -4.34e+01
-            -1.91e-1*log_E_eV
-            +5.50e-3*amrex::Math::powi<2>(log_E_eV)
-            -8.56e-3*amrex::Math::powi<3>(log_E_eV)
-            +2.02e-2*amrex::Math::powi<4>(log_E_eV)
-            -9.21e-3*amrex::Math::powi<5>(log_E_eV)
-            +1.04e-3*amrex::Math::powi<6>(log_E_eV);
+
+    // Low energy extrapolation (linear in log-log)
+    if (log_E_eV < log_E_table_N[0]) {
+        const amrex::Real slope = -2.9262399064e+00;
+        log_sigma_m2_N = -4.1798399478e+01 + 
+            slope * (log_E_eV - log_E_table_N[0]);
     }
+    // High energy extrapolation (linear in log-log)
+    else if (log_E_eV > log_E_table_N[table_size_N-1]) {
+        const amrex::Real slope = -6.7589108677e-01;
+        log_sigma_m2_N = -4.5276580652e+01 + 
+            slope * (log_E_eV - log_E_table_N[table_size_N-1]);
+    }
+    // Interior: linear interpolation in lookup table
+    else {
+        // Binary search for the interval
+        int i_low = 0;
+        int i_high = table_size_N - 1;
+        while (i_high - i_low > 1) {
+            int i_mid = (i_low + i_high) / 2;
+            if (log_E_eV < log_E_table_N[i_mid]) {
+                i_high = i_mid;
+            } else {
+                i_low = i_mid;
+            }
+        }
+        
+        // Linear interpolation
+        const amrex::Real log_E_low = log_E_table_N[i_low];
+        const amrex::Real log_E_high = log_E_table_N[i_high];
+        const amrex::Real log_sigma_low = log_sigma_table_N[i_low];
+        const amrex::Real log_sigma_high = log_sigma_table_N[i_high];
+        
+        const amrex::Real alpha = (log_E_eV - log_E_low) / (log_E_high - log_E_low);
+        log_sigma_m2_N = log_sigma_low + alpha * (log_sigma_high - log_sigma_low);
+    }
+
     amrex::Real sigma_m2_N = std::exp(log_sigma_m2_N);
     // Helium
+    // He - Lookup table with linear interpolation in log-log space
+    // Total points: 7
+
+    // Lookup table: log(E_eV) values
+    static const amrex::Real log_E_table_He[] = {
+        -4.6051701860e+00, 0.0000000000e+00, 1.3862943611e+00, 2.3025850930e+00, 3.4011973817e+00, 
+        4.6051701860e+00, 6.9077552790e+00
+    };
+
+    // Lookup table: log(sigma_m2) values
+    static const amrex::Real log_sigma_table_He[] = {
+        -4.4388434801e+01, -4.4351113483e+01, -4.4159240137e+01, -4.4068125055e+01, -4.4400551213e+01, 
+        -4.5547157836e+01, -4.8255889239e+01, -5.0076072728e+01, -5.1406099577e+01
+    };
+
+    static const int table_size_He = 7;
     amrex::Real log_sigma_m2_He;
-    if (E_bar < 0.1*SI::q_e) {
-        log_sigma_m2_He = -4.41e1;
-    } else {
-        const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
-        log_sigma_m2_He = -4.41e1
-            +1.22e-1*log_E_eV
-            +2.40e-3*amrex::Math::powi<2>(log_E_eV)
-            -5.15e-2*amrex::Math::powi<3>(log_E_eV)
-            -7.32e-3*amrex::Math::powi<4>(log_E_eV)
-            +3.27e-3*amrex::Math::powi<5>(log_E_eV)
-            -2.39e-4*amrex::Math::powi<6>(log_E_eV);
+
+    // Low energy extrapolation (linear in log-log)
+    if (log_E_eV < log_E_table_He[0]) {
+        const amrex::Real slope = 2.4312663650e-02;
+        log_sigma_m2_He = -4.4388434801e+01 + 
+            slope * (log_E_eV - log_E_table_He[0]);
     }
+    // High energy extrapolation (linear in log-log)
+    else if (log_E_eV > log_E_table_He[table_size_He-1]) {
+        const amrex::Real slope = -1.7328699641e+00;
+        log_sigma_m2_He = -5.1406099577e+01 + 
+            slope * (log_E_eV - log_E_table_He[table_size_He-1]);
+    }
+    // Interior: linear interpolation in lookup table
+    else {
+        // Binary search for the interval
+        int i_low = 0;
+        int i_high = table_size_He - 1;
+        while (i_high - i_low > 1) {
+            int i_mid = (i_low + i_high) / 2;
+            if (log_E_eV < log_E_table_He[i_mid]) {
+                i_high = i_mid;
+            } else {
+                i_low = i_mid;
+            }
+        }
+        
+        // Linear interpolation
+        const amrex::Real log_E_low = log_E_table_He[i_low];
+        const amrex::Real log_E_high = log_E_table_He[i_high];
+        const amrex::Real log_sigma_low = log_sigma_table_He[i_low];
+        const amrex::Real log_sigma_high = log_sigma_table_He[i_high];
+        
+        const amrex::Real alpha = (log_E_eV - log_E_low) / (log_E_high - log_E_low);
+        log_sigma_m2_He = log_sigma_low + alpha * (log_sigma_high - log_sigma_low);
+    }
+
     amrex::Real sigma_m2_He = std::exp(log_sigma_m2_He);
     // Argon
-    amrex::Real log_sigma_m2_Ar;
-    if (E_bar < 0.1*SI::q_e) {
-        log_sigma_m2_Ar = -4.59e-1;
-    } else {
-        const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
-        log_sigma_m2_Ar = -4.59e-1
-            +9.15e-1*log_E_eV
-            -3.63e-1*amrex::Math::powi<2>(log_E_eV)
-            +5.30e-1*amrex::Math::powi<3>(log_E_eV)
-            +7.68e-2*amrex::Math::powi<4>(log_E_eV)
-            -1.96e-1*amrex::Math::powi<5>(log_E_eV)
-            +3.19e-2*amrex::Math::powi<6>(log_E_eV)
-            +1.32e-2*amrex::Math::powi<7>(log_E_eV)
-            -5.07e-3*amrex::Math::powi<8>(log_E_eV)
-            +6.17e-4*amrex::Math::powi<9>(log_E_eV)
-            -2.62e-5*amrex::Math::powi<10>(log_E_eV);
-    }
-    amrex::Real sigma_m2_Ar = std::exp(log_sigma_m2_Ar);
+    // Ar - Rational function fit
+    const amrex::Real log_E_norm_Ar = (std::log(E_bar / SI::q_e) - -2.964491e-01) / 3.656610e+00;
+    amrex::Real numerator_Ar = -4.603229e+01 + -9.762298e+01*amrex::Math::powi<1>(log_E_norm_Ar) + 7.863646e+01*amrex::Math::powi<2>(log_E_norm_Ar) + 3.714900e+02*amrex::Math::powi<3>(log_E_norm_Ar) + -4.349251e+02*amrex::Math::powi<4>(log_E_norm_Ar);
+    amrex::Real denominator_Ar = 1.0 + 2.227788e+00*amrex::Math::powi<1>(log_E_norm_Ar) + -1.683525e+00*amrex::Math::powi<2>(log_E_norm_Ar) + -8.217511e+00*amrex::Math::powi<3>(log_E_norm_Ar) + 9.590648e+00*amrex::Math::powi<4>(log_E_norm_Ar);
+    amrex::Real sigma_m2_Ar = std::exp(numerator_Ar / denominator_Ar);
 
     // Calculate v_en for each species
     amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, sigma_m2_He, sigma_m2_Ar};
