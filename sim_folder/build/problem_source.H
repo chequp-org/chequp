@@ -26,7 +26,6 @@ void problem_source (int i, int j, int k,
     const amrex::Real T_e = state(i,j,k,UTEMP);
 
     // Initialize species mass fractions and identify active species
-    // Initialize species mass fractions
     Real X_stage[NumSpec];
     
     // Create mask to identify active species
@@ -41,6 +40,7 @@ void problem_source (int i, int j, int k,
         // Build the active list in a second pass so back-neighbors are not missed.
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
+            // Activate next species if it belongs to the same atom
             if (mu > 0 && get_atom_index(mu) == get_atom_index(mu-1)) active_mask[mu-1] = true;
             if (mu < NumSpec-1 && get_atom_index(mu) == get_atom_index(mu+1)) active_mask[mu+1] = true;
         }
