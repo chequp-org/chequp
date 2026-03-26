@@ -60,25 +60,72 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_
     for (int mu = 0; mu < num_atom_species; mu++) {
             mu_en[mu] = SI::m_e * mass_vec[mu] / (SI::m_e + mass_vec[mu]);}
     // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
-    //   Morgan database, www.lxcat.net (PROCESS: E + H -> E + H, Elastic)
-    amrex::Real log_sigma_m2;
+    //   Morgan database, www.lxcat.net
+    // Hydrogen
+    amrex::Real log_sigma_m2_H;
     if (E_bar < 0.1*SI::q_e) {
-        log_sigma_m2 = -4.28906183e+01;
+        log_sigma_m2_H = -4.28906183e+01;
     } else {
         const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
-        log_sigma_m2 = -4.28906183e+01
+        log_sigma_m2_H = -4.28906183e+01
             -3.20501602e-01*log_E_eV
             -9.75994914e-02*amrex::Math::powi<2>(log_E_eV)
             -1.72242991e-02*amrex::Math::powi<3>(log_E_eV)
             + 2.59407262e-03*amrex::Math::powi<4>(log_E_eV);
     }
-    const amrex::Real sigma_m2_H = std::exp(log_sigma_m2);
-    const amrex::Real sigma_m2_N = 0.0; // TO BE UPDATED
-    const amrex::Real sigma_m2_He = 0.0; // TO BE UPDATED
-    const amrex::Real sigma_m2_Ar = 0.0; // TO BE UPDATED
+    amrex::Real sigma_m2_H = std::exp(log_sigma_m2_H);
+    // Nitrogen 
+    amrex::Real log_sigma_m2_N;
+    if (E_bar < 0.1*SI::q_e) {
+        log_sigma_m2_N = -4.34e+01;
+    } else {
+        const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
+        log_sigma_m2_N = -4.34e+01
+            -1.91e-1*log_E_eV
+            +5.50e-3*amrex::Math::powi<2>(log_E_eV)
+            -8.56e-3*amrex::Math::powi<3>(log_E_eV)
+            +2.02e-2*amrex::Math::powi<4>(log_E_eV)
+            -9.21e-3*amrex::Math::powi<5>(log_E_eV)
+            +1.04e-3*amrex::Math::powi<6>(log_E_eV);
+    }
+    amrex::Real sigma_m2_N = std::exp(log_sigma_m2_N);
+    // Helium
+    amrex::Real log_sigma_m2_He;
+    if (E_bar < 0.1*SI::q_e) {
+        log_sigma_m2_He = -4.41e1;
+    } else {
+        const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
+        log_sigma_m2_He = -4.41e1
+            +1.22e-1*log_E_eV
+            +2.40e-3*amrex::Math::powi<2>(log_E_eV)
+            -5.15e-2*amrex::Math::powi<3>(log_E_eV)
+            -7.32e-3*amrex::Math::powi<4>(log_E_eV)
+            +3.27e-3*amrex::Math::powi<5>(log_E_eV)
+            -2.39e-4*amrex::Math::powi<6>(log_E_eV);
+    }
+    amrex::Real sigma_m2_He = std::exp(log_sigma_m2_He);
+    // Argon
+    amrex::Real log_sigma_m2_Ar;
+    if (E_bar < 0.1*SI::q_e) {
+        log_sigma_m2_Ar = -4.59e-1;
+    } else {
+        const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
+        log_sigma_m2_Ar = -4.59e-1
+            +9.15e-1*log_E_eV
+            -3.63e-1*amrex::Math::powi<2>(log_E_eV)
+            +5.30e-1*amrex::Math::powi<3>(log_E_eV)
+            +7.68e-2*amrex::Math::powi<4>(log_E_eV)
+            -1.96e-1*amrex::Math::powi<5>(log_E_eV)
+            +3.19e-2*amrex::Math::powi<6>(log_E_eV)
+            +1.32e-2*amrex::Math::powi<7>(log_E_eV)
+            -5.07e-3*amrex::Math::powi<8>(log_E_eV)
+            +6.17e-4*amrex::Math::powi<9>(log_E_eV)
+            -2.62e-5*amrex::Math::powi<10>(log_E_eV);
+    }
+    amrex::Real sigma_m2_Ar = std::exp(log_sigma_m2_Ar);
 
     // Calculate v_en for each species
-    amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, sigma_m2_He, sigma_m2_Ar}; // TO BE UPDATED FOR ALL SPECIES
+    amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, sigma_m2_He, sigma_m2_Ar};
     for (int mu = 0; mu < NumSpec; mu++) {
         v_en[mu] = 0.0; // default zero
         const int idx_spec = get_atom_index(mu);
