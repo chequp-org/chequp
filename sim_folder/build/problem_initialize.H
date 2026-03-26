@@ -64,7 +64,6 @@ void problem_initialize ()
     read_initial_conditions();
 
     coll_ion::initialize();
-
 }
 
 #endif

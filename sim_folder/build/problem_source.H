@@ -37,16 +37,16 @@ void problem_source (int i, int j, int k,
     // Extract mass fractions and mark active species
     for (int mu = 0; mu < NumSpec; mu++) {
         X_stage[mu] = state(i,j,k,UFS+mu) / rho;
-        
-        // Mark species and neighbors as active if mass fraction is above threshold
+        // Mark species and neighbors as active if mass fraction is above threshold.
+        // Build the active list in a second pass so back-neighbors are not missed.
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
-            // Activate previous species if it belongs to the same atom
             if (mu > 0 && get_atom_index(mu) == get_atom_index(mu-1)) active_mask[mu-1] = true;
             if (mu < NumSpec-1 && get_atom_index(mu) == get_atom_index(mu+1)) active_mask[mu+1] = true;
         }
-        
-        // Build list of active species indices
+    }
+
+    for (int mu = 0; mu < NumSpec; mu++) {
         if (active_mask[mu]) {
             active_spec[n_active++] = mu;
         }
@@ -65,28 +65,29 @@ void problem_source (int i, int j, int k,
     // Initialize sources
     Real e_ion = 0.0;
 
-    // Loop over ionizing species only once
     for (int ispe = 0; ispe < n_active; ispe++) {
-        // Access active index
         int beta = active_spec[ispe];
-        // Reaction rate from collisional ionization
-        Real coll_I = (coll_ion::get_rate_direct_ion(beta, T_e) + coll_ion::get_rate_ex_ion(beta, T_e)) * X_stage[beta] * X_e;
-        Real three_body_R = coll_ion::get_rate_3body(beta, rho, T_e) * X_e * X_e * X_e;
-        Real const coeff = (coll_I - three_body_R) * (rho * rho / C::m_p);
-        // Loss
-        src(i,j,k,UFS+beta) -= coeff;
-
-        // Gain
         int beta_next = beta + 1;
-        if (beta_next < NumSpec) {
-            src(i,j,k,UFS+beta_next) += coeff;
-        }
+        int atom_idx = get_atom_index(beta);
 
-        // Energy lose by ionization
-        int idx_Eion = get_energy_index(zatom[get_atom_index(beta)]) + (zatom[get_atom_index(beta)] - 1 - zion[beta]);
-        e_ion -= (coll_I - three_body_R) * (rho * rho / C::m_p) *
-                (bindingEnergy[idx_Eion]
-                * C::ev2erg / C::m_p);
+        if (beta_next < NumSpec && get_atom_index(beta_next) == atom_idx) {
+            // 1. Calculate Rates
+            Real coll_I = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
+            coll_I += X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
+            Real three_body_R = coll_ion::get_rate_3body(beta, rho, T_e) * X_e * X_e * X_stage[beta_next];
+
+            // 2. Net Rate Coefficient
+            Real const coeff = (coll_I - three_body_R) * (rho * rho / (aion[beta] * C::m_p));
+            
+            // 3. Update Mass Fraction Sources
+            src(i,j,k,UFS+beta)      -= coeff;
+            src(i,j,k,UFS+beta_next) += coeff;
+
+            // 4. Energy Update
+            int idx_Eion = get_energy_index(zatom[atom_idx]) + zion[beta];
+            Real E_ion_erg = ionization_energy[idx_Eion] * C::ev2erg;
+            e_ion -= coeff * (E_ion_erg / (aion[beta] * C::m_p));
+        }
     }
 
     // Update energy source terms
@@ -99,10 +100,11 @@ void problem_source (int i, int j, int k,
 
     for (int ispe = 0; ispe < n_active; ispe++) {
         int mu = active_spec[ispe];
-        n_e += zion[mu] * X_stage[mu] * rho / C::m_u * 1.e6;
+        const amrex::Real n_mu = X_stage[mu] * rho * aion_inv[mu] / C::m_u * 1.e6;
+        n_e += zion[mu] * n_mu;
         if (zion[mu] == 0) {
             int idx_atom = get_atom_index(mu);
-            n_n_species[idx_atom] += X_stage[mu] * rho / C::m_u * 1.e6;
+            n_n_species[idx_atom] += n_mu;
         }
     }
 
@@ -117,7 +119,7 @@ void problem_source (int i, int j, int k,
     for (int ispe = 0; ispe < n_active; ispe++) {
         int mu = active_spec[ispe];
         v_e_E[mu] = 2 * SI::m_e / mass_vec[get_atom_index(mu)] *
-                    (std::pow(zion[mu], 4) * v_ei + v_en[mu]);
+                    (zion[mu] * v_ei + v_en[mu]);
     }
 
     // Calculate energy transfer source term

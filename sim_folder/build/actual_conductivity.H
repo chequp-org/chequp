@@ -35,10 +35,11 @@ void actual_conductivity (T& state)
     amrex::Real n_n_species[num_atom_species] = {};
     amrex::Real n_e = 0.0;
     for (int mu=0; mu < NumSpec; mu++) {
-        n_e += zion[mu] * state.xn[mu] * state.rho / C::m_u * 1.e6;
+        const amrex::Real n_mu = state.rho * state.xn[mu] * aion_inv[mu] / C::m_u * 1.e6;
+        n_e += zion[mu] * n_mu;
         if (zion[mu] == 0) {
             int idx_atom = get_atom_index(mu);
-            n_n_species[idx_atom] = state.rho * state.xn[mu] * aion_inv[mu] / C::m_u * 1.e6; // number density of neutral species mu in m^-3
+            n_n_species[idx_atom] = n_mu; // number density of neutral species mu in m^-3
         }
     }
     // Electron temperature
