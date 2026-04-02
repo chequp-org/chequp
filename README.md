@@ -8,7 +8,7 @@ To setup the folders:
 ```
 git clone git@github.com:chequp-org/chequp.git
 cd chequp
-git clone --recursive https://github.com/chequp/Castro.git --branch 2T_25.10
+git clone --recursive https://github.com/chequp-org/Castro.git --branch 2T_25.10
 ```
 
 ### Setup a conda environment
