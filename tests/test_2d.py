@@ -17,8 +17,11 @@ from analysis_tool import CastroSimulation
 sys.path.append('../theory/sedov_theory/python/')
 from sedov_theory import SedovTalorProblem
 from checksum.checksumAPI import evaluate_checksum
-from scipy.constants import m_p, k
+from scipy.constants import m_p, k, atomic_mass
 from scipy.optimize import curve_fit
+
+# Atomic mass unit in CGS — must match C::m_u in Castro's fundamental_constants.H
+m_u_cgs = atomic_mass * 1e3  # kg -> g
 
 def cleanup_outputs(extra_file=""):
     # Remove previously generated plotfiles and checkpoints
@@ -169,24 +172,25 @@ def test_2d_sedov_taylor():
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
 
-    # Populations array
-    f_ion = 1.0  # ionization fraction
-    populations = np.zeros((X.shape[0], X.shape[1], len(species_keys)))
-    populations[:, :, species_keys.index('H1')] = f_ion - 1e-3
-    populations[:, :, species_keys.index('H0')] = f_ion
+    # Number densities array (m^-3)
+    # n_total chosen so that rho = n_total * aion * m_u = 1.67e-6 g/cm^3
+    n_total = (1.67e-6 / m_u_cgs) * 1e6  # m^-3
+    densities = np.zeros((X.shape[0], X.shape[1], len(species_keys)))
+    densities[:, :, species_keys.index('H1')] = (1.0 - 1e-3) * n_total
+    densities[:, :, species_keys.index('H0')] = 1e-3 * n_total
     # Save file
     save_to_openpmd({'x': [x.min(), x.max()], 'y': [y.min(), y.max()]},
-                populations, T_eV, '2d_sedov_taylor.h5', species_keys)
+                densities, T_eV, '2d_sedov_taylor.h5', species_keys)
     # Run the code
     run_castro_simulation(model = 'gamma_law', runtime_options = "amr.n_cell = 64 64 castro.add_ext_src = 0 castro.diffuse_temp = 0 amr.max_level  = 2 problem.initial_conditions_file=2d_sedov_taylor.h5")
-    # Physical tests 
+    # Physical tests
     dx = x[1] - x[0]
     dy = y[1] - y[0]
     dA_cm2 = dx * dy * 1e1
     eV_to_erg = 1.60218e-12
+    f_ion = 1.0 - 1e-3  # ionization fraction (matches densities above)
     rho_initial = 1.67e-6  # in g/cm^3
     deposited_energy = 3/2 * rho_initial / m_p * f_ion * eV_to_erg * np.sum(T_eV) * dA_cm2
-    rho_initial = 1.67e-6  # in g/cm^3
     sim_data = CastroSimulation('.', 'plt_2d_')
     # E0 in mJ/m, rho_0 in g/cm^3 (computed by integrating the initial profile of temperature ponderated by the populations)
     analytical_data = SedovTalorProblem(5.0 / 3.0, deposited_energy, rho_initial) 

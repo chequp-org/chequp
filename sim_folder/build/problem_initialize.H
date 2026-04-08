@@ -23,41 +23,9 @@ void problem_initialize ()
         }
     }
 
-    Real xn_zone[NumSpec];
-    for (int n = 0; n < NumSpec; ++n) {
-        xn_zone[n] = 0.0_rt;
-    }
-    xn_zone[0] = 1.0_rt;
-
-    eos_t eos_state;
-
-    // override the pressure with the temperature
-    if (problem::temp_ambient > 0.0_rt) {
-
-        eos_state.rho = problem::dens_ambient;
-        eos_state.T = problem::temp_ambient;
-        for (int n = 0; n < NumSpec; ++n) {
-            eos_state.xn[n] = xn_zone[n];
-        }
-
-        eos(eos_input_rt, eos_state);
-
-        problem::p_ambient = eos_state.p;
-
-    }
-
-    // Calculate ambient state data
-
-    eos_state.rho = problem::dens_ambient;
-    eos_state.p   = problem::p_ambient;
-    eos_state.T   = 1.e9_rt; // Initial guess for iterations
-    for (int n = 0; n < NumSpec; ++n) {
-        eos_state.xn[n] = xn_zone[n];
-    }
-
-    eos(eos_input_rp, eos_state);
-
-    problem::temp_ambient = eos_state.T;
+    // p_ambient and temp_ambient are user-specified parameters.
+    // Density is read from initial conditions file, so we no longer 
+    // compute ambient state from a uniform dens_ambient
 
     // Read CSV file containing initial conditions
     read_initial_conditions();
