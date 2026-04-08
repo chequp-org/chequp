@@ -11,13 +11,7 @@ namespace SI {
     constexpr double q_e = 1.602176634e-19; // Elementary charge in C
     constexpr double epsilon0 = 8.854187817e-12; // Permittivity of free space in F/m
     constexpr double m_e = 9.1093837015e-31; // Electron mass in kg
-    constexpr double m_H = 1.67262192369e-27; // Hydrogen mass in kg
-    constexpr double m_N = 2.3258671e-26; // Nitrogen mass in kg
-    constexpr double m_He = 6.6464764e-27; // Helium mass in kg
-    constexpr double m_Ar = 6.6335209e-26; // Argon mass in kg
 }
-AMREX_GPU_HOST_DEVICE
-constexpr std::array<amrex::Real, 4> mass_vec = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
 /**
  * @brief Computes electron-ion and electron-neutral collision frequencies.
  *
@@ -58,7 +52,7 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_
     const amrex::Real E_bar = 4.0 / M_PI * SI::k_B * T_e;
     amrex::Real mu_en[num_atom_species] = {};
     for (int mu = 0; mu < num_atom_species; mu++) {
-            mu_en[mu] = SI::m_e * mass_vec[mu] / (SI::m_e + mass_vec[mu]);}
+            mu_en[mu] = SI::m_e * aion[mu] * C::m_u * 1e-3 / (SI::m_e + aion[mu] * C::m_u * 1e-3);}
     // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
     //   Morgan database, www.lxcat.net
     // Hydrogen
