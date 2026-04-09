@@ -32,31 +32,22 @@ make -j 4 -s EOS_DIR=gamma_law_2T DIM=1
 ```
 It will create two files with a sufix coresponding to the model: gamma_law for single-temperature, gamma_law_2T for two-temperature. The DIM flag change the dimension (here 1D).
 
-### For 2D Cartesian sims
+### For 1D Cylindrical sims 
+First, to create the initial conditions for the 1D simulation, run the python script: 
 
 ```
-cd sim_folder/build
-make -j 4 -s EOS_DIR=gamma_law DIM=2
+cd sim_folder/run
+python3 generate_initial_conditions.py
 ```
-(for GPU, use `make USE_CUDA=TRUE -j 4 -s EOS_DIR=gamma_law DIM=2` ; on MacOS, use `make COMP=clang -j 4 -s EOS_DIR=gamma_law DIM=2`)
-
-```
-cd ../run
-../build/Castro2d.gnu.gamma_law.MPI.ex inputs.2d.cyl_in_cartcoords
-```
-
-```
-cd ../analysis
-jupyter notebook Analysis.ipynb
-```
-
-### For 1D Cylindrical sims
+This will create the file with the initial conditions ```example_1d_initial_conditions.h5```. Then, to build in 1D:
 
 ```
 cd sim_folder/build
 make -j 4 -s EOS_DIR=gamma_law DIM=1
 ```
 (for GPU, use `make USE_CUDA=TRUE -j 4 -s EOS_DIR=gamma_law DIM=1` ; on MacOS, use `make COMP=clang -j 4 -s EOS_DIR=gamma_law DIM=1`)
+
+And run the simulation with the 1D inputs.
 
 ```
 cd ../run
