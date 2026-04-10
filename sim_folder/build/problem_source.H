@@ -60,7 +60,7 @@ void problem_source (int i, int j, int k,
     Real X_e = 0.0;
     for (int ispe = 0; ispe < n_active; ispe++) {
         int mu = active_spec[ispe];
-        X_e += zion[mu] * X_stage[mu];
+        X_e += zion[mu] * X_stage[mu] * aion_inv[mu];
     }
     // Initialize sources
     Real e_ion = 0.0;
@@ -70,19 +70,16 @@ void problem_source (int i, int j, int k,
         int beta_next = beta + 1;
         int atom_idx = get_atom_index(beta);
 
-        if (beta_next < NumSpec && get_atom_index(beta_next) == atom_idx) {
+        if (beta_next < NumSpec && get_atom_index(beta_next) == atom_idx && zion[beta] < zatom[atom_idx]) {
             // 1. Calculate Rates
-            Real coll_I = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
-            coll_I += X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
-            Real three_body_R = coll_ion::get_rate_3body(beta, rho, T_e) * X_e * X_e * X_stage[beta_next];
-
+            Real coll_I_d = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
+            Real coll_I_e = X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
+            Real three_body = 0.0;
             // 2. Net Rate Coefficient
-            Real const coeff = (coll_I - three_body_R) * (rho * rho / (aion[beta] * C::m_p));
-            
+            Real const coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / (aion[beta] * C::m_p));
             // 3. Update Mass Fraction Sources
             src(i,j,k,UFS+beta)      -= coeff;
             src(i,j,k,UFS+beta_next) += coeff;
-
             // 4. Energy Update
             int idx_Eion = get_energy_index(zatom[atom_idx]) + zion[beta];
             Real E_ion_erg = ionization_energy[idx_Eion] * C::ev2erg;
@@ -91,8 +88,8 @@ void problem_source (int i, int j, int k,
     }
 
     // Update energy source terms
-    src(i,j,k,UEDEN) = e_ion;
-    src(i,j,k,UEINT) = src(i,j,k,UEDEN);
+    src(i,j,k,UEDEN) += e_ion;
+    src(i,j,k,UEINT) += e_ion;
 
     // Calculate electron and neutral number densities (SI units)
     amrex::Real n_e = 0.0;
@@ -129,7 +126,13 @@ void problem_source (int i, int j, int k,
         Sc += rho * v_e_E[mu] * (1 - (1 + X_stage[mu]) * f);
     }
 
-    src(i,j,k,UFX) = -f/e * src(i,j,k,UEDEN) + Sc;
+    // Protect against division by zero if internal energy is practically 0
+    const Real tiny_e = 1.0e-30;
+    if (e > tiny_e) {
+        src(i,j,k,UFX) = -f/e * src(i,j,k,UEDEN) + Sc;
+    } else {
+        src(i,j,k,UFX) = Sc;
+    }
 }
 
 #endif
