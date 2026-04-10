@@ -35,13 +35,6 @@ AMREX_GPU_HOST_DEVICE
 const int zatom[num_atom_species] = {1, 7, 2, 18}; // Atomic numbers for H, N, He, Ar 
 
 // Binding energies - reduced to H, N, He, Ar 
-AMREX_GPU_HOST_DEVICE 
-inline amrex::Real binding_energy[12] = { 
-    /* Z=1 (H)  —  1 electron  */ 13.5981, 
-    /* Z=7 (N)  —  7 electrons */ 20.33, 20.33, 14.534, 14.534, 14.534, 
-    /* Z=2 (He) —  2 electrons */ 24.588, 24.588, 
-    /* Z=18 (Ar) — 18 electrons */ 15.76, 15.76, 15.76, 15.76 
-}; 
 
 // Binding energies for each ionization stage of H, N, He, Ar [eV] 
 // Format: innermost shell first, progressing outward 
@@ -89,17 +82,16 @@ namespace coll_ion
     using namespace amrex; 
     
     // Temperature grid 
-    static constexpr int NT = 500; 
+    static constexpr int NT = 100; 
     static constexpr Real T_min = 1e-3;   // eV 
     static constexpr Real T_max = 3.0e2;  // eV 
     static constexpr Real K_to_eV = 8.617333262145e-5; 
 
     // Energy grid for cross-section integration 
-    static constexpr int npoints = 500; 
+    static constexpr int npoints = 100; 
 
     // Table storage 
-    inline AMREX_GPU_MANAGED 
-    Real rate_table[NumSpec][NT]; 
+    inline AMREX_GPU_MANAGED Real rate_table[NumSpec][NT];
 
     inline AMREX_GPU_MANAGED 
     bool initialized = false; 
@@ -116,7 +108,6 @@ namespace coll_ion
     } 
 
     AMREX_GPU_HOST_DEVICE 
-    const int num_simulated_electrons[num_atom_species] = {1, 5, 2, 4}; // Matches the entries in binding_energy 
 
     // Cross section using RBEB model from Kim et al. (2000) 
     /** * @brief Relativistic Binary-Encounter-Bethe (RBEB) electron-impact 
@@ -141,9 +132,17 @@ namespace coll_ion
         if (atomic_number == 2) atom_idx = 2; 
         if (atomic_number == 18) atom_idx = 3; 
 
+        Real binding_energy[12] = { 
+        /* Z=1 (H)  —  1 electron  */ 13.5981, 
+        /* Z=7 (N)  —  7 electrons */ 20.33, 20.33, 14.534, 14.534, 14.534, 
+        /* Z=2 (He) —  2 electrons */ 24.588, 24.588, 
+        /* Z=18 (Ar) — 18 electrons */ 15.76, 15.76, 15.76, 15.76 
+        }; 
+
         int base_idx = get_energy_index(atomic_number); 
         const Real me_c2 = 510998.0; 
         const Real normalization = 2.0 * M_PI * std::pow(1.0/137.0, 4) * std::pow(5.29e-11, 2); 
+        int num_simulated_electrons[num_atom_species] = {1, 5, 2, 4}; // Matches the entries in binding_energy 
 
         const Real ep_mc2 = ep / me_c2; 
 
@@ -218,7 +217,7 @@ namespace coll_ion
             Real E = E_min + i * dE; // electron energy [eV] 
             Real w = maxwell_weight(E, Te); // distribution weight 
             Real sig = sigma_E(atomic_number, zstar, E); // cross section [cm²] 
-            Real v = std::sqrt(2.0 * E * C::ev2erg / C::m_e); // velocity [cm/s] 
+            Real v = std::sqrt(2.0 * std::abs(E) * C::ev2erg / C::m_e); // velocity [cm/s] 
 
             sum += sig * v * w; 
             norm += w; 
@@ -227,7 +226,6 @@ namespace coll_ion
         if (norm > 0.0) { 
             sum /= norm; 
         } 
-
         return sum; 
     } 
 
@@ -239,7 +237,7 @@ namespace coll_ion
     inline void initialize() 
     { 
         if (initialized) return; 
-        
+
         for (int ispe = 0; ispe < NumSpec; ispe++) { 
             int Z = zatom[get_atom_index(ispe)]; 
             int zstar = zion[ispe]; 
@@ -251,9 +249,9 @@ namespace coll_ion
                 Real Te = std::exp(logT); 
 
                 rate_table[ispe][it] = compute_rate(Z, zstar, Te); 
+                
             } 
         } 
-
         initialized = true; 
     } 
 
