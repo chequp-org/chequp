@@ -96,6 +96,7 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
                                              source_indices, target_indices, charges,
                                              initial_populations,
                                              npts_per_wavelength=80):
+    
     """
     a0: Peak laser amplitude
     tau: laser FWHM duration
