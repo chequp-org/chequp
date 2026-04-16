@@ -129,7 +129,7 @@ class CastroSimulation(object):
             raise ValueError(f"Quantity {quantity} not found in the simulation outputs")
 
         # Handle 1D cylindrical geometry
-        if self.dim == 1 and self.geo == 'cylindrical':
+        if self.dim == 1:
             # Create covering grid at specified refinement level
             ad = ds.covering_grid(level=level,
                                 left_edge=ds.domain_left_edge,
@@ -153,8 +153,10 @@ class CastroSimulation(object):
             # Calculate radial coordinates of cell centers
             m_edges = np.linspace(ds.domain_left_edge[0], ds.domain_right_edge[0],
                                 ds.domain_dimensions[0] * 2**level + 1)
-            m['r'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dtype=float)
-
+            if self.geo == 'cylindrical':
+                m['r'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dtype=float)
+            if self.geo == 'cartesian':
+                m['x'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dtype=float)
         # Handle 2D simulations
         elif self.dim == 2:
             # Create 2D covering grid
