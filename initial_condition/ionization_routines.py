@@ -184,7 +184,7 @@ def compute_ionization_vectorized(
 
     T_out[0] = T
 
-def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0):
+def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0, Th_eV=0):
     """
     Save with all species densities (m^-3) to an openPMD file
     """
@@ -198,17 +198,30 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
     grid_global_offset = [grid_extent[key][0] for key in grid_extent.keys()]
     axis_labels = list(grid_extent.keys())
 
-    # Save the temperature
-    T = it.meshes["T"]
-    T.grid_spacing = grid_spacing
-    T.grid_global_offset = grid_global_offset
-    T.axis_labels = axis_labels
-    T.unit_dimension = {io.Unit_Dimension.theta: 1}
-    dataset = io.Dataset(T_eV.dtype, T_eV.shape)
-    T_scalar = T[io.Mesh_Record_Component.SCALAR]
-    T_scalar.reset_dataset(dataset)
-    T_scalar.position = [0.0] * len(grid_extent)
-    T_scalar.store_chunk(T_eV * (e / k))  # Convert eV to K
+    # Save the electron temperature
+    Te = it.meshes["Te"]
+    Te.grid_spacing = grid_spacing
+    Te.grid_global_offset = grid_global_offset
+    Te.axis_labels = axis_labels
+    Te.unit_dimension = {io.Unit_Dimension.theta: 1}
+    dataset = io.Dataset(Te_eV.dtype, Te_eV.shape)
+    Te_scalar = Te[io.Mesh_Record_Component.SCALAR]
+    Te_scalar.reset_dataset(dataset)
+    Te_scalar.position = [0.0] * len(grid_extent)
+    Te_scalar.store_chunk(Te_eV * (e / k))  # Convert eV to K
+    if np.sum(Th_eV) == 0:
+        Th_eV = np.ones_like(Te_eV) * 1e-10
+    # Save the heavies temperature
+    Th = it.meshes["Th"]
+    Th.grid_spacing = grid_spacing
+    Th.grid_global_offset = grid_global_offset
+    Th.axis_labels = axis_labels
+    Th.unit_dimension = {io.Unit_Dimension.theta: 1}
+    dataset = io.Dataset(Th_eV.dtype, Th_eV.shape)
+    Th_scalar = Th[io.Mesh_Record_Component.SCALAR]
+    Th_scalar.reset_dataset(dataset)
+    Th_scalar.position = [0.0] * len(grid_extent)
+    Th_scalar.store_chunk(Th_eV * (e / k))  # Convert eV to K
 
     # Save the species densities
     for i, species_key in enumerate(species_keys):
@@ -225,13 +238,13 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
 
     # Save the momentum density fields (kg m^-2 s^-1 = rho * v)
     for mom_key, mom_value in zip(["xmom", "ymom", "zmom"], [xmom, ymom, zmom]):
-        # Accept either a scalar (constant field) or an array of the same shape as T_eV
+        # Accept either a scalar (constant field) or an array of the same shape as Te_eV
         if np.isscalar(mom_value):
-            mom_data = np.full(T_eV.shape, mom_value, dtype=np.float64)
+            mom_data = np.full(Te_eV.shape, mom_value, dtype=np.float64)
         else:
             mom_data = np.asarray(mom_value, dtype=np.float64)
-            if mom_data.shape != T_eV.shape:
-                raise ValueError(f"{mom_key} shape {mom_data.shape} does not match T_eV shape {T_eV.shape}")
+            if mom_data.shape != Te_eV.shape:
+                raise ValueError(f"{mom_key} shape {mom_data.shape} does not match Te_eV shape {Te_eV.shape}")
 
         mom_mesh = it.meshes[mom_key]
         mom_mesh.grid_spacing = grid_spacing

@@ -41,7 +41,7 @@ inline void read_initial_conditions()
     hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
     // Read grid shape and attributes from T dataset
-    hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
+    hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/Te", H5P_DEFAULT);
     hid_t dataspace_T = H5Dget_space(dataset_T);
     hsize_t shape_array[AMREX_SPACEDIM];
     H5Sget_simple_extent_dims(dataspace_T, shape_array, NULL);
@@ -64,10 +64,10 @@ inline void read_initial_conditions()
     }
     amrex::Gpu::HostVector<Real> table_flat;
     // Updated: NumSpec + 4 (1 for T, NumSpec for densities, 3 for momentum)
-    table_flat.resize((NumSpec + 4) * dataset_size);
+    table_flat.resize((NumSpec + 5) * dataset_size);
 
     std::vector<std::string> dataset_names;
-    dataset_names.push_back("T");
+    dataset_names.push_back("Te");
     for (int s = 0; s < NumSpec; ++s) {
         dataset_names.push_back(short_spec_names_cxx[s] + "_density");
     }
@@ -75,6 +75,7 @@ inline void read_initial_conditions()
     dataset_names.push_back("xmom");
     dataset_names.push_back("ymom");
     dataset_names.push_back("zmom");
+    dataset_names.push_back("Th");
 
     // Loop over dataset names and fill table_flat
     for (int col = 0; col < dataset_names.size(); ++col) {
@@ -168,15 +169,15 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 #endif
 
     // Updated: Array expanded to NumSpec + 4
-    Real interp_values[NumSpec+4];
+    Real interp_values[NumSpec+5];
 #if AMREX_SPACEDIM == 1
-    for (int col = 0; col < NumSpec+4; ++col) {
+    for (int col = 0; col < NumSpec+5; ++col) {
         Real val_0 = d_initial_conditions_table(col, idx0_lo);
         Real val_1 = d_initial_conditions_table(col, idx0_hi);
         interp_values[col] = val_0 + frac0 * (val_1 - val_0);
     }
 #elif AMREX_SPACEDIM == 2
-    for (int col = 0; col < NumSpec+4; ++col) {
+    for (int col = 0; col < NumSpec+5; ++col) {
         Real val_00 = d_initial_conditions_table(col, idx0_lo, idx1_lo);
         Real val_10 = d_initial_conditions_table(col, idx0_hi, idx1_lo);
         Real val_01 = d_initial_conditions_table(col, idx0_lo, idx1_hi);
@@ -186,7 +187,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
         interp_values[col] = val_0 + frac1 * (val_1 - val_0);
     }
 #elif AMREX_SPACEDIM == 3
-    for (int col = 0; col < NumSpec+4; ++col) {
+    for (int col = 0; col < NumSpec+5; ++col) {
         Real val_000 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_lo);
         Real val_100 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_lo);
         Real val_010 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_lo);
@@ -207,7 +208,8 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     }
 #endif
 
-    Real Te = interp_values[0];
+    Real Te = interp_values[0]; // electron temperature
+    Real Th = interp_values[NumSpec + 4]; // heavies temperature
     Real number_densities[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
         number_densities[s] = interp_values[s + 1];
@@ -229,8 +231,6 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     for (int s = 0; s < NumSpec; ++s) {
         state(i,j,k,UFS+s) = number_densities[s] * 1.e-6 * aion[s] * C::m_u;
     }
-
-    Real Ta = 348.;
     
     Real n_heavy = 0.0;
     Real n_electrons = 0.0;
@@ -239,7 +239,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
         n_heavy += number_densities[s] * 1.e-6;
         n_electrons += number_densities[s] * 1.e-6 * zion[s];
     }
-    Real rho_e_heavies = n_heavy * C::k_B * Ta / (eos_rp::eos_gamma - 1.0);
+    Real rho_e_heavies = n_heavy * C::k_B * Th / (eos_rp::eos_gamma - 1.0);
     Real rho_e_electrons = n_electrons * C::k_B * Te / (eos_rp::eos_gamma - 1.0);
 
     state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
