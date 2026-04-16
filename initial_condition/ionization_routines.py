@@ -184,15 +184,14 @@ def compute_ionization_vectorized(
 
     T_out[0] = T
 
-def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
+def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0):
     """
     Save with all species densities (m^-3) to an openPMD file
     """
     # create openpmd file
     series = io.Series(output_file, io.Access.create)
-    # only 1 iteratiion needed
+    # only 1 iteration needed
     it = series.iterations[0]
-
     # Extract information about the grid for openPMD
     grid_spacing = np.array([ (grid_extent[key][1] - grid_extent[key][0]) / (all_populations.shape[i] - 1)
         for i, key in enumerate(grid_extent.keys()) ])
@@ -204,12 +203,12 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
     T.grid_spacing = grid_spacing
     T.grid_global_offset = grid_global_offset
     T.axis_labels = axis_labels
-    T.unit_dimension = {io.Unit_Dimension.theta:1}
+    T.unit_dimension = {io.Unit_Dimension.theta: 1}
     dataset = io.Dataset(T_eV.dtype, T_eV.shape)
     T_scalar = T[io.Mesh_Record_Component.SCALAR]
     T_scalar.reset_dataset(dataset)
     T_scalar.position = [0.0] * len(grid_extent)
-    T_scalar.store_chunk(T_eV * (e/k))  # Convert eV to K
+    T_scalar.store_chunk(T_eV * (e / k))  # Convert eV to K
 
     # Save the species densities
     for i, species_key in enumerate(species_keys):
@@ -217,12 +216,37 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
         pop.grid_spacing = grid_spacing
         pop.grid_global_offset = grid_global_offset
         pop.axis_labels = axis_labels
-        pop.unit_dimension = {io.Unit_Dimension.L: -3} #m^-3
+        pop.unit_dimension = {io.Unit_Dimension.L: -3}  # m^-3
         dataset = io.Dataset(all_populations[..., i].dtype, all_populations[..., i].shape)
         pop_scalar = pop[io.Mesh_Record_Component.SCALAR]
         pop_scalar.reset_dataset(dataset)
         pop_scalar.position = [0.0] * len(grid_extent)
         pop_scalar.store_chunk(all_populations[..., i].copy())
+
+    # Save the momentum density fields (kg m^-2 s^-1 = rho * v)
+    for mom_key, mom_value in zip(["xmom", "ymom", "zmom"], [xmom, ymom, zmom]):
+        # Accept either a scalar (constant field) or an array of the same shape as T_eV
+        if np.isscalar(mom_value):
+            mom_data = np.full(T_eV.shape, mom_value, dtype=np.float64)
+        else:
+            mom_data = np.asarray(mom_value, dtype=np.float64)
+            if mom_data.shape != T_eV.shape:
+                raise ValueError(f"{mom_key} shape {mom_data.shape} does not match T_eV shape {T_eV.shape}")
+
+        mom_mesh = it.meshes[mom_key]
+        mom_mesh.grid_spacing = grid_spacing
+        mom_mesh.grid_global_offset = grid_global_offset
+        mom_mesh.axis_labels = axis_labels
+        mom_mesh.unit_dimension = {
+            io.Unit_Dimension.M:  1,
+            io.Unit_Dimension.L: -2,   # ← was +1 (momentum), now -2 (momentum DENSITY)
+            io.Unit_Dimension.T: -1
+        }
+        dataset = io.Dataset(mom_data.dtype, mom_data.shape)
+        mom_scalar = mom_mesh[io.Mesh_Record_Component.SCALAR]
+        mom_scalar.reset_dataset(dataset)
+        mom_scalar.position = [0.0] * len(grid_extent)
+        mom_scalar.store_chunk(mom_data.copy())
 
     series.flush()
 
