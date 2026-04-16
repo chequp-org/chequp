@@ -239,7 +239,7 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
         mom_mesh.axis_labels = axis_labels
         mom_mesh.unit_dimension = {
             io.Unit_Dimension.M:  1,
-            io.Unit_Dimension.L: -2,   # ← was +1 (momentum), now -2 (momentum DENSITY)
+            io.Unit_Dimension.L: -2,
             io.Unit_Dimension.T: -1
         }
         dataset = io.Dataset(mom_data.dtype, mom_data.shape)
