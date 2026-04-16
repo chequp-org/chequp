@@ -185,7 +185,7 @@ def compute_ionization_vectorized(
 
 def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
     """
-    Save with all species populations to an openPMD file
+    Save with all species densities (m^-3) to an openPMD file
     """
     # create openpmd file
     series = io.Series(output_file, io.Access.create)
@@ -210,12 +210,13 @@ def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_key
     T_scalar.position = [0.0] * len(grid_extent)
     T_scalar.store_chunk(T_eV * (e/k))  # Convert eV to K
 
-    # Save the species fractions
+    # Save the species densities
     for i, species_key in enumerate(species_keys):
-        pop = it.meshes[species_key + "_fraction"]
+        pop = it.meshes[species_key + "_density"]
         pop.grid_spacing = grid_spacing
         pop.grid_global_offset = grid_global_offset
         pop.axis_labels = axis_labels
+        pop.unit_dimension = {io.Unit_Dimension.L: -3} #m^-3
         dataset = io.Dataset(all_populations[..., i].dtype, all_populations[..., i].shape)
         pop_scalar = pop[io.Mesh_Record_Component.SCALAR]
         pop_scalar.reset_dataset(dataset)
@@ -246,7 +247,8 @@ def load_intensity_profile(filename):
 def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges, species_keys,
-            initial_populations, output_file=None, grid_extent=None):
+            initial_populations, output_file=None, grid_extent=None,
+            n_total=1e24):
     """
     Process nD intensity array for multi-species plasma
 
@@ -264,10 +266,11 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
         Dictionary with elements of species_keys as keys and initial population fractions as values
         If an element from species_keys is not in the dictionary, it is assumed to be 0
     output_file : str, optional
-        Filename to save openPMD output with radius, temperature and populations
-    r_coords : array-like, optional
-        Radial coordinates (m). Required for 1D data if output_file is specified.
-        For 2D data, used to determine radial sampling for CSV output.
+        Filename to save openPMD output with radius, temperature and densities
+    grid_extent : dict, optional
+        Grid extent for openPMD output
+    n_total : float
+        Total number density in m^-3 for converting fractions to densities (default: 1e24)
 
     Returns:
     --------
@@ -301,8 +304,9 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     all_populations = all_populations_flat.reshape(a0_array.shape + (len(species_keys),))
     T_array = T_flat.reshape(a0_array.shape)
 
-    # Save detailed CSV output with all species
+    # Save openPMD output with species densities
     if output_file and grid_extent is not None:
-        save_to_openpmd(grid_extent, all_populations, T_array, output_file, species_keys)
+        all_densities = all_populations * n_total
+        save_to_openpmd(grid_extent, all_densities, T_array, output_file, species_keys)
 
     return all_populations, T_array

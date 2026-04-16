@@ -76,7 +76,7 @@ inline void read_initial_conditions()
     std::vector<std::string> dataset_names;
     dataset_names.push_back("T");
     for (int s = 0; s < NumSpec; ++s) {
-        dataset_names.push_back(short_spec_names_cxx[s] + "_fraction");
+        dataset_names.push_back(short_spec_names_cxx[s] + "_density");
     }
 
     // Loop over dataset names and fill table_flat
@@ -221,33 +221,42 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 
     // Extract data from interpolated array
     Real Te = interp_values[0];
-    Real number_fractions[NumSpec];
+    Real number_densities[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
-        number_fractions[s] = interp_values[s + 1];
+        number_densities[s] = interp_values[s + 1];
     }
 
-    // Assume uniform plasma with 0 velocity initially
-    state(i,j,k,URHO) = problem::dens_ambient;
+    // compute mass density from number density
+    // number densities are in m^-3, convert to cm^-3 
+    Real rho = 0.0;
+    for (int s = 0; s < NumSpec; ++s) {
+        rho += number_densities[s] * 1.e-6 * aion[s] * C::m_u;
+    }
+    
+    // Assume 0 velocity initially
+    state(i,j,k,URHO) = rho;
     state(i,j,k,UMX) = 0.0;
     state(i,j,k,UMY) = 0.0;
     state(i,j,k,UMZ) = 0.0;
-
-    // Convert from number fraction to mass fraction
-    Real mean_aion = 0;
-    for (int s = 0; s < NumSpec; ++s) { mean_aion += number_fractions[s] * aion[s]; }
+    
+    // Set mass densities for each species: rho_s = n_s * A_s * m_u
     for (int s = 0; s < NumSpec; ++s) {
-        state(i,j,k,UFS+s) = state(i,j,k,URHO) * (number_fractions[s] * aion[s]) / mean_aion;
+        state(i,j,k,UFS+s) = number_densities[s] * 1.e-6 * aion[s] * C::m_u;
     }
 
     // Set the initial internal energy and total energy
     Real Ta = 348.; // 0.03 eV, in Kelvins
-    Real avg_mass = mean_aion * C::m_u;
-    Real electrons_per_heavy = 0.0;
-    Real rho_e_heavies =  state(i,j,k,URHO) * C::k_B * Ta / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
+    
+    // Energy density: rho_e = n * k_B * T / (gamma - 1)
+    Real n_heavy = 0.0; // heavy density in cm^-3
+    Real n_electrons = 0.0; // electron num density in cm^-3
+
     for (int s = 0; s < NumSpec; ++s) {
-        electrons_per_heavy += number_fractions[s] * zion[s];
+        n_heavy += number_densities[s] * 1.e-6;
+        n_electrons += number_densities[s] * 1.e-6 * zion[s];
     }
-    Real rho_e_electrons = state(i,j,k,URHO) * electrons_per_heavy * C::k_B * Te / ( avg_mass * (eos_rp::eos_gamma - 1.0) );
+    Real rho_e_heavies = n_heavy * C::k_B * Ta / (eos_rp::eos_gamma - 1.0);
+    Real rho_e_electrons = n_electrons * C::k_B * Te / (eos_rp::eos_gamma - 1.0);
 
     state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
     state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +

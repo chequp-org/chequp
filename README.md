@@ -1,25 +1,27 @@
+# Castro-based Hofi Expansion with QUasineutral Plasma (CHEQUP)
+
 This document describes how to perform simulations of plasma channel formation using Castro.
 
-# Installation
+## Installation
 
 To setup the folders:
 ```
-git clone git@github.com:RemiLehe/castro_sim.git
-cd castro_sim
-git clone --recursive https://github.com/RemiLehe/Castro.git --branch 2T_25.10
+git clone git@github.com:chequp-org/chequp.git
+cd chequp
+git clone --recursive https://github.com/chequp-org/Castro.git --branch 2T_25.10
 ```
 
-## Setup a conda environment
+### Setup a conda environment
 
 ```
-conda create -n castro_sim
-conda activate castro_sim
+conda create -n chequp
+conda activate chequp
 conda install -c conda-forge compilers "hdf5=*=mpi_openmpi*" openmpi make zlib
 ```
 
 In order to analyze the results, create a Python environment with `numpy`, `scipy`, `Jupyter` and `yt`.
 
-## Switch between two-temperature and single-temperature model
+### Switch between two-temperature and single-temperature model
 
 The choice of a single-temperature model or two-temperature model depends on the ex file that you are using to run Castro.
 To compiled both model use:
@@ -30,31 +32,22 @@ make -j 4 -s EOS_DIR=gamma_law_2T DIM=1
 ```
 It will create two files with a sufix coresponding to the model: gamma_law for single-temperature, gamma_law_2T for two-temperature. The DIM flag change the dimension (here 1D).
 
-## For 2D Cartesian sims
+### For 1D Cylindrical sims 
+First, to create the initial conditions for the 1D simulation, run the python script: 
 
 ```
-cd sim_folder/build
-make -j 4 -s EOS_DIR=gamma_law DIM=2
+cd sim_folder/run
+python3 generate_initial_conditions.py
 ```
-(for GPU, use `make USE_CUDA=TRUE -j 4 -s EOS_DIR=gamma_law DIM=2` ; on MacOS, use `make COMP=clang -j 4 -s EOS_DIR=gamma_law DIM=2`)
-
-```
-cd ../run
-../build/Castro2d.gnu.gamma_law.MPI.ex inputs.2d.cyl_in_cartcoords
-```
-
-```
-cd ../analysis
-jupyter notebook Analysis.ipynb
-```
-
-## For 1D Cylindrical sims
+This will create the file with the initial conditions ```example_1d_initial_conditions.h5```. Then, to build in 1D:
 
 ```
 cd sim_folder/build
 make -j 4 -s EOS_DIR=gamma_law DIM=1
 ```
 (for GPU, use `make USE_CUDA=TRUE -j 4 -s EOS_DIR=gamma_law DIM=1` ; on MacOS, use `make COMP=clang -j 4 -s EOS_DIR=gamma_law DIM=1`)
+
+And run the simulation with the 1D inputs.
 
 ```
 cd ../run
@@ -66,13 +59,13 @@ cd ../analysis
 jupyter notebook Analysis.ipynb
 ```
 
-# Test the code
+## Test the code
 
 To run the test suite:
 
 - Prepare the test by installing the dependencies and compiling Castro
 ```
-conda activate castro_sim
+conda activate chequp
 conda install -y -c conda-forge pytest scipy numpy numba tqdm pandas openpmd-api yt h5py
 cd sim_folder/build
 make -j 4 -s EOS_DIR=gamma_law DIM=1
@@ -87,7 +80,7 @@ cd ../../tests
 py.test
 ```
 
-## Add a new test
+### Add a new test
 
 - In `test_1d.py`, add a new `test_<test name>` function similar to the existing ones.
 
@@ -101,7 +94,7 @@ py.test
 - Verify that `py.test` now passes.
 
 
-# More info on the simulations
+## More info on the simulations
 
 Castro documentation: https://amrex-astro.github.io/Castro/docs/
 Microphysics documentation: https://amrex-astro.github.io/Microphysics/docs/
