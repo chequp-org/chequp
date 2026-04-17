@@ -138,7 +138,7 @@ class CastroSimulation(object):
             # Calculate derived temperatures if requested (not directly stored)
             if quantity in ['T_e', 'T_h']:
                 f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Heavy particle fraction
-                e_ = ad['rho_e'].to_ndarray().squeeze()             # Internal energy density
+                e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()            # Internal energy density
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Hydrogen mass fraction
                 if quantity == 'T_e':
                     # Electron temperature: T_e = (2/3) * (internal energy per electron) / k_B
@@ -168,7 +168,7 @@ class CastroSimulation(object):
             # Calculate derived temperatures (same as 1D case)
             if quantity in ['T_e', 'T_h']:
                 f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
-                e_ = ad['rho_e'].to_ndarray().squeeze()
+                e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 if quantity == 'T_e':
                     m['q'] = 2 * m_H * e_ * (1 - f) / (3 * X_H * kB)
@@ -203,7 +203,7 @@ class CastroSimulation(object):
             # Calculate derived temperatures (same as previous cases)
             if quantity in ['T_e', 'T_h']:
                 f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
-                e_ = ad['rho_e'].to_ndarray().squeeze()
+                e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 
                 if quantity == 'T_e':
