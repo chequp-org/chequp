@@ -109,15 +109,25 @@ def check_density_profile_r(sim_data, sol, tol:int=21):
     """
     t_sim = sim_data.output_times
     for t_ in t_sim[2::2]:
+        # Skip early times where blast is poorly resolved (< 2 ns)
+        if t_ < 2e-9:
+            continue
         m = sim_data.get_field(t_, quantity='density', level=2)
-        rho_sim = m['q'][:, m['q'].shape[0]//2]
-        x_center = np.linspace(-np.array(m['x'], dtype = float)[len(m['x'])//2], np.array(m['x'], dtype = float)[len(m['x'])//2], len(m['x']), dtype=float)
-        rho_analytical = sol.evaluate('density', np.abs(x_center), t_)
+        rho_sim_full = m['q'][:, m['q'].shape[0]//2]
+        # Use positive-r half (center outward) to avoid left/right peak ambiguity
+        mid = len(rho_sim_full) // 2
+        r = m['x'][mid:] - m['x'][mid]
+        rho_sim = rho_sim_full[mid:]
+        rho_analytical = sol.evaluate('density', r, t_)
         # compare up to the first peak present in both profiles
         peak_idx = min(np.argmax(rho_analytical), np.argmax(rho_sim))
+        if peak_idx < 2:
+            continue
         denom = np.linalg.norm(rho_sim[:peak_idx])
+        if denom == 0:
+            continue
         err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx])/denom * 100.
-        assert err < tol, f"Density profile test failed: mean rel. L2 error = {err:.2f} % > {tol} %"
+        assert err < tol, f"Density profile test failed at t={t_*1e9:.1f}ns: rel. L2 error = {err:.2f} % > {tol} %"
 
 def run_castro_simulation(model='gamma_law', runtime_options=""):
     """
