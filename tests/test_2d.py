@@ -124,8 +124,7 @@ def check_density_profile_r(sim_data, sol, tol:int=21):
         if peak_idx < 2:
             continue
         denom = np.linalg.norm(rho_sim[:peak_idx])
-        if denom == 0:
-            continue
+        assert denom > 0
         err = np.linalg.norm(rho_analytical[:peak_idx] - rho_sim[:peak_idx])/denom * 100.
         assert err < tol, f"Density profile test failed at t={t_*1e9:.1f}ns: rel. L2 error = {err:.2f} % > {tol} %"
 
