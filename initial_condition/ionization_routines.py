@@ -184,7 +184,7 @@ def compute_ionization_vectorized(
 
     T_out[0] = T
 
-def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0, Th_eV=0):
+def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0, Th_eV=298.15):
     """
     Save with all species densities (m^-3) to an openPMD file
     """
@@ -209,8 +209,11 @@ def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_ke
     Te_scalar.reset_dataset(dataset)
     Te_scalar.position = [0.0] * len(grid_extent)
     Te_scalar.store_chunk(Te_eV * (e / k))  # Convert eV to K
-    if np.sum(Th_eV) == 0:
-        Th_eV = np.ones_like(Te_eV) * 1e-10
+    if np.isscalar(Th_eV): # If Th_eV is a scalar, convert to array
+        Th_eV = np.full(Te_eV.shape, Th_eV, dtype=np.float64)
+    Th_eV = np.asarray(Th_eV, dtype=np.float64)
+    if Th_eV.shape != Te_eV.shape: # Check that the shapes match
+        raise ValueError(f"Th_eV shape {Th_eV.shape} does not match Te_eV shape {Te_eV.shape}")
     # Save the heavies temperature
     Th = it.meshes["Th"]
     Th.grid_spacing = grid_spacing
