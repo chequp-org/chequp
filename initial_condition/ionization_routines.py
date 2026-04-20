@@ -184,7 +184,7 @@ def compute_ionization_vectorized(
 
     T_out[0] = T
 
-def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0, Th_eV=298.15):
+def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0, Th_eV=348):
     """
     Save with all species densities (m^-3) to an openPMD file
     """
