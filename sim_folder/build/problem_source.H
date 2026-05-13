@@ -36,22 +36,21 @@ void problem_source (int i, int j, int k,
     // Extract mass fractions and mark active species
     for (int mu = 0; mu < NumSpec; mu++) {
         X_stage[mu] = state(i,j,k,UFS+mu) / rho;
-        // Mark species and neighbors as active if mass fraction is above threshold.
-        // Build the active list in a second pass so back-neighbors are not missed.
+        
+        // Mark species and neighbors as active if mass fraction is above threshold
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
             // Activate next species if it belongs to the same atom
             if (mu > 0 && get_atom_index(mu) == get_atom_index(mu-1)) active_mask[mu-1] = true;
             if (mu < NumSpec-1 && get_atom_index(mu) == get_atom_index(mu+1)) active_mask[mu+1] = true;
         }
-    }
-
-    for (int mu = 0; mu < NumSpec; mu++) {
+        
+        // Build list of active species indices
         if (active_mask[mu]) {
             active_spec[n_active++] = mu;
         }
     }
-
+    
     // Extract energy and ion fraction
     Real f = state(i,j,k,UFX) / rho;
     Real e = state(i,j,k,UEINT) / rho;
@@ -71,16 +70,16 @@ void problem_source (int i, int j, int k,
         int atom_idx = get_atom_index(beta);
 
         if (beta_next < NumSpec && get_atom_index(beta_next) == atom_idx && zion[beta] < zatom[atom_idx]) {
-            // 1. Calculate Rates
+            // Calculate Rates
             Real coll_I_d = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
             Real coll_I_e = X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
             Real three_body = 0.0;
-            // 2. Net Rate Coefficient
+            // Net Rate Coefficient
             Real const coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / (aion[beta] * C::m_p));
-            // 3. Update Mass Fraction Sources
+            // Update Mass Fraction Sources
             src(i,j,k,UFS+beta)      -= coeff;
             src(i,j,k,UFS+beta_next) += coeff;
-            // 4. Energy Update
+            // Energy Update
             int idx_Eion = get_energy_index(zatom[atom_idx]) + zion[beta];
             Real E_ion_erg = ionization_energy[idx_Eion] * C::ev2erg;
             e_ion -= coeff * (E_ion_erg / (aion[beta] * C::m_p));
