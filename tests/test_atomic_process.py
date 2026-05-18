@@ -20,12 +20,14 @@ from ionization_routines import save_to_openpmd
 from analysis_tool import CastroSimulation
 
 def get_species_indices():
+    " Returns a list of species indices from the species.net file. "
     with open(f'{code_dir}/sim_folder/build/species.net', 'r') as f:
         content = f.read()
         species = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', content)
     return species
 
 def run_castro_simulation(model='gamma_law_2T', runtime_options=''):
+    " Runs a Castro simulation. "
     build_dir = os.path.abspath(f"{code_dir}/sim_folder/build/")
     executables = glob.glob(os.path.join(build_dir, f"Castro1d*.{model}.ex"))
     if len(executables) == 0:
@@ -88,11 +90,13 @@ M_E_CGS   = 9.1093837e-28
 EV_TO_ERG = 1.602176634e-12
 
 def _get_species_str(Z):
+    " Returns the species string for a given atomic number. "
     if Z == 1:  return "H"
     if Z == 18: return "Ar"
     raise ValueError(f"Unknown Z={Z}")
 
 def get_rate_ex_ion(Te_eV, Z, Zstar):
+    " Returns the excitation ionization rate for a given atomic number and temperature. "
     rate = 0.0
     if Zstar != 0: return rate
     x = np.log(Te_eV)
@@ -106,6 +110,7 @@ def get_rate_ex_ion(Te_eV, Z, Zstar):
     return rate
 
 def get_rate_3body(Te_eV, Z, Zstar):
+    " Returns the 3-body recombination rate for a given atomic number and temperature. "
     idx_str = _get_species_str(Z)
     
     if Zstar + 1 >= len(g_deg[idx_str]):
@@ -125,6 +130,7 @@ def get_rate_3body(Te_eV, Z, Zstar):
 
 @njit(cache=True)
 def fast_cross_section_jit(Z, Zstar, E_grid, me_c2, binding_arr, E_ion_true):
+    " Computes the cross-section for a given atomic number and temperature. "
     normalization = 2 * np.pi * (1/137)**4 * (5.29e-11)**2
     sigma = np.zeros(len(E_grid))
     
@@ -170,6 +176,7 @@ def fast_cross_section_jit(Z, Zstar, E_grid, me_c2, binding_arr, E_ion_true):
     return sigma * 1e4
 
 def _compute_ion_rate_scalar(Te_eV, Z, Zstar):
+    " Computes the ionization rate for a given atomic number and temperature. "
     me_c2, me, eV_to_erg = 510998.9, 9.10938356e-28, 1.602176634e-12
     idx_str = _get_species_str(Z)
     E_ion_true = ION_ENERGIES[idx_str][Zstar]
@@ -188,6 +195,7 @@ def _compute_ion_rate_scalar(Te_eV, Z, Zstar):
 _TE_GRID = np.logspace(-1, 3, 800)
 
 class RateTables:
+    " Class that stores the ionization rates for a given temperature grid. "
     def __init__(self, Te_grid: np.ndarray = _TE_GRID):
         self.log_Te = np.log(Te_grid)
         self._ion, self._3b, self._ex = {}, {}, {}
@@ -348,6 +356,7 @@ def assert_densities_match(t_chequp, n_chequp, t_ode, n_ode, tol, species_name):
 # UNIT TESTS
 
 def test_0D_Ar_H_mix(tol=10):
+    " Unit test for the 0D Ar-H mixture. "
     r, n0, dt, t_max = np.linspace(0, 1e-6, 256), 3e22, 1e-9, 10e-9
     T_eV, species_keys = np.ones_like(r) * 300.0, get_species_indices()
     densities = np.zeros((len(r), len(species_keys)))
@@ -359,7 +368,7 @@ def test_0D_Ar_H_mix(tol=10):
 
     save_to_openpmd({'r': [r.min(), r.max()]}, densities, T_eV,
                     f'{sim_folder}/init.h5', species_keys)
-
+    # Run the CHEQUP simulation
     runtime_options = (
         f"max_step=100000000 geometry.is_periodic=0 castro.lo_bc=3 castro.hi_bc=3 "
         f"amr.n_cell=8 geometry.prob_hi=0.0001 amr.max_level=0 castro.add_ext_src=1 "
