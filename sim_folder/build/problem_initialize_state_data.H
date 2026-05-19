@@ -110,13 +110,13 @@ inline void read_initial_conditions()
     // Copy data into Table object (Updated to n_idx - 1 = NumSpec + 4)
 #if AMREX_SPACEDIM == 1
     auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
-        (d_table_flat.data(), {0, 0}, {n_idx - 1, static_cast<int>(shape_array[0]) });
+        (d_table_flat.data(), {0, 0}, {n_idx, static_cast<int>(shape_array[0]) });
 #elif AMREX_SPACEDIM == 2
     auto initial_conditions_table = amrex::Table3D<Real,amrex::Order::C>
-        (d_table_flat.data(), {0, 0, 0}, {n_idx - 1, static_cast<int>(shape_array[0]), static_cast<int>(shape_array[1])});
+        (d_table_flat.data(), {0, 0, 0}, {n_idx, static_cast<int>(shape_array[0]), static_cast<int>(shape_array[1])});
 #elif AMREX_SPACEDIM == 3
     auto initial_conditions_table = amrex::Table4D<Real,amrex::Order::C>
-        (d_table_flat.data(), {0, 0, 0, 0}, {n_idx - 1, static_cast<int>(shape_array[0]), static_cast<int>(shape_array[1]), static_cast<int>(shape_array[2]) });
+        (d_table_flat.data(), {0, 0, 0, 0}, {n_idx, static_cast<int>(shape_array[0]), static_cast<int>(shape_array[1]), static_cast<int>(shape_array[2]) });
 #endif
 
     // Copy grid spacing and offset into static RealVect objects, and convert from m to cm
