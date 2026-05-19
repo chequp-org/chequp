@@ -268,13 +268,13 @@ namespace coll_ion
         int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
         // Limit ionization rate to prevent numerical instability
         // for low temperatures and high ionization energies
-        Real exp_ion = std::exp(std::min(ionization_energy[idx_Eion] / Te_eV, 500.0_rt));
-        Real exp_ex  = std::exp(std::min(ex_energy_atom[idx_atom]    / Te_eV, 500.0_rt));
+        Real exp_ion = std::exp(std::min(ionization_energy[idx_Eion] / Te_eV, 50.0_rt));
+        Real exp_ex  = std::exp(std::min(ex_energy_atom[idx_atom]    / Te_eV, 50.0_rt));
 
         Real rate_forward = get_rate_direct_ion(ispe, Te) * exp_ion
                           + get_rate_ex_ion(ispe, Te)     * exp_ex;
 
-        return std::min(rate_forward * reverse_factor, rate_forward);
+        return rate_forward * reverse_factor;
     }
 } 
 
