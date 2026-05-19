@@ -16,6 +16,8 @@
 #include <cuda_runtime.h>
 #endif
 
+AMREX_GPU_DEVICE AMREX_INLINE constexpr int n_idx = NumSpec + 5;
+
 // Static arrays for initial conditions that are read from an HDF5 file
 // These arrays are initialized from a file in the function read_initial_conditions
 // We then use interpolation to read these values for each cell,
@@ -41,12 +43,11 @@ inline void read_initial_conditions()
     if (!std::filesystem::exists(problem::initial_conditions_file)) {
         amrex::Abort("Initial conditions file does not exist: " + problem::initial_conditions_file);
     }
-
     // Open HDF5 file
     hid_t file_id = H5Fopen(problem::initial_conditions_file.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
     // Read grid shape and attributes from T dataset
-    hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/T", H5P_DEFAULT);
+    hid_t dataset_T = H5Dopen(file_id, "data/0/meshes/Te", H5P_DEFAULT);
     hid_t dataspace_T = H5Dget_space(dataset_T);
     hsize_t shape_array[AMREX_SPACEDIM];
     H5Sget_simple_extent_dims(dataspace_T, shape_array, NULL);
@@ -62,31 +63,34 @@ inline void read_initial_conditions()
     H5Sclose(dataspace_T);
     H5Dclose(dataset_T);
 
-    // Allocate table_flat: each row has (NumSpec+1) datasets stored contiguously
+    // Allocate table_flat: each row has (NumSpec+5) datasets stored contiguously
     // First dataset: electron temperature, next NumSpec datasets: species fractions
+    // Finaly, the three momentum fields, and the heavies temperature field
     // Calculate dataset_size as the product of shape_array from index 0 to AMREX_SPACEDIM-1
     int dataset_size = 1;
     for (int dim = 0; dim < AMREX_SPACEDIM; ++dim) {
         dataset_size *= shape_array[dim];
     }
     amrex::Gpu::HostVector<Real> table_flat;
-    table_flat.resize((NumSpec + 1) * dataset_size);
+    table_flat.resize((n_idx) * dataset_size);
 
-    // Create list of dataset names: "T" first, then species fractions
     std::vector<std::string> dataset_names;
-    dataset_names.push_back("T");
+    dataset_names.push_back("Te");
     for (int s = 0; s < NumSpec; ++s) {
         dataset_names.push_back(short_spec_names_cxx[s] + "_density");
     }
+    // Updated: Add momentum fields
+    dataset_names.push_back("xmom");
+    dataset_names.push_back("ymom");
+    dataset_names.push_back("zmom");
+    dataset_names.push_back("Th");
 
     // Loop over dataset names and fill table_flat
     for (int col = 0; col < dataset_names.size(); ++col) {
         std::string dataset_name = dataset_names[col];
         std::string dataset_path = std::string("data/0/meshes/") + dataset_name;
-
         // Open and read the dataset
         hid_t dataset = H5Dopen(file_id, dataset_path.c_str(), H5P_DEFAULT);
-
         // Read data directly into the table column
         H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
                 table_flat.data() + col*dataset_size);
@@ -103,21 +107,21 @@ inline void read_initial_conditions()
     d_table_flat = table_flat;
 #endif
 
-    // Copy data into Table object
+    // Copy data into Table object (Updated to n_idx - 1 = NumSpec + 4)
 #if AMREX_SPACEDIM == 1
     auto initial_conditions_table = amrex::Table2D<Real,amrex::Order::C>
-        (d_table_flat.data(), {0, 0}, {NumSpec+1, static_cast<int>(shape_array[0]) });
+        (d_table_flat.data(), {0, 0}, {n_idx, static_cast<int>(shape_array[0]) });
 #elif AMREX_SPACEDIM == 2
     auto initial_conditions_table = amrex::Table3D<Real,amrex::Order::C>
-        (d_table_flat.data(), {0, 0, 0}, {NumSpec+1, static_cast<int>(shape_array[0]), static_cast<int>(shape_array[1])});
+        (d_table_flat.data(), {0, 0, 0}, {n_idx, static_cast<int>(shape_array[0]), static_cast<int>(shape_array[1])});
 #elif AMREX_SPACEDIM == 3
     auto initial_conditions_table = amrex::Table4D<Real,amrex::Order::C>
-        (d_table_flat.data(), {0, 0, 0, 0}, {NumSpec+1, static_cast<int>(shape_array[0]), static_cast<int>(shape_array[1]), static_cast<int>(shape_array[2]) });
+        (d_table_flat.data(), {0, 0, 0, 0}, {n_idx, static_cast<int>(shape_array[0]), static_cast<int>(shape_array[1]), static_cast<int>(shape_array[2]) });
 #endif
+
     // Copy grid spacing and offset into static RealVect objects, and convert from m to cm
     auto grid_spacing = RealVect(AMREX_D_DECL(1e2*grid_spacing_array[0], 1e2*grid_spacing_array[1], 1e2*grid_spacing_array[2]));
     auto grid_offset = RealVect(AMREX_D_DECL(1e2*grid_offset_array[0], 1e2*grid_offset_array[1], 1e2*grid_offset_array[2]));
-
     // Copy all needed information into the static variables
 #ifdef AMREX_USE_GPU
 #if AMREX_SPACEDIM == 1
@@ -140,11 +144,16 @@ inline void read_initial_conditions()
 AMREX_GPU_DEVICE AMREX_INLINE
 void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& state, const GeometryData& geomdata)
 {
+    const int idx_Te = 0;
+    const int idx_Spe = 1;
+    const int idx_xmom = NumSpec + 1;
+    const int idx_ymom = NumSpec + 2;
+    const int idx_zmom = NumSpec + 3;
+    const int idx_Th = NumSpec + 4;
     int coord_type = geomdata.Coord();
 
     const Real* dx = geomdata.CellSize();
     const Real* problo = geomdata.ProbLo();
-
     // Get coordinates for this cell
     Real x0 = problo[0] + dx[0] * (static_cast<Real>(i)+0.5);
 #if AMREX_SPACEDIM >= 2
@@ -153,7 +162,6 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
 #if AMREX_SPACEDIM >= 3
     Real x2 = problo[2] + dx[2] * (static_cast<Real>(k)+0.5);
 #endif
-
     // Linear interpolation to find population and electron temperature
     Real x0_norm = (x0 - d_grid_offset[0]) / d_grid_spacing[0];
     int const idx0 = static_cast<int>(x0_norm);
@@ -175,19 +183,18 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     int const idx2_hi = std::clamp( idx2 + 1, d_initial_conditions_table.begin[3], d_initial_conditions_table.end[3]-1 );
     Real frac2 = x2_norm - idx2;
 #endif
-
     // Interpolate the values
-    Real interp_values[NumSpec+1];
+    Real interp_values[n_idx];
 #if AMREX_SPACEDIM == 1
     // 1D linear interpolation
-    for (int col = 0; col < NumSpec+1; ++col) {
+    for (int col = 0; col < n_idx; ++col) {
         Real val_0 = d_initial_conditions_table(col, idx0_lo);
         Real val_1 = d_initial_conditions_table(col, idx0_hi);
         interp_values[col] = val_0 + frac0 * (val_1 - val_0);
     }
 #elif AMREX_SPACEDIM == 2
     // 2D bilinear interpolation
-    for (int col = 0; col < NumSpec+1; ++col) {
+    for (int col = 0; col < n_idx; ++col) {
         Real val_00 = d_initial_conditions_table(col, idx0_lo, idx1_lo);
         Real val_10 = d_initial_conditions_table(col, idx0_hi, idx1_lo);
         Real val_01 = d_initial_conditions_table(col, idx0_lo, idx1_hi);
@@ -198,7 +205,7 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
     }
 #elif AMREX_SPACEDIM == 3
     // 3D trilinear interpolation
-    for (int col = 0; col < NumSpec+1; ++col) {
+    for (int col = 0; col < n_idx; ++col) {
         Real val_000 = d_initial_conditions_table(col, idx0_lo, idx1_lo, idx2_lo);
         Real val_100 = d_initial_conditions_table(col, idx0_hi, idx1_lo, idx2_lo);
         Real val_010 = d_initial_conditions_table(col, idx0_lo, idx1_hi, idx2_lo);
@@ -218,60 +225,52 @@ void problem_initialize_state_data (int i, int j, int k, Array4<Real> const& sta
         interp_values[col] = val_0 + frac2 * (val_1 - val_0);
     }
 #endif
-
     // Extract data from interpolated array
-    Real Te = interp_values[0];
+    Real Te = interp_values[idx_Te]; // electron temperature
+    Real Th = interp_values[idx_Th]; // heavies temperature
     Real number_densities[NumSpec];
     for (int s = 0; s < NumSpec; ++s) {
         number_densities[s] = interp_values[s + 1];
     }
-
     // compute mass density from number density
     // number densities are in m^-3, convert to cm^-3 
     Real rho = 0.0;
     for (int s = 0; s < NumSpec; ++s) {
-        rho += number_densities[s] * 1.e-6 * aion[s] * C::m_u;
+        rho += number_densities[s] * 1.e-6_rt * aion[s] * C::m_u;
     }
     
-    // Assume 0 velocity initially
     state(i,j,k,URHO) = rho;
-    state(i,j,k,UMX) = 0.0;
-    state(i,j,k,UMY) = 0.0;
-    state(i,j,k,UMZ) = 0.0;
-    
+
+    // Updated: Apply interpolated momentum with unit conversion (SI -> CGS)
+    // 1 kg m^-2 s^-1 = 0.1 g cm^-2 s^-1
+    state(i,j,k,UMX) = interp_values[idx_xmom];
+    state(i,j,k,UMY) = interp_values[idx_ymom];
+    state(i,j,k,UMZ) = interp_values[idx_zmom];
     // Set mass densities for each species: rho_s = n_s * A_s * m_u
     for (int s = 0; s < NumSpec; ++s) {
-        state(i,j,k,UFS+s) = number_densities[s] * 1.e-6 * aion[s] * C::m_u;
+        state(i,j,k,UFS+s) = number_densities[s] * 1.e-6_rt * aion[s] * C::m_u;
     }
-
     // Set the initial internal energy and total energy
-    Real Ta = 348.; // 0.03 eV, in Kelvins
-    
-    // Energy density: rho_e = n * k_B * T / (gamma - 1)
-    Real n_heavy = 0.0; // heavy density in cm^-3
-    Real n_electrons = 0.0; // electron num density in cm^-3
+    Real n_heavy = 0.0_rt; // heavy density in cm^-3
+    Real n_electrons = 0.0_rt; // electron num density in cm^-3
 
     for (int s = 0; s < NumSpec; ++s) {
-        n_heavy += number_densities[s] * 1.e-6;
-        n_electrons += number_densities[s] * 1.e-6 * zion[s];
+        n_heavy += number_densities[s] * 1.e-6_rt;
+        n_electrons += number_densities[s] * 1.e-6_rt * zion[s];
     }
-    Real rho_e_heavies = n_heavy * C::k_B * Ta / (eos_rp::eos_gamma - 1.0);
-    Real rho_e_electrons = n_electrons * C::k_B * Te / (eos_rp::eos_gamma - 1.0);
+    // Energy density: rho_e = n * k_B * T / (gamma - 1)
+    Real rho_e_heavies = n_heavy * C::k_B * Th / (eos_rp::eos_gamma - 1.0_rt);
+    Real rho_e_electrons = n_electrons * C::k_B * Te / (eos_rp::eos_gamma - 1.0_rt);
 
     state(i,j,k,UEINT) = rho_e_heavies + rho_e_electrons;
+    
+    // UEDEN dynamically reads UMX, UMY, UMZ, so it calculates correctly with the new momentum
     state(i,j,k,UEDEN) = rho_e_heavies + rho_e_electrons +
                          0.5e0_rt * (state(i,j,k,UMX) * state(i,j,k,UMX) / state(i,j,k,URHO) +
                                      state(i,j,k,UMY) * state(i,j,k,UMY) / state(i,j,k,URHO) +
                                      state(i,j,k,UMZ) * state(i,j,k,UMZ) / state(i,j,k,URHO));
-
     // UFX is rho*f, where f is the fraction of internal energy stored in heavies (ions + atoms)
     state(i,j,k,UFX) = state(i,j,k,URHO) * rho_e_heavies / (rho_e_electrons + rho_e_heavies);
-
-    // The temperature initialization will be done later
-    // in the call to clean_state. We want to avoid
-    // EOS calls in ca_initdata. So that there is valid
-    // data for an initial guess for the EOS, we initialize
-    // to the ambient temperature everywhere.
     state(i,j,k,UTEMP) = problem::temp_ambient;
 }
 
