@@ -4,6 +4,7 @@
 #include <prob_parameters.H>
 #include <eos.H>
 #include <problem_initialize_state_data.H>
+#include <collisional_ionization.H>
 
 AMREX_INLINE
 void problem_initialize ()
@@ -29,7 +30,9 @@ void problem_initialize ()
 
     // Read CSV file containing initial conditions
     read_initial_conditions();
-
+    // Initialize collisional ionization rates table 
+    coll_ion::initialize();
 }
 
 #endif
+
