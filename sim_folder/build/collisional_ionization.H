@@ -83,7 +83,6 @@ namespace coll_ion
     { 
         // Prevent electron (-1) out of bounds crash
         if (zstar < 0) return 0.0_rt;
-
         Real sigma = 0.0_rt; 
         int n = 1; 
 
@@ -98,7 +97,6 @@ namespace coll_ion
             24.588_rt, 24.588_rt, 
             15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt 
         }; 
-        
         static constexpr int num_simulated_electrons[num_atom_species] = {1, 5, 2, 4}; 
 
         int base_idx = get_energy_index(atomic_number); 
@@ -152,7 +150,7 @@ namespace coll_ion
             } 
             n = 1; 
         } 
-        return sigma * 1e4_rt;
+        return sigma * 1e4_rt; 
     } 
     // Computes the ionization rate for a given atomic number and temperature
     // by integrating the electron impact ionization cross-section over a maxwellian
@@ -245,7 +243,7 @@ namespace coll_ion
         rate = prefactor * f * Gaunt_value / (dE * std::sqrt(Te)) * std::exp(-dE / Te); 
         return rate; 
     } 
-    
+
     // Accesses the 3-body recombination rate for a given atomic number and temperature
     // with the Saha equilibrium approximation
     AMREX_GPU_HOST_DEVICE inline
