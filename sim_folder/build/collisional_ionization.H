@@ -14,7 +14,7 @@ inline AMREX_GPU_MANAGED amrex::Real g_deg[15] = {
     1.0_rt, 2.0_rt, 1.0_rt, 
     1.0_rt, 4.0_rt, 5.0_rt, 4.0_rt 
 }; 
-
+// Number of atom species
 constexpr int num_atom_species = 4; 
 constexpr amrex::Real X_min = 1e-20_rt; 
 
@@ -91,7 +91,6 @@ namespace coll_ion
         if (atomic_number == 7) atom_idx = 1; 
         if (atomic_number == 2) atom_idx = 2; 
         if (atomic_number == 18) atom_idx = 3; 
-
         // Binding energies for each species (H, N, He, Ar)
         static constexpr Real binding_energy[12] = { 
             13.5981_rt, 
@@ -246,6 +245,7 @@ namespace coll_ion
         rate = prefactor * f * Gaunt_value / (dE * std::sqrt(Te)) * std::exp(-dE / Te); 
         return rate; 
     } 
+    
     // Accesses the 3-body recombination rate for a given atomic number and temperature
     // with the Saha equilibrium approximation
     AMREX_GPU_HOST_DEVICE inline
