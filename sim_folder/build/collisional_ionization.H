@@ -7,37 +7,18 @@
 #include <cmath>
 #include <algorithm>
 
-// --- SHARED ARRAYS (Used in multiple functions) ---
-// Using inline AMREX_GPU_MANAGED ensures A100 visibility and no linker errors
-
+// Quantum degeneracy of each species (H, N, He, Ar)
 inline AMREX_GPU_MANAGED amrex::Real g_deg[15] = { 
-    2.0_rt, 1.0_rt, 4.0_rt, 9.0_rt, 6.0_rt, 1.0_rt, 2.0_rt, 1.0_rt, 
-    1.0_rt, 2.0_rt, 1.0_rt, 1.0_rt, 4.0_rt, 5.0_rt, 4.0_rt 
-};
+    2.0_rt, 1.0_rt, 
+    4.0_rt, 9.0_rt, 6.0_rt, 1.0_rt, 2.0_rt, 1.0_rt, 
+    1.0_rt, 2.0_rt, 1.0_rt, 
+    1.0_rt, 4.0_rt, 5.0_rt, 4.0_rt 
+}; 
 
 constexpr int num_atom_species = 4; 
 constexpr amrex::Real X_min = 1e-20_rt; 
 
-inline AMREX_GPU_MANAGED int zatom[num_atom_species] = {1, 7, 2, 18};
-
-inline AMREX_GPU_MANAGED amrex::Real ionization_energy[12] = { 
-    13.598434_rt, 
-    14.53413_rt, 29.60125_rt, 47.4453_rt, 77.4735_rt, 97.89013_rt, 
-    24.587388_rt, 54.417763_rt, 
-    15.759611_rt, 27.62967_rt, 40.735_rt, 59.58_rt 
-}; 
-
-inline AMREX_GPU_MANAGED amrex::Real gaunt_fit[num_atom_species][7] = { 
-    {-7.61094672e-06_rt, 1.42014919e-04_rt, -5.26821513e-04_rt, -2.27233338e-03_rt, 2.38468040e-03_rt, 5.36211118e-02_rt, 2.56972926e-01_rt}, 
-    { 1.28897560e-05_rt, -6.31681622e-05_rt, 3.94454841e-04_rt, -2.02240986e-03_rt, -1.12428478e-02_rt, 4.14377747e-02_rt, 3.31875681e-01_rt}, 
-    {-4.17177174e-07_rt, 5.84617203e-05_rt, -4.65772440e-04_rt, -1.06125512e-03_rt, 4.16013477e-03_rt, 5.01909786e-02_rt, 2.23090873e-01_rt}, 
-    { 1.12925396e-05_rt, 7.83928108e-05_rt, -8.07569320e-04_rt, -1.45478529e-03_rt, 4.14430633e-03_rt, 5.21310441e-02_rt, 2.49330993e-01_rt} 
-}; 
-
-inline AMREX_GPU_MANAGED amrex::Real oscillator_strength[num_atom_species] = {0.416_rt, 0.276_rt, 0.26_rt, 0.12_rt}; 
-
-inline AMREX_GPU_MANAGED amrex::Real ex_energy_atom[num_atom_species] = {10.6_rt, 19.8_rt, 11.6_rt, 10.3_rt}; 
-
+// Helper function to get the index of the atom species from the atomic number
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
 int get_atom_index(int mu) { 
     if (mu <= 1 && mu >= 0) return 0;   
@@ -46,6 +27,26 @@ int get_atom_index(int mu) {
     if (mu <= 14 && mu > 10)return 3;   
     return 0; 
 } 
+// Atomic numbers of each species (H, N, He, Ar)
+inline AMREX_GPU_MANAGED int zatom[num_atom_species] = {1, 7, 2, 18};
+// Ionization energies of each species (H, N, He, Ar)
+inline AMREX_GPU_MANAGED amrex::Real ionization_energy[12] = { 
+    13.598434_rt, 
+    14.53413_rt, 29.60125_rt, 47.4453_rt, 77.4735_rt, 97.89013_rt, 
+    24.587388_rt, 54.417763_rt, 
+    15.759611_rt, 27.62967_rt, 40.735_rt, 59.58_rt 
+}; 
+// Gaunt factors polynomial coefficients for each species (H, N, He, Ar)
+inline AMREX_GPU_MANAGED amrex::Real gaunt_fit[num_atom_species][7] = { 
+    {-7.61094672e-06_rt, 1.42014919e-04_rt, -5.26821513e-04_rt, -2.27233338e-03_rt, 2.38468040e-03_rt, 5.36211118e-02_rt, 2.56972926e-01_rt}, 
+    { 1.28897560e-05_rt, -6.31681622e-05_rt, 3.94454841e-04_rt, -2.02240986e-03_rt, -1.12428478e-02_rt, 4.14377747e-02_rt, 3.31875681e-01_rt}, 
+    {-4.17177174e-07_rt, 5.84617203e-05_rt, -4.65772440e-04_rt, -1.06125512e-03_rt, 4.16013477e-03_rt, 5.01909786e-02_rt, 2.23090873e-01_rt}, 
+    { 1.12925396e-05_rt, 7.83928108e-05_rt, -8.07569320e-04_rt, -1.45478529e-03_rt, 4.14430633e-03_rt, 5.21310441e-02_rt, 2.49330993e-01_rt} 
+}; 
+// Oscillator strengths for each species (H, N, He, Ar)
+inline AMREX_GPU_MANAGED amrex::Real oscillator_strength[num_atom_species] = {0.416_rt, 0.276_rt, 0.26_rt, 0.12_rt}; 
+// Excitation energy for each species (H, N, He, Ar) 
+inline AMREX_GPU_MANAGED amrex::Real ex_energy_atom[num_atom_species] = {10.6_rt, 19.8_rt, 11.6_rt, 10.3_rt}; 
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
 int get_energy_index(int Z) 
@@ -61,25 +62,26 @@ namespace coll_ion
 { 
     using namespace amrex; 
     
-    static constexpr int NT = 100;  
-    static constexpr Real T_min = 1e-3_rt;   
-    static constexpr Real T_max = 3.0e2_rt;  
-    static constexpr Real K_to_eV = 8.617333262145e-5_rt;  
+    static constexpr int NT = 100;  // Number of temperature points
+    static constexpr Real T_min = 1e-3_rt;   // Minimum temperature
+    static constexpr Real T_max = 3.0e2_rt;  // Maximum temperature
+    static constexpr Real K_to_eV = 8.617333262145e-5_rt;  // Conversion factor from Kelvin to eV
+
     static constexpr int npoints = 100; 
 
     inline AMREX_GPU_MANAGED Real rate_table[NumSpec][NT];
     inline AMREX_GPU_MANAGED bool initialized = false; 
-
+    // Maxwellian weight function
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
     Real maxwell_weight(Real E, Real Te) 
     { 
         return std::sqrt(E) * std::exp(-E / Te); 
     } 
-
+    // Electron impact ionization cross-section from Kim et al. (2000)
     AMREX_GPU_HOST_DEVICE inline 
     Real sigma_E(int atomic_number, int zstar, Real ep) 
     { 
-        // SAFETY GUARD: Prevent electron (-1) out of bounds crash
+        // Prevent electron (-1) out of bounds crash
         if (zstar < 0) return 0.0_rt;
 
         Real sigma = 0.0_rt; 
@@ -90,8 +92,7 @@ namespace coll_ion
         if (atomic_number == 2) atom_idx = 2; 
         if (atomic_number == 18) atom_idx = 3; 
 
-        // --- LOCAL ARRAYS (Used only in this function) ---
-        // NVCC will load these into registers/constant memory cleanly
+        // Binding energies for each species (H, N, He, Ar)
         static constexpr Real binding_energy[12] = { 
             13.5981_rt, 
             20.33_rt, 20.33_rt, 14.534_rt, 14.534_rt, 14.534_rt, 
@@ -154,7 +155,8 @@ namespace coll_ion
         } 
         return sigma * 1e4_rt;
     } 
-    
+    // Computes the ionization rate for a given atomic number and temperature
+    // by integrating the electron impact ionization cross-section over a maxwellian
     inline AMREX_GPU_HOST_DEVICE 
     Real compute_rate(int atomic_number, int zstar, Real Te) 
     { 
@@ -180,7 +182,8 @@ namespace coll_ion
         } 
         return sum; 
     } 
-    
+    // Precomputes the ionization rate for all species and temperatures
+    // and stores them in the rate_table array to speed up the computation
     inline void initialize() 
     { 
         if (initialized) return; 
@@ -197,7 +200,8 @@ namespace coll_ion
         } 
         initialized = true; 
     } 
-    
+    // Accesses the ionization rate for a given atomic number and temperature
+    // by interpolating the precomputed rate_table array
     AMREX_GPU_HOST_DEVICE inline 
     Real get_rate_direct_ion(int ispe, Real Te) 
     { 
@@ -212,7 +216,8 @@ namespace coll_ion
         Real w = f - i; 
         return (1.0_rt - w) * rate_table[ispe][i] + w * rate_table[ispe][i + 1]; 
     } 
-    
+    // Accesses the excitation ionization rate for a given atomic number and temperature
+    // by interpolating the precomputed rate_table array
     AMREX_GPU_HOST_DEVICE inline 
     Real get_rate_ex_ion(int ispe, Real Te) 
     { 
@@ -241,7 +246,8 @@ namespace coll_ion
         rate = prefactor * f * Gaunt_value / (dE * std::sqrt(Te)) * std::exp(-dE / Te); 
         return rate; 
     } 
-
+    // Accesses the 3-body recombination rate for a given atomic number and temperature
+    // with the Saha equilibrium approximation
     AMREX_GPU_HOST_DEVICE inline
     Real get_rate_3body(int ispe, Real rho, Real Te)
     {
@@ -249,7 +255,7 @@ namespace coll_ion
 
         const Real Te_eV = Te * K_to_eV;
         if (Te_eV < T_min) return 0.0_rt;          
-        
+        // Compute the De Broglie wavelength for the given temperature
         Real lambda_DeBroglie = C::hbar * std::sqrt(2.0_rt * M_PI / (C::m_e * C::k_B * Te));
 
         Real reverse_factor = rho * std::pow(lambda_DeBroglie, 3)
@@ -258,7 +264,8 @@ namespace coll_ion
 
         int idx_atom = get_atom_index(ispe);
         int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
-        
+        // Limit ionization rate to prevent numerical instability
+        // for low temperatures and high ionization energies
         Real exp_ion = std::exp(std::min(ionization_energy[idx_Eion] / Te_eV, 50.0_rt));
         Real exp_ex  = std::exp(std::min(ex_energy_atom[idx_atom]    / Te_eV, 50.0_rt));
 
