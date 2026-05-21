@@ -200,7 +200,7 @@ class HipaceToChequpConverter:
                     ax.plot(r_um, data, linewidth=1.5, color=colors[j], label=sp_key)
             
             ax.set_xlabel('r (µm)')
-            ax.set_ylabel('n (arb. units)')
+            ax.set_ylabel(r'n ($m^{-3}$)')
             ax.set_title(f'Density  –  {base_sp}')
             ax.set_xlim(0, r_max_zoom * 1e6)
             ax.grid(True, linewidth=0.4, alpha=0.5)
@@ -256,7 +256,7 @@ class HipaceToChequpConverter:
             ax.set_ylim(0, r_max_zoom * 1e6)
             div = make_axes_locatable(ax)
             cax = div.append_axes('right', size='5%', pad=0.05)
-            fig.colorbar(im, cax=cax, label='n (arb. units)')
+            fig.colorbar(im, cax=cax, label=r'n ($m^{-3}$)')
 
         # temperature panel
         ax_T = fig.add_subplot(gs[n_species, 0])
@@ -302,33 +302,39 @@ class HipaceToChequpConverter:
         # Define geometry from the extracted fields
         if self.dim == 1:
             r = np.array(species_field['r'])
-        if self.dim == 2:
+            r_new = r
+            Nr_new = len(r)
+        elif self.dim == 2:
             r, z = np.array(species_field['r']), np.array(species_field['z'])
+            r_new = r
+            z_new = z
+            Nr_new, Nz_new = len(r), len(z)
 
         # 3. Handle Zoom / Coordinate Conversion
         # If the user specified a custom zoom window, convert it from um/cm to SI units (meters).
         # We also ensure the requested zoom window doesn't exceed the actual simulation bounds.
-        if self.r_zoom_um != (0, 0) and self.z_zoom_cm != (0, 0):
-            if np.abs(r.max() * 1e6) > self.r_zoom_um[1] and self.z_zoom_cm[1] < z.max() * 1e2:
-                r_min_zoom, r_max_zoom = self.r_zoom_um[0] * 1e-6, self.r_zoom_um[1] * 1e-6
-                z_min_zoom, z_max_zoom = self.z_zoom_cm[0] * 1e-2, self.z_zoom_cm[1] * 1e-2
-                Nr_new, Nz_new = self.N_new
+
+        if self.r_zoom_um != (0, 0):
+            if np.abs(r.max() * 1e6) > self.r_zoom_um[1] :
+                r_min_zoom, r_max_zoom = self.r_zoom_um[0]*1e-6, self.r_zoom_um[1]*1e-6
+                Nr_new = self.N_new[0]
+                if r_min_zoom == 0:
+                    r_min_zoom = -r_max_zoom
+                r_new = np.linspace(r_min_zoom, r_max_zoom, Nr_new)
             else:
                 raise ValueError("r_zoom_um and z_zoom_cm are not compatible with the field.")
-        else:
-            # Fallback to full grid if no zoom was requested
-            r_min_zoom, r_max_zoom = r.min(), r.max()
-            if self.dim == 2:
-                z_min_zoom, z_max_zoom = z.min(), z.max()
-                Nr_new, Nz_new = len(r), len(z)
+                
+        if self.z_zoom_cm != (0, 0):
+            if self.z_zoom_cm[1] < z.max() * 1e2:
+                z_min_zoom, z_max_zoom = self.z_zoom_cm[0]*1e-2, self.z_zoom_cm[1]*1e-2
+                Nz_new = self.N_new[1]
+                z_new = np.linspace(z_min_zoom, z_max_zoom, Nz_new)
             else:
-                Nr_new = len(r)
+                raise ValueError("r_zoom_um and z_zoom_cm are not compatible with the field.")
 
         # 4. 2D Interpolation Logic
         if self.dim == 2:
             # Create the new r-z grid based on user requested zoom and resolution
-            r_new = np.linspace(r_min_zoom, r_max_zoom, Nr_new)
-            z_new = np.linspace(z_min_zoom, z_max_zoom, Nz_new)
             R_new, Z_new = np.meshgrid(r_new, z_new, indexing='ij')
             points = np.stack([R_new.ravel(), Z_new.ravel()], axis=-1)
             
@@ -360,7 +366,7 @@ class HipaceToChequpConverter:
             # Save to file
             os.makedirs(os.path.dirname(self.path_to_chequp_input), exist_ok=True)
             save_to_openpmd(
-                {'r': [0, r_max_zoom], 'z': [z_min_zoom, z_max_zoom]},
+                {'r': [0, r_new.max()], 'z': [z_new.min(), z_new.max()]},
                 densities_inputs,
                 T_inputs + 1e-2 * np.max(T_inputs), # Add small baseline temperature floor 
                 f'{self.path_to_chequp_input}/2d_input.h5',
@@ -371,13 +377,11 @@ class HipaceToChequpConverter:
                 print('Plotting...')
                 self._plot_fields_2d(
                     r_inputs, z_new, densities_inputs, T_inputs,
-                    r_max_zoom, z_min_zoom, z_max_zoom, species_keys
+                    r_new.max(), z_new.min(), z_new.max(), species_keys
                 )
 
         # 5. 1D Interpolation Logic
         elif self.dim == 1:
-            r_new = np.linspace(r_min_zoom, r_max_zoom, Nr_new)
-            
             # Slice for r >= 0 (same logic as 2D)
             half_idx = Nr_new // 2
             r_inputs = r_new[half_idx:]
@@ -401,7 +405,7 @@ class HipaceToChequpConverter:
                 
             os.makedirs(os.path.dirname(self.path_to_chequp_input), exist_ok=True)
             save_to_openpmd(
-                {'r': [0, r_max_zoom]}, 
+                {'r': [0, r_new.max()]}, 
                 densities_inputs,
                 T_inputs + 1e-2 * np.max(T_inputs), 
                 f'{self.path_to_chequp_input}/1d_input.h5',
@@ -411,5 +415,5 @@ class HipaceToChequpConverter:
             if plot:
                 print('Plotting...')
                 self._plot_fields_1d(
-                    r_inputs, densities_inputs, T_inputs, r_max_zoom, species_keys
+                    r_inputs, densities_inputs, T_inputs, r_new.max(), species_keys
                 )
