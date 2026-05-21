@@ -8,8 +8,7 @@
 #include <algorithm>
 
 // Quantum degeneracy of each species (H, N, He, Ar)
-AMREX_GPU_HOST_DEVICE 
-inline amrex::Real g_deg[15] = { 
+inline AMREX_GPU_MANAGED amrex::Real g_deg[15] = { 
     2.0_rt, 1.0_rt, 
     4.0_rt, 9.0_rt, 6.0_rt, 1.0_rt, 2.0_rt, 1.0_rt, 
     1.0_rt, 2.0_rt, 1.0_rt, 
@@ -29,30 +28,25 @@ int get_atom_index(int mu) {
     return 0; 
 } 
 // Atomic numbers of each species (H, N, He, Ar)
-AMREX_GPU_HOST_DEVICE 
-const int zatom[num_atom_species] = {1, 7, 2, 18}; 
+inline AMREX_GPU_MANAGED int zatom[num_atom_species] = {1, 7, 2, 18};
 // Ionization energies of each species (H, N, He, Ar)
-AMREX_GPU_HOST_DEVICE 
-inline amrex::Real ionization_energy[12] = { 
+inline AMREX_GPU_MANAGED amrex::Real ionization_energy[12] = { 
     13.598434_rt, 
     14.53413_rt, 29.60125_rt, 47.4453_rt, 77.4735_rt, 97.89013_rt, 
     24.587388_rt, 54.417763_rt, 
     15.759611_rt, 27.62967_rt, 40.735_rt, 59.58_rt 
 }; 
 // Gaunt factors polynomial coefficients for each species (H, N, He, Ar)
-AMREX_GPU_HOST_DEVICE 
-inline amrex::Real gaunt_fit[num_atom_species][7] = { 
+inline AMREX_GPU_MANAGED amrex::Real gaunt_fit[num_atom_species][7] = { 
     {-7.61094672e-06_rt, 1.42014919e-04_rt, -5.26821513e-04_rt, -2.27233338e-03_rt, 2.38468040e-03_rt, 5.36211118e-02_rt, 2.56972926e-01_rt}, 
     { 1.28897560e-05_rt, -6.31681622e-05_rt, 3.94454841e-04_rt, -2.02240986e-03_rt, -1.12428478e-02_rt, 4.14377747e-02_rt, 3.31875681e-01_rt}, 
     {-4.17177174e-07_rt, 5.84617203e-05_rt, -4.65772440e-04_rt, -1.06125512e-03_rt, 4.16013477e-03_rt, 5.01909786e-02_rt, 2.23090873e-01_rt}, 
     { 1.12925396e-05_rt, 7.83928108e-05_rt, -8.07569320e-04_rt, -1.45478529e-03_rt, 4.14430633e-03_rt, 5.21310441e-02_rt, 2.49330993e-01_rt} 
 }; 
 // Oscillator strengths for each species (H, N, He, Ar)
-AMREX_GPU_HOST_DEVICE 
-inline amrex::Real oscillator_strength[num_atom_species] = {0.416_rt, 0.276_rt, 0.26_rt, 0.12_rt}; 
+inline AMREX_GPU_MANAGED amrex::Real oscillator_strength[num_atom_species] = {0.416_rt, 0.276_rt, 0.26_rt, 0.12_rt}; 
 // Excitation energy for each species (H, N, He, Ar) 
-AMREX_GPU_HOST_DEVICE 
-inline amrex::Real ex_energy_atom[num_atom_species] = {10.6_rt, 19.8_rt, 11.6_rt, 10.3_rt}; 
+inline AMREX_GPU_MANAGED amrex::Real ex_energy_atom[num_atom_species] = {10.6_rt, 19.8_rt, 11.6_rt, 10.3_rt}; 
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
 int get_energy_index(int Z) 
@@ -87,6 +81,8 @@ namespace coll_ion
     AMREX_GPU_HOST_DEVICE inline 
     Real sigma_E(int atomic_number, int zstar, Real ep) 
     { 
+        // Prevent electron (-1) out of bounds crash
+        if (zstar < 0) return 0.0_rt;
         Real sigma = 0.0_rt; 
         int n = 1; 
 
@@ -95,17 +91,17 @@ namespace coll_ion
         if (atomic_number == 2) atom_idx = 2; 
         if (atomic_number == 18) atom_idx = 3; 
         // Binding energies for each species (H, N, He, Ar)
-        Real binding_energy[12] = { 
+        static constexpr Real binding_energy[12] = { 
             13.5981_rt, 
             20.33_rt, 20.33_rt, 14.534_rt, 14.534_rt, 14.534_rt, 
             24.588_rt, 24.588_rt, 
             15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt 
         }; 
+        static constexpr int num_simulated_electrons[num_atom_species] = {1, 5, 2, 4}; 
 
         int base_idx = get_energy_index(atomic_number); 
         const Real me_c2 = 510998.0_rt; 
         const Real normalization = 2.0_rt * M_PI * std::pow(1.0_rt/137.0_rt, 4) * std::pow(5.29e-11_rt, 2); 
-        int num_simulated_electrons[num_atom_species] = {1, 5, 2, 4}; 
 
         const Real ep_mc2 = ep / me_c2; 
 
