@@ -6,21 +6,20 @@ and write CHEQUP initial-condition files in either 1-D (r) or 2-D (r-z)
 openPMD/HDF5 format.
 
 Typical usage
--------------
-from hipace_to_chequp import HipaceToChequpConverter
+    -------------
+    from hipace_to_chequp import HipaceToChequpWriter
 
-converter = HipaceToChequpConverter(
-    path_to_hipace_sim="/data/runs/my_hipace_run/",
-    path_to_chequp_code="/data/chequp/",
-    path_to_chequp_input="/data/chequp/my_case/",
-    species=['H', 'Ar'],
-    dim=2,
-    r_zoom_um=(0, 50),
-    z_zoom_cm=(10, 15),
-    N_new=(200, 500)
-)
-converter.convert(plot=True)
-"""
+    writer = HipaceToChequpWriter(
+        input="/data/runs/my_hipace_run/diags/hdf5",
+        output="/data/chequp/my_case/2d_input.h5",
+        species=['H', 'Ar'],
+        dim=2,
+        r_zoom_um=(0, 50),
+        z_zoom_cm=(10, 15),
+        N_new=(200, 500)
+    )
+    writer.write_input(plot=True)
+    """
 
 import json
 import os
@@ -32,14 +31,16 @@ import tqdm
 from openpmd_viewer import OpenPMDTimeSeries
 from scipy.interpolate import RegularGridInterpolator, interp1d
 from pytools import norm_p
+from pathlib import Path
 
+MODULE_DIR = Path(__file__).resolve().parent
+species_net_file = MODULE_DIR / "../build/species.net"
 
-class HipaceToChequpConverter:
+class HipaceToChequpWriter:
     def __init__(
         self,
-        path_to_hipace_sim,
-        path_to_chequp_code,
-        path_to_chequp_input,
+        input,
+        output,
         species=None,
         dim=2,
         r_zoom_um=(0, 0),
@@ -47,30 +48,40 @@ class HipaceToChequpConverter:
         N_new=(300, 300)
     ):
         """
-        Initialize the converter with path and grid parameters.
-        
+        Utility to extract ionization fields and electron temperature from a HiPACE++ 
+        simulation (via openPMD) and write CHEQUP initial-condition files in either 
+        1-D (r) or 2-D (r-z) openPMD/HDF5 format.
+
+        This converter automatically handles interpolating the HiPACE++ grid onto a 
+        specified zoom window, slices the radial domain for r >= 0, and applies a 1% 
+        baseline floor to densities and temperatures to prevent numerical instabilities 
+        in CHEQUP. It expects the CHEQUP `species.net` file to be located at 
+        `../build/species.net` relative to the execution directory.
+
         Parameters
         ----------
-        path_to_hipace_sim : str
+        input : str
             Path to the openPMD output directory of the HiPACE++ simulation.
-        path_to_chequp_code : str
-            Path to the CHEQUP root directory (needed to read species.net and access routines).
-        path_to_chequp_input : str
-            Directory where the generated 1d_input.h5 or 2d_input.h5 will be saved.
-        species : list of str
-            Base elements to extract (e.g., ['H', 'Ar']). H, He, N, and Ar are supported.
-        dim : int
-            Dimensionality of the output (1 for radial only, 2 for r-z grid).
-        r_zoom_um : tuple of floats
-            Radial window to extract in micrometers (min, max). Defaults to (0,0) which extracts the full grid.
-        z_zoom_cm : tuple of floats
-            Longitudinal window to extract in centimeters (min, max). Defaults to (0,0) which extracts the full grid.
-        N_new : tuple of ints
-            Resolution (Nr, Nz) to interpolate the zoomed grid onto.
+        output : str
+            Directory and filename where the generated CHEQUP input (e.g., `1d_input.h5` 
+            or `2d_input.h5`) will be saved.
+        species : list of str, optional
+            Base elements to extract. Supported elements are 'H', 'He', 'N', and 'Ar'. 
+            Defaults to ['H', 'Ar'].
+        dim : int, optional
+            Dimensionality of the output: 1 for a purely radial slice at the center, 
+            or 2 for a full r-z grid. Defaults to 2.
+        r_zoom_um : tuple of floats, optional
+            Radial window to extract in micrometers (min, max). Defaults to (0,0), 
+            which extracts the full grid.
+        z_zoom_cm : tuple of floats, optional
+            Longitudinal window to extract in centimeters (min, max). Defaults to (0,0), 
+            which extracts the full grid.
+        N_new : tuple of ints, optional
+            Resolution (Nr, Nz) to interpolate the zoomed grid onto. Defaults to (300, 300).
         """
-        self.path_to_hipace_sim = path_to_hipace_sim
-        self.path_to_chequp_code = path_to_chequp_code
-        self.path_to_chequp_input = path_to_chequp_input
+        self.input = input
+        self.output = output
         self.species = species if species is not None else ['H', 'Ar']
         self.dim = dim
         self.r_zoom_um = r_zoom_um
@@ -273,17 +284,16 @@ class HipaceToChequpConverter:
         plt.tight_layout(rect=[0, 0, 1, 0.98])
         plt.show()
 
-    def convert(self, plot=False):
+    def write_input(self, plot=False):
         """
         Reads HiPACE++ simulation data, interpolates onto a zoomed grid, 
         slices for r >= 0, and saves to an OpenPMD format for CHEQUP.
         """
-        sys.path.append(f"{self.path_to_chequp_code}/initial_condition")
+        sys.path.append(f"../../initial_condition")
         from ionization_routines import save_to_openpmd
         
         # 1. Load species keys and atomic weights from CHEQUP code
-        species_net_path = f'{self.path_to_chequp_code}/sim_folder/build/species.net'
-        with open(species_net_path, 'r') as f:
+        with open(species_net_file, 'r') as f:
             content = f.read()
 
         # Capture groups for short name (e.g., 'H0') and aion (e.g., '1.0078')
@@ -296,7 +306,7 @@ class HipaceToChequpConverter:
 
         # 2. Extract field data from HiPACE++ simulation
         print('Loading HiPACE++ data...')
-        ts = OpenPMDTimeSeries(self.path_to_hipace_sim)
+        ts = OpenPMDTimeSeries(self.input)
         species_field = self._extract_fields_from_hipace(ts)
 
         # Define geometry from the extracted fields
@@ -364,12 +374,11 @@ class HipaceToChequpConverter:
                     densities_inputs[:, :, species_keys.index(sp_key)] = (n_inputs_sp + 0.01 * np.max(n_inputs_sp)) / aion[sp_key]
             
             # Save to file
-            os.makedirs(os.path.dirname(self.path_to_chequp_input), exist_ok=True)
             save_to_openpmd(
                 {'r': [0, r_new.max()], 'z': [z_new.min(), z_new.max()]},
                 densities_inputs,
                 T_inputs + 1e-2 * np.max(T_inputs), # Add small baseline temperature floor 
-                f'{self.path_to_chequp_input}/2d_input.h5',
+                self.output,
                 species_keys
             )
             
@@ -403,12 +412,11 @@ class HipaceToChequpConverter:
                     # Convert to CHEQUP compatible density with 1% stability floor
                     densities_inputs[:, species_keys.index(sp_key)] = (n_inputs_sp + 0.01 * np.max(n_inputs_sp)) / aion[sp_key]
                 
-            os.makedirs(os.path.dirname(self.path_to_chequp_input), exist_ok=True)
             save_to_openpmd(
                 {'r': [0, r_new.max()]}, 
                 densities_inputs,
                 T_inputs + 1e-2 * np.max(T_inputs), 
-                f'{self.path_to_chequp_input}/1d_input.h5',
+                self.output,
                 species_keys
             )
             
