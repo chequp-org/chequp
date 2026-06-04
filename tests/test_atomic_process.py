@@ -75,14 +75,16 @@ gaunt_fit = {
 OSC_STRENGTHS = {"H": 0.416, "Ar": 0.12}
 EX_ENERGIES   = {"H": 10.6,  "Ar": 10.3}
 
+# Expanded Ar to include Ar IV through Ar IX
 ION_ENERGIES = {
     "H":  [13.598434],
-    "Ar": [15.759611, 27.62967, 40.735, 59.58]
+    "Ar": [15.759611, 27.62967, 40.735, 59.81, 75.02, 91.009, 124.323, 143.46, 422.45]
 }
 
+# Expanded Ar degeneracies up to index 9
 g_deg = {
     "H":  np.array([2.0, 1.0]),
-    "Ar": np.array([1.0, 4.0, 5.0, 4.0])
+    "Ar": np.array([1.0, 4.0, 5.0, 4.0, 1.0, 2.0, 1.0, 2.0, 1.0, 4.0])
 }
 
 HBAR_CGS  = 1.0545718e-27
@@ -136,7 +138,7 @@ def fast_cross_section_jit(Z, Zstar, E_grid, me_c2, binding_arr, E_ion_true):
     
     num_simulated = 1
     if Z == 1:   num_simulated = 1
-    elif Z == 18: num_simulated = 4
+    elif Z == 18: num_simulated = 9 # Expanded to 9
     
     for i in range(len(E_grid)):
         ep = E_grid[i] / me_c2
@@ -200,10 +202,10 @@ class RateTables:
         self.log_Te = np.log(Te_grid)
         self._ion, self._3b, self._ex = {}, {}, {}
         
-        # Only compute the states needed for the H-Ar mix
+        # Only compute the states needed for the H-Ar mix up to Ar8
         specs = [
             (1, 0),
-            (18, 0), (18, 1), (18, 2), (18, 3) 
+            (18, 0), (18, 1), (18, 2), (18, 3), (18, 4), (18, 5), (18, 6), (18, 7), (18, 8)
         ]
         
         for Z, Zstar in specs:
@@ -220,10 +222,10 @@ class RateTables:
         return self._ion[(1,0)], self._3b[(1,0)], self._ex[(1,0)]
         
     def get_Ar_tables(self):
-        """Returns 2D C-contiguous arrays for Argon states (0,1,2)."""
-        ion = np.ascontiguousarray(np.vstack((self._ion[(18,0)], self._ion[(18,1)], self._ion[(18,2)])))
-        r3b = np.ascontiguousarray(np.vstack((self._3b[(18,0)], self._3b[(18,1)], self._3b[(18,2)])))
-        ex  = np.ascontiguousarray(np.vstack((self._ex[(18,0)], self._ex[(18,1)], self._ex[(18,2)])))
+        """Returns 2D C-contiguous arrays for Argon states (0 to 8)."""
+        ion = np.ascontiguousarray(np.vstack(tuple(self._ion[(18,i)] for i in range(9))))
+        r3b = np.ascontiguousarray(np.vstack(tuple(self._3b[(18,i)] for i in range(9))))
+        ex  = np.ascontiguousarray(np.vstack(tuple(self._ex[(18,i)] for i in range(9))))
         return ion, r3b, ex
 
 # NUMBA OPTIMIZED ODE BUILDER
@@ -246,8 +248,9 @@ def ode_rhs_ar_h_jit(t, state, log_Te_grid,
     log_Te = np.log(Te)
 
     # Calculate electron density (n_e) assuming macroscopic quasineutrality.
-    # n_e = n(H+) + n(Ar+) + 2*n(Ar++) + 3*n(Ar+++)
-    n_e = 1e-10 + n[idx_H1] + n[idx_Ar[1]] + 2.0 * n[idx_Ar[2]] + 3.0 * n[idx_Ar[3]]
+    n_e = 1e-10 + n[idx_H1]
+    for i in range(1, 9):
+        n_e += float(i) * n[idx_Ar[i]]
 
     # Initialize the derivative array to zero
     dstate = np.zeros_like(state)
@@ -282,8 +285,8 @@ def ode_rhs_ar_h_jit(t, state, log_Te_grid,
 
     # Argon Kinetics
     
-    # Iterate through Argon charge states (e.g., Ar0->Ar+, Ar+->Ar++, Ar++->Ar+++)
-    for i in range(3):
+    # Iterate through Argon charge states (Ar0 -> Ar7)
+    for i in range(8):
         k_ion = np.exp(np.interp(log_Te, log_Te_grid, log_ion_Ar[i])) * 1e-6
         k_3b  = np.exp(np.interp(log_Te, log_Te_grid, log_3b_Ar[i])) * 1e-18
 
@@ -322,7 +325,7 @@ def make_ode_ar_h(tables: RateTables, idx_H0, idx_H1, idx_Ar):
 
     E_ion_H = ION_ENERGIES["H"][0]
     E_ex_H  = EX_ENERGIES["H"]
-    E_ion_Ar = np.array(ION_ENERGIES["Ar"][:3])
+    E_ion_Ar = np.array(ION_ENERGIES["Ar"][:8]) # Extract first 8 for loop
     E_ex_Ar  = EX_ENERGIES["Ar"]
 
     def wrapper(t, state):
@@ -355,10 +358,10 @@ def assert_densities_match(t_chequp, n_chequp, t_ode, n_ode, tol, species_name):
 
 # UNIT TESTS
 
-def test_0D_Ar_H_mix(tol=10):
+def test_0D_Ar_H_mix(tol=11):
     " Unit test for the 0D Ar-H mixture. "
-    r, n0, dt, t_max = np.linspace(0, 1e-6, 256), 3e22, 1e-9, 10e-9
-    T_eV, species_keys = np.ones_like(r) * 300.0, get_species_indices()
+    r, n0, dt, t_max = np.linspace(0, 1e-6, 256), 3e22, 0.1e-9, 4e-9
+    T_eV, species_keys = np.ones_like(r) * 600.0, get_species_indices()
     densities = np.zeros((len(r), len(species_keys)))
     # Initialize the densities (arbitrary values)
     densities[:, species_keys.index('H0')]  = 0.45 * n0
@@ -378,18 +381,20 @@ def test_0D_Ar_H_mix(tol=10):
     )
     run_castro_simulation(model='gamma_law_2T', runtime_options=runtime_options)
     sim_data = CastroSimulation(sim_folder, 'plt*')
+    
     # Extract the densities from the HDF5 file
     nH0_chequp = np.array([sim_data.get_field(t, 'rho_H0', 0)['q'][0] for t in sim_data.output_times]) / 1.66e-30
     nH1_chequp = np.array([sim_data.get_field(t, 'rho_H1', 0)['q'][0] for t in sim_data.output_times]) / 1.66e-30
+    
     nAr_chequp = np.array([
         np.array([sim_data.get_field(t, f'rho_Ar{i}', 0)['q'][0]
          for t in sim_data.output_times]) / (39.9 * 1.66e-30)
-        for i in range(4)
+        for i in range(9) # Expanded loop to 9
     ]) 
     # Extract the indices of the species
     idx_H0  = species_keys.index('H0')
     idx_H1  = species_keys.index('H1')
-    idx_Ar  = np.array([species_keys.index(f'Ar{i}') for i in range(4)])
+    idx_Ar  = np.array([species_keys.index(f'Ar{i}') for i in range(9)]) # Expanded array to 9
     
     # Initialize the ODE directly via the optimized factory
     ode_func = make_ode_ar_h(RateTables(), idx_H0, idx_H1, idx_Ar)
@@ -404,7 +409,8 @@ def test_0D_Ar_H_mix(tol=10):
     # Compare the solution to the CHEQUP solution
     assert_densities_match(t_c, nH0_chequp, t_o, sol.y[idx_H0], tol, "Mix H0")
     assert_densities_match(t_c, nH1_chequp, t_o, sol.y[idx_H1], tol, "Mix H1")
-    for i in range(4):
+    
+    for i in range(9): # Expanded assertion loop to 9
         assert_densities_match(t_c, nAr_chequp[i], t_o, sol.y[idx_Ar[i]], tol, f"Mix Ar{i}")
 
 if __name__ == "__main__":

@@ -8,11 +8,11 @@
 #include <algorithm>
 
 // Quantum degeneracy of each species (H, N, He, Ar)
-inline AMREX_GPU_MANAGED amrex::Real g_deg[15] = { 
+inline AMREX_GPU_MANAGED amrex::Real g_deg[21] = { 
     2.0_rt, 1.0_rt, 
     4.0_rt, 9.0_rt, 6.0_rt, 1.0_rt, 2.0_rt, 1.0_rt, 
     1.0_rt, 2.0_rt, 1.0_rt, 
-    1.0_rt, 4.0_rt, 5.0_rt, 4.0_rt 
+    1.0_rt, 4.0_rt, 5.0_rt, 4.0_rt, 1.0_rt, 2.0_rt, 1.0_rt, 2.0_rt, 1.0_rt, 4.0_rt 
 }; 
 // Number of atom species
 constexpr int num_atom_species = 4; 
@@ -24,17 +24,18 @@ int get_atom_index(int mu) {
     if (mu <= 1 && mu >= 0) return 0;   
     if (mu <= 7 && mu > 1)  return 1;   
     if (mu <= 10 && mu > 7) return 2;   
-    if (mu <= 14 && mu > 10)return 3;   
+    if (mu <= 19 && mu > 10)return 3; 
     return 0; 
 } 
 // Atomic numbers of each species (H, N, He, Ar)
 inline AMREX_GPU_MANAGED int zatom[num_atom_species] = {1, 7, 2, 18};
 // Ionization energies of each species (H, N, He, Ar)
-inline AMREX_GPU_MANAGED amrex::Real ionization_energy[12] = { 
+// Expanded to 17, added Ar IX energy (422.45 eV)
+inline AMREX_GPU_MANAGED amrex::Real ionization_energy[17] = { 
     13.598434_rt, 
     14.53413_rt, 29.60125_rt, 47.4453_rt, 77.4735_rt, 97.89013_rt, 
     24.587388_rt, 54.417763_rt, 
-    15.759611_rt, 27.62967_rt, 40.735_rt, 59.58_rt 
+    15.759611_rt, 27.62967_rt, 40.735_rt, 59.81_rt, 75.02_rt, 91.009_rt, 124.323_rt, 143.46_rt, 422.45_rt 
 }; 
 // Gaunt factors polynomial coefficients for each species (H, N, He, Ar)
 inline AMREX_GPU_MANAGED amrex::Real gaunt_fit[num_atom_species][7] = { 
@@ -90,14 +91,17 @@ namespace coll_ion
         if (atomic_number == 7) atom_idx = 1; 
         if (atomic_number == 2) atom_idx = 2; 
         if (atomic_number == 18) atom_idx = 3; 
+        
         // Binding energies for each species (H, N, He, Ar)
-        static constexpr Real binding_energy[12] = { 
+        // Expanded to 17 to include the 2p shell (422.45) for Ar
+        static constexpr Real binding_energy[17] = { 
             13.5981_rt, 
             20.33_rt, 20.33_rt, 14.534_rt, 14.534_rt, 14.534_rt, 
             24.588_rt, 24.588_rt, 
-            15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt 
+            422.45_rt, 29.3_rt, 29.3_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt 
         }; 
-        static constexpr int num_simulated_electrons[num_atom_species] = {1, 5, 2, 4}; 
+        // Argon updated to 9 to allow stripping down to Ar IX
+        static constexpr int num_simulated_electrons[num_atom_species] = {1, 5, 2, 9}; 
 
         int base_idx = get_energy_index(atomic_number); 
         const Real me_c2 = 510998.0_rt; 
