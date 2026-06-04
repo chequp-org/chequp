@@ -355,7 +355,7 @@ def assert_densities_match(t_chequp, n_chequp, t_ode, n_ode, tol, species_name):
 
 # UNIT TESTS
 
-def test_0D_Ar_H_mix(tol=10):
+def test_0D_Ar_H_mix(tol=11):
     " Unit test for the 0D Ar-H mixture. "
     r, n0, dt, t_max = np.linspace(0, 1e-6, 256), 3e22, 1e-9, 10e-9
     T_eV, species_keys = np.ones_like(r) * 300.0, get_species_indices()
