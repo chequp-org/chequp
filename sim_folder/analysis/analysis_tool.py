@@ -129,7 +129,7 @@ class CastroSimulation(object):
             raise ValueError(f"Quantity {quantity} not found in the simulation outputs")
 
         # Handle 1D cylindrical geometry
-        if self.dim == 1 and self.geo == 'cylindrical':
+        if self.dim == 1:
             # Create covering grid at specified refinement level
             ad = ds.covering_grid(level=level,
                                 left_edge=ds.domain_left_edge,
@@ -138,7 +138,7 @@ class CastroSimulation(object):
             # Calculate derived temperatures if requested (not directly stored)
             if quantity in ['T_e', 'T_h']:
                 f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Heavy particle fraction
-                e_ = ad['rho_e'].to_ndarray().squeeze()             # Internal energy density
+                e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()            # Internal energy density
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Hydrogen mass fraction
                 if quantity == 'T_e':
                     # Electron temperature: T_e = (2/3) * (internal energy per electron) / k_B
@@ -153,8 +153,10 @@ class CastroSimulation(object):
             # Calculate radial coordinates of cell centers
             m_edges = np.linspace(ds.domain_left_edge[0], ds.domain_right_edge[0],
                                 ds.domain_dimensions[0] * 2**level + 1)
-            m['r'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dtype=float)
-
+            if self.geo == 'cylindrical':
+                m['r'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dtype=float)
+            if self.geo == 'cartesian':
+                m['x'] = np.array(0.5 * (m_edges[1:] + m_edges[:-1]), dtype=float)
         # Handle 2D simulations
         elif self.dim == 2:
             # Create 2D covering grid
@@ -166,7 +168,7 @@ class CastroSimulation(object):
             # Calculate derived temperatures (same as 1D case)
             if quantity in ['T_e', 'T_h']:
                 f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
-                e_ = ad['rho_e'].to_ndarray().squeeze()
+                e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 if quantity == 'T_e':
                     m['q'] = 2 * m_H * e_ * (1 - f) / (3 * X_H * kB)
@@ -201,7 +203,7 @@ class CastroSimulation(object):
             # Calculate derived temperatures (same as previous cases)
             if quantity in ['T_e', 'T_h']:
                 f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
-                e_ = ad['rho_e'].to_ndarray().squeeze()
+                e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 
                 if quantity == 'T_e':

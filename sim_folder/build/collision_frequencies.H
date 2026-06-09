@@ -4,20 +4,66 @@
 #include <cmath>
 #include <AMReX.H>
 #include <AMReX_Math.H>
-#include <ionization_table.H>
+#include <collisional_ionization.H>
 
 namespace SI {
     constexpr double k_B = 1.380649e-23; // Boltzmann constant in J/K
     constexpr double q_e = 1.602176634e-19; // Elementary charge in C
     constexpr double epsilon0 = 8.854187817e-12; // Permittivity of free space in F/m
     constexpr double m_e = 9.1093837015e-31; // Electron mass in kg
-    constexpr double m_H = 1.67262192369e-27; // Hydrogen mass in kg
-    constexpr double m_N = 2.3258671e-26; // Nitrogen mass in kg
-    constexpr double m_He = 6.6464764e-27; // Helium mass in kg 
-    constexpr double m_Ar = 6.6335209e-26; // Argon mass in kg
 }
-AMREX_GPU_HOST_DEVICE
-constexpr std::array<amrex::Real, 4> mass_vec = {SI::m_H, SI::m_N, SI::m_He, SI::m_Ar};
+// -------------------------------------------------------------------------
+// Cross-Section Helper Functions
+// -------------------------------------------------------------------------
+
+// Helper for rational function approximations
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+amrex::Real eval_sigma_rational(amrex::Real log_E_eV, amrex::Real offset, amrex::Real scale,
+                                const amrex::Real* num, const amrex::Real* den) {
+    const amrex::Real x = (log_E_eV - offset) / scale;
+    const amrex::Real x2 = amrex::Math::powi<2>(x);
+    const amrex::Real x3 = amrex::Math::powi<3>(x);
+    const amrex::Real x4 = amrex::Math::powi<4>(x);
+    const amrex::Real num_val = num[0] + num[1]*x + num[2]*x2 + num[3]*x3 + num[4]*x4;
+    const amrex::Real den_val = 1.0_rt + den[0]*x + den[1]*x2 + den[2]*x3 + den[3]*x4;
+    return std::exp(num_val / den_val);
+}
+
+// -------------------------------------------------------------------------
+// Species Cross-Sections
+// -------------------------------------------------------------------------
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+amrex::Real get_sigma_m2_H(amrex::Real log_E_eV) {
+    const amrex::Real num[] = {-4.451560e+01_rt, -4.477831e+01_rt, -6.605789e+02_rt,
+        9.020842e+01_rt, -1.798055e+02_rt};
+    const amrex::Real den[] = {8.890529e-01_rt, 1.461417e+01_rt, -3.442456e+00_rt, 3.765710e+00_rt};
+    return eval_sigma_rational(log_E_eV, 2.606962e+00_rt, 4.605170e+00_rt, num, den);
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+amrex::Real get_sigma_m2_He(amrex::Real log_E_eV) {
+    const amrex::Real num[] = {-4.538238e+01_rt, 9.075481e+01_rt, -3.875089e+02_rt,
+        6.894316e+02_rt, -5.129732e+02_rt};
+    const amrex::Real den[] = {-2.215854e+00_rt, 8.615551e+00_rt, -1.553593e+01_rt, 1.151640e+01_rt};
+    return eval_sigma_rational(log_E_eV, 3.261721e+00_rt, 8.006685e+00_rt, num, den);
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+amrex::Real get_sigma_m2_N(amrex::Real log_E_eV) {
+    const amrex::Real num[] = {-4.333081e+01_rt, -1.969554e+02_rt, -2.120393e+02_rt,
+        2.839629e+01_rt, -4.466647e+01_rt};
+    const amrex::Real den[] = {4.530368e+00_rt, 4.856744e+00_rt, -8.234106e-01_rt, 7.219589e-01_rt};
+    return eval_sigma_rational(log_E_eV, -3.991000e-01_rt, 5.756650e+00_rt, num, den);
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+amrex::Real get_sigma_m2_Ar(amrex::Real log_E_eV) {
+    const amrex::Real num[] = {-4.341181e+01_rt, 6.670171e+01_rt, -4.380806e+02_rt,
+        -2.230848e+03_rt, -2.086728e+03_rt};
+    const amrex::Real den[] = {-1.425189e+00_rt, 9.207079e+00_rt, 4.881694e+01_rt, 4.621947e+01_rt};
+    return eval_sigma_rational(log_E_eV, 2.128350e+00_rt, 6.152029e+00_rt, num, den);
+}
 /**
  * @brief Computes electron-ion and electron-neutral collision frequencies.
  *
@@ -41,49 +87,41 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
     // - Calculate Lambda_ei
     const amrex::Real rawLambdaEi = std::log(
-        amrex::Real(3.0 / (2.0 * std::sqrt(M_PI))) * std::sqrt(
-            amrex::Math::powi<3>(4.0 * M_PI * SI::epsilon0 * SI::k_B * T_e) /
-            (amrex::Math::powi<6>(SI::q_e) * n_e * (1.0 + T_e / T_h))
+        amrex::Real(3.0_rt / (2.0_rt * std::sqrt(M_PI))) * std::sqrt(
+            amrex::Math::powi<3>(4.0_rt * M_PI * SI::epsilon0 * SI::k_B * T_e) /
+            (amrex::Math::powi<6>(SI::q_e) * n_e * (1.0_rt + T_e / T_h))
         )
     );
     // - Apply lower limit
-    const amrex::Real Lambda_ei = std::max(rawLambdaEi, 0.5 * std::log(2.0));
+    const amrex::Real Lambda_ei = std::max(rawLambdaEi, 0.5_rt * std::log(2.0_rt));
     // - Calculate v_ei using the corrected expression
-    v_ei = (4.0 / 3.0) * std::sqrt(2.0 * M_PI / SI::m_e) *
+    v_ei = (4.0_rt / 3.0_rt) * std::sqrt(2.0_rt * M_PI / SI::m_e) *
         (n_e * amrex::Math::powi<4>(SI::q_e) * Lambda_ei) /
-        (amrex::Math::powi<2>(4.0 * M_PI * SI::epsilon0) * (SI::k_B * T_e) * std::sqrt(SI::k_B * T_e));
+        (amrex::Math::powi<2>(4.0_rt * M_PI * SI::epsilon0) 
+        * (SI::k_B * T_e) * std::sqrt(SI::k_B * T_e));
 
     // Compute frequency of electron-neutral collisions (Eq. A5 in https://arxiv.org/pdf/2305.16779)
     // - Find mean energy and reduced mass
-    const amrex::Real E_bar = 4.0 / M_PI * SI::k_B * T_e;
+    const amrex::Real E_bar = 4.0_rt / M_PI * SI::k_B * T_e;
+    const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
     amrex::Real mu_en[num_atom_species] = {};
     for (int mu = 0; mu < num_atom_species; mu++) {
-            mu_en[mu] = SI::m_e * mass_vec[mu] / (SI::m_e + mass_vec[mu]);}
-    // - Calculate cross section for electron-neutral collisions, using polynomial fit of the
-    //   Morgan database, www.lxcat.net (PROCESS: E + H -> E + H, Elastic)
-    amrex::Real log_sigma_m2;
-    if (E_bar < 0.1*SI::q_e) {
-        log_sigma_m2 = -4.28906183e+01;
-    } else {
-        const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
-        log_sigma_m2 = -4.28906183e+01
-            -3.20501602e-01*log_E_eV
-            -9.75994914e-02*amrex::Math::powi<2>(log_E_eV)
-            -1.72242991e-02*amrex::Math::powi<3>(log_E_eV)
-            + 2.59407262e-03*amrex::Math::powi<4>(log_E_eV);
-    }
-    const amrex::Real sigma_m2_H = std::exp(log_sigma_m2);
-    const amrex::Real sigma_m2_N = 0.0; // TO BE UPDATED
-    const amrex::Real sigma_m2_He = 0.0; // TO BE UPDATED
-    const amrex::Real sigma_m2_Ar = 0.0; // TO BE UPDATED
+            mu_en[mu] = SI::m_e * aion[mu] * C::m_u * 1e-3_rt / (SI::m_e + aion[mu] * C::m_u * 1e-3_rt);}
+    // Populate cross sections using our helpers
+    amrex::Real sigma_m2[num_atom_species] = {
+        get_sigma_m2_H(log_E_eV),
+        get_sigma_m2_N(log_E_eV),
+        get_sigma_m2_He(log_E_eV),
+        get_sigma_m2_Ar(log_E_eV)
+    };
 
     // Calculate v_en for each species
-    amrex::Real sigma_m2[num_atom_species] = {sigma_m2_H, sigma_m2_N, sigma_m2_He, sigma_m2_Ar}; // TO BE UPDATED FOR ALL SPECIES
     for (int mu = 0; mu < NumSpec; mu++) {
-        v_en[mu] = 0.0; // default zero
+        v_en[mu] = 0.0_rt; // default zero
         const int idx_spec = get_atom_index(mu);
         if (zion[mu] > 0){
-            v_en[mu] = n_n[idx_spec] * 4.0/3.0 * std::sqrt(2.0*E_bar / mu_en[idx_spec]) * sigma_m2[idx_spec];
+            v_en[mu] = n_n[idx_spec] * 4.0_rt / 3.0_rt 
+                * std::sqrt(2.0_rt * E_bar / mu_en[idx_spec]) * sigma_m2[idx_spec];
         }
     }
 }

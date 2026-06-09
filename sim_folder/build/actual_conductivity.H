@@ -7,7 +7,7 @@
 #include <extern_parameters.H>
 #include <collision_frequencies.H>
 #include <AMReX_Math.H>
-#include <ionization_table.H>
+#include <collisional_ionization.H>
 
 
 AMREX_FORCE_INLINE

@@ -96,6 +96,7 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
                                              source_indices, target_indices, charges,
                                              initial_populations,
                                              npts_per_wavelength=80):
+    
     """
     a0: Peak laser amplitude
     tau: laser FWHM duration
@@ -183,44 +184,85 @@ def compute_ionization_vectorized(
 
     T_out[0] = T
 
-def save_to_openpmd(grid_extent, all_populations, T_eV, output_file, species_keys):
+def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0, Th_eV=348.0*(k/e)):
     """
-    Save with all species populations to an openPMD file
+    Save with all species densities (m^-3) to an openPMD file
     """
     # create openpmd file
     series = io.Series(output_file, io.Access.create)
-    # only 1 iteratiion needed
+    # only 1 iteration needed
     it = series.iterations[0]
-
     # Extract information about the grid for openPMD
     grid_spacing = np.array([ (grid_extent[key][1] - grid_extent[key][0]) / (all_populations.shape[i] - 1)
         for i, key in enumerate(grid_extent.keys()) ])
     grid_global_offset = [grid_extent[key][0] for key in grid_extent.keys()]
     axis_labels = list(grid_extent.keys())
 
-    # Save the temperature
-    T = it.meshes["T"]
-    T.grid_spacing = grid_spacing
-    T.grid_global_offset = grid_global_offset
-    T.axis_labels = axis_labels
-    T.unit_dimension = {io.Unit_Dimension.theta:1}
-    dataset = io.Dataset(T_eV.dtype, T_eV.shape)
-    T_scalar = T[io.Mesh_Record_Component.SCALAR]
-    T_scalar.reset_dataset(dataset)
-    T_scalar.position = [0.0] * len(grid_extent)
-    T_scalar.store_chunk(T_eV * (e/k))  # Convert eV to K
+    # Save the electron temperature
+    Te = it.meshes["Te"]
+    Te.grid_spacing = grid_spacing
+    Te.grid_global_offset = grid_global_offset
+    Te.axis_labels = axis_labels
+    Te.unit_dimension = {io.Unit_Dimension.theta: 1}
+    dataset = io.Dataset(Te_eV.dtype, Te_eV.shape)
+    Te_scalar = Te[io.Mesh_Record_Component.SCALAR]
+    Te_scalar.reset_dataset(dataset)
+    Te_scalar.position = [0.0] * len(grid_extent)
+    Te_scalar.store_chunk(Te_eV * (e / k))  # Convert eV to K
+    if np.isscalar(Th_eV): # If Th_eV is a scalar, convert to array
+        Th_eV = np.full(Te_eV.shape, Th_eV, dtype=np.float64)
+    Th_eV = np.asarray(Th_eV, dtype=np.float64)
+    if Th_eV.shape != Te_eV.shape: # Check that the shapes match
+        raise ValueError(f"Th_eV shape {Th_eV.shape} does not match Te_eV shape {Te_eV.shape}")
+    # Save the heavies temperature
+    Th = it.meshes["Th"]
+    Th.grid_spacing = grid_spacing
+    Th.grid_global_offset = grid_global_offset
+    Th.axis_labels = axis_labels
+    Th.unit_dimension = {io.Unit_Dimension.theta: 1}
+    dataset = io.Dataset(Th_eV.dtype, Th_eV.shape)
+    Th_scalar = Th[io.Mesh_Record_Component.SCALAR]
+    Th_scalar.reset_dataset(dataset)
+    Th_scalar.position = [0.0] * len(grid_extent)
+    Th_scalar.store_chunk(Th_eV * (e / k))  # Convert eV to K
 
-    # Save the species fractions
+    # Save the species densities
     for i, species_key in enumerate(species_keys):
-        pop = it.meshes[species_key + "_fraction"]
+        pop = it.meshes[species_key + "_density"]
         pop.grid_spacing = grid_spacing
         pop.grid_global_offset = grid_global_offset
         pop.axis_labels = axis_labels
+        pop.unit_dimension = {io.Unit_Dimension.L: -3}  # m^-3
         dataset = io.Dataset(all_populations[..., i].dtype, all_populations[..., i].shape)
         pop_scalar = pop[io.Mesh_Record_Component.SCALAR]
         pop_scalar.reset_dataset(dataset)
         pop_scalar.position = [0.0] * len(grid_extent)
         pop_scalar.store_chunk(all_populations[..., i].copy())
+
+    # Save the momentum density fields (kg m^-2 s^-1 = rho * v)
+    for mom_key, mom_value in zip(["xmom", "ymom", "zmom"], [xmom, ymom, zmom]):
+        # Accept either a scalar (constant field) or an array of the same shape as Te_eV
+        if np.isscalar(mom_value):
+            mom_data = np.full(Te_eV.shape, mom_value, dtype=np.float64)
+        else:
+            mom_data = np.asarray(mom_value, dtype=np.float64)
+            if mom_data.shape != Te_eV.shape:
+                raise ValueError(f"{mom_key} shape {mom_data.shape} does not match Te_eV shape {Te_eV.shape}")
+
+        mom_mesh = it.meshes[mom_key]
+        mom_mesh.grid_spacing = grid_spacing
+        mom_mesh.grid_global_offset = grid_global_offset
+        mom_mesh.axis_labels = axis_labels
+        mom_mesh.unit_dimension = {
+            io.Unit_Dimension.M:  1,
+            io.Unit_Dimension.L: -2,
+            io.Unit_Dimension.T: -1
+        }
+        dataset = io.Dataset(mom_data.dtype, mom_data.shape)
+        mom_scalar = mom_mesh[io.Mesh_Record_Component.SCALAR]
+        mom_scalar.reset_dataset(dataset)
+        mom_scalar.position = [0.0] * len(grid_extent)
+        mom_scalar.store_chunk(mom_data.copy())
 
     series.flush()
 
@@ -246,7 +288,8 @@ def load_intensity_profile(filename):
 def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
             adk_prefactors, adk_powers, adk_exp_prefactors,
             source_indices, target_indices, charges, species_keys,
-            initial_populations, output_file=None, grid_extent=None):
+            initial_populations, output_file=None, grid_extent=None,
+            n_total=1e24):
     """
     Process nD intensity array for multi-species plasma
 
@@ -264,10 +307,11 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
         Dictionary with elements of species_keys as keys and initial population fractions as values
         If an element from species_keys is not in the dictionary, it is assumed to be 0
     output_file : str, optional
-        Filename to save openPMD output with radius, temperature and populations
-    r_coords : array-like, optional
-        Radial coordinates (m). Required for 1D data if output_file is specified.
-        For 2D data, used to determine radial sampling for CSV output.
+        Filename to save openPMD output with radius, temperature and densities
+    grid_extent : dict, optional
+        Grid extent for openPMD output
+    n_total : float
+        Total number density in m^-3 for converting fractions to densities (default: 1e24)
 
     Returns:
     --------
@@ -301,8 +345,9 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     all_populations = all_populations_flat.reshape(a0_array.shape + (len(species_keys),))
     T_array = T_flat.reshape(a0_array.shape)
 
-    # Save detailed CSV output with all species
+    # Save openPMD output with species densities
     if output_file and grid_extent is not None:
-        save_to_openpmd(grid_extent, all_populations, T_array, output_file, species_keys)
+        all_densities = all_populations * n_total
+        save_to_openpmd(grid_extent, all_densities, T_array, output_file, species_keys)
 
     return all_populations, T_array
