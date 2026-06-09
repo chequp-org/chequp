@@ -75,13 +75,13 @@ gaunt_fit = {
 OSC_STRENGTHS = {"H": 0.416, "Ar": 0.12}
 EX_ENERGIES   = {"H": 10.6,  "Ar": 10.3}
 
-# Expanded Ar to include Ar IV through Ar IX
+# Ionization energies
 ION_ENERGIES = {
     "H":  [13.598434],
     "Ar": [15.759611, 27.62967, 40.735, 59.81, 75.02, 91.009, 124.323, 143.46, 422.45]
 }
 
-# Expanded Ar degeneracies up to index 9
+# Quantum degeneracy
 g_deg = {
     "H":  np.array([2.0, 1.0]),
     "Ar": np.array([1.0, 4.0, 5.0, 4.0, 1.0, 2.0, 1.0, 2.0, 1.0, 4.0])
@@ -138,7 +138,7 @@ def fast_cross_section_jit(Z, Zstar, E_grid, me_c2, binding_arr, E_ion_true):
     
     num_simulated = 1
     if Z == 1:   num_simulated = 1
-    elif Z == 18: num_simulated = 9 # Expanded to 9
+    elif Z == 18: num_simulated = 9
     
     for i in range(len(E_grid)):
         ep = E_grid[i] / me_c2
@@ -394,7 +394,7 @@ def test_0D_Ar_H_mix(tol=11):
     # Extract the indices of the species
     idx_H0  = species_keys.index('H0')
     idx_H1  = species_keys.index('H1')
-    idx_Ar  = np.array([species_keys.index(f'Ar{i}') for i in range(9)]) # Expanded array to 9
+    idx_Ar  = np.array([species_keys.index(f'Ar{i}') for i in range(9)])
     
     # Initialize the ODE directly via the optimized factory
     ode_func = make_ode_ar_h(RateTables(), idx_H0, idx_H1, idx_Ar)
@@ -410,7 +410,7 @@ def test_0D_Ar_H_mix(tol=11):
     assert_densities_match(t_c, nH0_chequp, t_o, sol.y[idx_H0], tol, "Mix H0")
     assert_densities_match(t_c, nH1_chequp, t_o, sol.y[idx_H1], tol, "Mix H1")
     
-    for i in range(9): # Expanded assertion loop to 9
+    for i in range(9):
         assert_densities_match(t_c, nAr_chequp[i], t_o, sol.y[idx_Ar[i]], tol, f"Mix Ar{i}")
 
 if __name__ == "__main__":
