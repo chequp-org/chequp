@@ -90,7 +90,6 @@ namespace coll_ion
         if (atomic_number == 7) atom_idx = 1; 
         if (atomic_number == 2) atom_idx = 2; 
         if (atomic_number == 18) atom_idx = 3; 
-        
         // Binding energies for each species (H, N, He, Ar)
         static constexpr Real binding_energy[17] = { 
             13.5981_rt, 
