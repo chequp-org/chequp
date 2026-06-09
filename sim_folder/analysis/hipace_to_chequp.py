@@ -94,7 +94,7 @@ class HipaceToChequpWriter:
         if species == 'H':
             ion_levels = ['0', '1']
         elif species == 'Ar':
-            ion_levels = ['0', '1', '2', '3']
+            ion_levels = ['0', '1', '2', '3', '4', '5', '6', '7', '8']
         elif species == 'He':
             ion_levels = ['0', '1', '2']
         elif species == 'N':
