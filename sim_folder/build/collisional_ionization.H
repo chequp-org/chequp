@@ -30,7 +30,6 @@ int get_atom_index(int mu) {
 // Atomic numbers of each species (H, N, He, Ar)
 inline AMREX_GPU_MANAGED int zatom[num_atom_species] = {1, 7, 2, 18};
 // Ionization energies of each species (H, N, He, Ar)
-// Expanded to 17, added Ar IX energy (422.45 eV)
 inline AMREX_GPU_MANAGED amrex::Real ionization_energy[17] = { 
     13.598434_rt, 
     14.53413_rt, 29.60125_rt, 47.4453_rt, 77.4735_rt, 97.89013_rt, 
