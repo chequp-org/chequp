@@ -93,14 +93,13 @@ namespace coll_ion
         if (atomic_number == 18) atom_idx = 3; 
         
         // Binding energies for each species (H, N, He, Ar)
-        // Expanded to 17 to include the 2p shell (422.45) for Ar
         static constexpr Real binding_energy[17] = { 
             13.5981_rt, 
             20.33_rt, 20.33_rt, 14.534_rt, 14.534_rt, 14.534_rt, 
             24.588_rt, 24.588_rt, 
             422.45_rt, 29.3_rt, 29.3_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt 
         }; 
-        // Argon updated to 9 to allow stripping down to Ar IX
+        // Number of levels to consider per atomic species
         static constexpr int num_simulated_electrons[num_atom_species] = {1, 5, 2, 9}; 
 
         int base_idx = get_energy_index(atomic_number); 
