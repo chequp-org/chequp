@@ -280,6 +280,7 @@ class CastroSimulation(object):
         
         # Ensure t is iterable
         t = [t] if np.isscalar(t) else t
+        
         for _t in tqdm.tqdm(t):
             lt.append(_t)
             
