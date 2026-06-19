@@ -22,8 +22,8 @@ amrex::Real get_sigma_mt_Hp_H(amrex::Real T_h)
     // Convert T_h to CM Energy (eV)
     amrex::Real E_cm = SI::k_B * T_h / SI::q_e; 
     
-    // Ensure E_cm is within the validity range (0.1 to 100 eV roughly)
-    E_cm = amrex::max(E_cm, 1.0e-5_rt); 
+    // STRICT CLAMP: Prevent evaluation near the 0.75 eV asymptote and 38.6 eV root
+    E_cm = amrex::min(amrex::max(E_cm, 0.8_rt), 35.0_rt); 
     amrex::Real lnE = std::log(E_cm);
 
     // H+ + H Momentum Transfer Coefficients 
@@ -138,7 +138,6 @@ amrex::Real get_heavy_collision_frequency(int mu, int nu, amrex::Real T_h, amrex
     }
 }
 
-
 // Helper: Local Cell Diffusion Properties
 
 struct DiffusionState {
@@ -152,17 +151,18 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void get_diffusion_properties(int i, int j, int k, Array4<const Real> const& state, DiffusionState& ds)
 {
     ds.rho = state(i,j,k,URHO);
-    amrex::Real T_h = state(i,j,k,UTEMP); // Using average T or heavy T
+    amrex::Real T_h = state(i,j,k,UTEMP); 
     
     amrex::Real n_mix = 0.0_rt;
     amrex::Real n_num[NumSpec] = {0.0_rt};
 
-    // Step 1: Calculate Mass Fractions and Total Number Density
+    // Step 1: Calculate Mass Fractions and Total SI Number Density
     for (int mu = 0; mu < NumSpec; ++mu) {
-        ds.X[mu] = amrex::max(state(i,j,k,UFS+mu) / ds.rho, 0.0_rt); // Prevent negative fractions
+        ds.X[mu] = state(i,j,k,UFS+mu);
         
-        amrex::Real m_mu = aion[get_atom_index(mu)] * C::m_u * 1e-3_rt; // mass in kg
-        n_num[mu] = (ds.rho * ds.X[mu]) / m_mu;
+        // FIX: Safely convert CGS rho to SI number density (m^-3)
+        // using the same logic you used in problem_source.H
+        n_num[mu] = ds.X[mu] * ds.rho * aion_inv[mu] / C::m_u * 1.0e6_rt; 
         n_mix += n_num[mu];
     }
 
@@ -179,35 +179,44 @@ void get_diffusion_properties(int i, int j, int k, Array4<const Real> const& sta
     amrex::Real D_bin[NumSpec][NumSpec];
     for (int mu = 0; mu < NumSpec; ++mu) {
         ds.x[mu] = n_num[mu] / n_mix;
-        
+        if (i ==0 && j == 0 && k == 0){
+            std::cout << "x"<<mu << " : " << ds.x[mu] << std::endl;
+        }
         for (int nu = 0; nu < NumSpec; ++nu) {
             if (mu == nu) {
                 D_bin[mu][nu] = 0.0_rt;
-                continue;
+                continue;   
             }
             amrex::Real nu_ss = get_heavy_collision_frequency(mu, nu, T_h, n_num[nu]);
-            amrex::Real m_mu = aion[get_atom_index(mu)] * C::m_u * 1e-3_rt;
-            amrex::Real m_nu = aion[get_atom_index(nu)] * C::m_u * 1e-3_rt;
+            amrex::Real m_mu = aion[get_atom_index(mu)] * C::m_u * 1e-3_rt; // SI mass
+            amrex::Real m_nu = aion[get_atom_index(nu)] * C::m_u * 1e-3_rt; // SI mass
             amrex::Real m_r = (m_mu * m_nu) / (m_mu + m_nu);
             
-            D_bin[mu][nu] = (SI::k_B * T_h) / (m_r * nu_ss);
+            D_bin[mu][nu] = (SI::k_B * T_h) / (m_r * nu_ss) * 1.0e-4_rt; // D is in m^2/s
+            if (i ==0 && j == 0 && k == 0 && mu == 0){
+                std::cout <<"(mu) "<< mu << "(nu) "<< nu << " (Dbin) "<< D_bin[mu][nu] << std::endl;
+            }
         }
     }
 
-    // Step 4: Mixture-Averaged Diffusivities
+    // Step 4: Mixture-Averaged Diffusivities (and convert to CGS)
     for (int mu = 0; mu < NumSpec; ++mu) {
-        if (ds.X[mu] < 1.0e-12_rt) {
-            ds.D_m[mu] = 0.0_rt; // Skip inactive traces
+        if (ds.X[mu] < 1.0e-10_rt) {
+            ds.D_m[mu] = 0.0_rt; 
             continue;
         }
         
         amrex::Real S_den = 0.0_rt;
         for (int nu = 0; nu < NumSpec; ++nu) {
-            if (mu != nu && ds.x[nu] > 1.0e-12_rt) {
-                S_den += ds.x[nu] / D_bin[mu][nu];
+            if (mu != nu && ds.x[nu] > 1.0e-10_rt) {
+                S_den += ds.x[nu] / (1e-10_rt + D_bin[mu][nu]);
             }
         }
-        ds.D_m[mu] = (S_den > 0.0_rt) ? (1.0_rt - ds.X[mu]) / S_den : 0.0_rt;
+
+        std::cout << "(mu) " << mu << " (S_den) " << S_den << std::endl;
+        
+        ds.D_m[mu] = ((1.0_rt - ds.X[mu]) / S_den);
+        std::cout << "(mu)" << mu << "(Dmix)" << ds.D_m[mu] << std::endl;
     }
 }
 
