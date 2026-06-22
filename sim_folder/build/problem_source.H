@@ -143,12 +143,7 @@ void problem_source (int i, int j, int k,
             
             // This returns the mathematical divergence of the diffusion flux: div(j_mu)
             amrex::Real div_j_mu = compute_species_diffusion_term(i, j, k, mu, state, problo, dx, coord);
-            
-            // Note on signs: The conservation equation is dt(rho*Y) + div(rho*u*Y) = -div(j) + S_r. 
-            // Because the flux j points opposite to the gradient (j ~ -D*grad(x)), 
-            // its divergence div(j) is negative at a peak. 
-            // We subtract it here so the state diffuses positively outward: src -= div(j)
-            src(i,j,k,UFS+mu) -= div_j_mu; 
+            src(i,j,k,UFS+mu) -= div_j_mu;
         }
     }
 }

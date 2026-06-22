@@ -128,6 +128,7 @@ amrex::Real get_heavy_collision_frequency(int mu, int nu, amrex::Real T_h, amrex
         // 3. Ion-Neutral
         if (is_mu_hydrogen && is_nu_hydrogen && ((z_mu == 1 && z_nu == 0) || (z_mu == 0 && z_nu == 1))) {
             amrex::Real sigma_in = get_sigma_mt_Hp_H(T_h); // Quantum Mechanical Momentum Transfer
+            // std::cout << "sigma_in : " << sigma_in << std::endl;
             return n_nu * sigma_in * std::sqrt((8.0_rt * SI::k_B * T_h) / (M_PI * m_r));
         } else {
             // Langevin Polarization fallback
@@ -180,7 +181,7 @@ void get_diffusion_properties(int i, int j, int k, Array4<const Real> const& sta
     for (int mu = 0; mu < NumSpec; ++mu) {
         ds.x[mu] = n_num[mu] / n_mix;
         if (i ==0 && j == 0 && k == 0){
-            std::cout << "x"<<mu << " : " << ds.x[mu] << std::endl;
+            // std::cout << "x"<<mu << " : " << ds.x[mu] << std::endl;
         }
         for (int nu = 0; nu < NumSpec; ++nu) {
             if (mu == nu) {
@@ -194,7 +195,7 @@ void get_diffusion_properties(int i, int j, int k, Array4<const Real> const& sta
             
             D_bin[mu][nu] = (SI::k_B * T_h) / (m_r * nu_ss) * 1.0e-4_rt; // D is in m^2/s
             if (i ==0 && j == 0 && k == 0 && mu == 0){
-                std::cout <<"(mu) "<< mu << "(nu) "<< nu << " (Dbin) "<< D_bin[mu][nu] << std::endl;
+                // std::cout <<"(mu) "<< mu << "(nu) "<< nu << " (Dbin) "<< D_bin[mu][nu] << std::endl;
             }
         }
     }
@@ -205,18 +206,18 @@ void get_diffusion_properties(int i, int j, int k, Array4<const Real> const& sta
             ds.D_m[mu] = 0.0_rt; 
             continue;
         }
-        
         amrex::Real S_den = 0.0_rt;
         for (int nu = 0; nu < NumSpec; ++nu) {
-            if (mu != nu && ds.x[nu] > 1.0e-10_rt) {
-                S_den += ds.x[nu] / (1e-10_rt + D_bin[mu][nu]);
+            if (mu != nu || ds.x[nu] < 1.0e-5_rt) {
+                S_den += ds.x[nu] / (D_bin[mu][nu]);
             }
         }
-
-        std::cout << "(mu) " << mu << " (S_den) " << S_den << std::endl;
-        
-        ds.D_m[mu] = ((1.0_rt - ds.X[mu]) / S_den);
-        std::cout << "(mu)" << mu << "(Dmix)" << ds.D_m[mu] << std::endl;
+        if (S_den > 1.0e-5_rt){
+            ds.D_m[mu] = ((1.0_rt - ds.X[mu]) / S_den) * 1e4_rt;
+            if (i ==0 && j == 0 && k == 0){
+                std::cout << "(mu)" << mu << "(Dmix)" << ds.D_m[mu] << std::endl;
+            }
+        }
     }
 }
 
