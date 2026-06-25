@@ -24,9 +24,10 @@ jobs:
         include:
           - job_name: "Physics: 1D Sedov-Taylor"
             dim: 1
-            eos: "gamma_law_2T"
+            eos: "gamma_law"   # <-- Fixed to 1T to match Python script
             pytest_file: "test_1d.py"
             pytest_target: "test_1d_sedov_taylor"
+            
           - job_name: "Physics: 1D COMSOL benchmark"
             dim: 1
             eos: "gamma_law_2T"
@@ -35,9 +36,9 @@ jobs:
             
           - job_name: "Physics: Sedov-Taylor 2D"
             dim: 2
-            eos: "gamma_law_2T"
+            eos: "gamma_law"
             pytest_file: "test_2d.py"
-            pytest_target: "2d_sedov_taylor"
+            pytest_target: "test_2d_sedov_taylor"
             
           - job_name: "Physics: Atomic process 0D"
             dim: 1
@@ -95,5 +96,5 @@ jobs:
     - name: Run Physics Integration Test
       run: |
         cd tests
-        # The -k flag ensures this runner ONLY executes the specific test function assigned in the matrix
-        pytest -v -m cpu -k "${{ matrix.pytest_target }}" --dim=${{ matrix.dim }} --eos=${{ matrix.eos }}
+        # Use direct file::function targeting for maximum speed and to prevent cross-file conflicts
+        pytest -v -m cpu ${{ matrix.pytest_file }}::${{ matrix.pytest_target }} --dim=${{ matrix.dim }} --eos=${{ matrix.eos }}
