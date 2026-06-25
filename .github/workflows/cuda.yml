@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   cloud-gpu-compile:
-    name: NVCC 12.8 2T-2D
+    name: NVCC 12.8 2T-1D
     runs-on: ubuntu-22.04
     if: github.event.pull_request.draft == false
 
