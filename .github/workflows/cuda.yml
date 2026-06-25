@@ -1,0 +1,59 @@
+name: 🐧 CHEQUP CUDA COMPILE
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-gpu
+  cancel-in-progress: true
+
+jobs:
+  cloud-gpu-compile:
+    name: NVCC 12.8 2T-2D
+    runs-on: ubuntu-22.04
+    if: github.event.pull_request.draft == false
+
+    steps:
+    - name: Checkout CHEQUP
+      uses: actions/checkout@v4
+
+    - name: Checkout Castro Sub-module
+      run: |
+        git clone --recursive https://github.com/chequp-org/Castro.git --branch 2T_25.10
+
+    - name: Install System Dependencies (GCC-12, MPI, HDF5, CCache)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-12 g++-12 openmpi-bin libopenmpi-dev libhdf5-mpi-dev make ccache
+
+    - name: Install CUDA Toolkit 12.8
+      uses: Jimver/cuda-toolkit@v0.2.18
+      id: cuda-toolkit
+      with:
+        cuda: '12.8.0' 
+
+    - name: CCache Cache (GPU)
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/ccache
+        key: ccache-cuda-${{ hashFiles('.github/workflows/cuda.yml') }}-${{ github.event.repository.pushed_at }}
+        restore-keys: |
+          ccache-cuda-${{ hashFiles('.github/workflows/cuda.yml') }}-
+          ccache-cuda-
+
+    - name: Compile 2D Two-Temperature (CUDA Cloud)
+      run: |
+        export PATH=/usr/local/cuda/bin:${PATH}
+        export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+        which nvcc || echo "nvcc not in PATH!"
+
+        export CC="ccache gcc-12"
+        export CXX="ccache g++-12"
+        
+        cd sim_folder/build
+        make -j 4 -s EOS_DIR=gamma_law_2T DIM=1 USE_CUDA=TRUE CUDA_ARCH=80
