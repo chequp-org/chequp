@@ -1,4 +1,4 @@
-name: 🐧 CHEQUP CUDA COMPILE
+name: 🐧 CUDA
 
 on:
   push:
