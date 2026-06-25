@@ -57,7 +57,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential mpich libmpich-dev make ccache libhdf5-mpich-dev
-
+        
     - name: CCache Cache
       uses: actions/cache@v4
       with:
@@ -85,13 +85,12 @@ jobs:
       run: |
         export CC="ccache gcc"
         export CXX="ccache g++"
-        cd sim_folder/build
+
+        export CPATH="/usr/include/hdf5/mpich:${CPATH}"
+        export LIBRARY_PATH="/usr/lib/x86_64-linux-gnu/hdf5/mpich:${LIBRARY_PATH}"
         
-        # Inject the matrix variables and the HDF5 paths directly into Make
-        make -j 4 -s EOS_DIR=${{ matrix.eos }} DIM=${{ matrix.dim }} USE_MPI=TRUE \
-          EXTRA_CXXFLAGS="-I/usr/include/hdf5/mpich" \
-          EXTRA_CFLAGS="-I/usr/include/hdf5/mpich" \
-          EXTRA_LDFLAGS="-L/usr/lib/x86_64-linux-gnu/hdf5/mpich"
+        cd sim_folder/build
+        make -j 4 -s EOS_DIR=${{ matrix.eos }} DIM=${{ matrix.dim }} USE_MPI=TRUE
 
     - name: Run Physics Integration Test
       run: |
