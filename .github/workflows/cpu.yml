@@ -1,0 +1,53 @@
+name: 🐧 CPU CI Suite (2T-2D)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-cpu
+  cancel-in-progress: true
+
+jobs:
+  cloud-cpu-compile-and-test:
+    name: MPICH 2T-2D
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+    - name: Checkout CHEQUP
+      uses: actions/checkout@v4
+
+    - name: Checkout Castro Sub-module
+      run: |
+        git clone --recursive https://github.com/chequp-org/Castro.git --branch 2T_25.10
+
+    - name: Install System Dependencies (MPICH & CCache)
+      # Replaces 'module load mpi/mpich-x86_64'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential mpich libmpich-dev make ccache
+
+    - name: CCache Cache (CPU)
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/ccache
+        key: ccache-cpu-${{ hashFiles('.github/workflows/cpu.yml') }}-${{ github.event.repository.pushed_at }}
+        restore-keys: |
+          ccache-cpu-${{ hashFiles('.github/workflows/cpu.yml') }}-
+          ccache-cpu-
+
+    - name: Compile 1D Two-Temperature (CPU Cloud)
+      run: |
+        # Wrap the standard compilers in ccache
+        export CC="ccache gcc"
+        export CXX="ccache g++"
+        
+        cd sim_folder/build
+        make -j 4 -s EOS_DIR=gamma_law_2T DIM=1 USE_MPI=TRUE
