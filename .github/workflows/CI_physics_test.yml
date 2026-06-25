@@ -22,21 +22,28 @@ jobs:
       fail-fast: false # If one physics test fails, let the others finish
       matrix:
         include:
-          - job_name: "Physics: DESY Benchmark (1D 2T)"
+          - job_name: "Physics: 1D Sedov-Taylor"
             dim: 1
             eos: "gamma_law_2T"
+            pytest_file: "test_1d.py"
+            pytest_target: "test_1d_sedov_taylor"
+          - job_name: "Physics: 1D COMSOL benchmark"
+            dim: 1
+            eos: "gamma_law_2T"
+            pytest_file: "test_1d.py"
             pytest_target: "test_1d_desy_benchmark"
             
-          - job_name: "Physics: Sedov-Taylor (1D 2T)"
-            dim: 1
-            eos: "gamma_law_2T"
-            pytest_target: "test_1d_sedov_taylor"
-            
-          - job_name: "Physics: Transverse Expansion (2D 2T)"
+          - job_name: "Physics: Sedov-Taylor 2D"
             dim: 2
             eos: "gamma_law_2T"
-            # Ensure this matches the actual def name of your 2D test in test_physics.py
-            pytest_target: "test_2d_expansion" 
+            pytest_file: "test_2d.py"
+            pytest_target: "2d_sedov_taylor"
+            
+          - job_name: "Physics: Atomic process 0D"
+            dim: 1
+            eos: "gamma_law_2T"
+            pytest_file: "test_atomic_process.py"
+            pytest_target: "test_0D_Ar_H_mix" 
 
     steps:
     - name: Checkout CHEQUP
