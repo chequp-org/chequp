@@ -1,4 +1,4 @@
-name: 🐧 CPU CI Suite (2T-2D)
+name: 🐧 CHEQUP CPU COMPILATION (2T-1D)
 
 on:
   push:
@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   cloud-cpu-compile-and-test:
-    name: MPICH 2T-2D
+    name: MPICH 2T-1D
     runs-on: ubuntu-22.04
     defaults:
       run:
