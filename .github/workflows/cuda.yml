@@ -46,7 +46,7 @@ jobs:
           ccache-cuda-${{ hashFiles('.github/workflows/cuda.yml') }}-
           ccache-cuda-
 
-    - name: Compile 2D Two-Temperature (CUDA Cloud)
+    - name: Compile 1D Two-Temperature (CUDA Cloud)
       run: |
         export PATH=/usr/local/cuda/bin:${PATH}
         export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
@@ -59,4 +59,4 @@ jobs:
         export LIBRARY_PATH="/usr/lib/x86_64-linux-gnu/hdf5/openmpi:${LIBRARY_PATH}"
         
         cd sim_folder/build
-        make -j 4 -s EOS_DIR=gamma_law_2T DIM=1 USE_CUDA=TRUE CUDA_ARCH=80
+        make -j 96 -s EOS_DIR=gamma_law_2T DIM=1 USE_CUDA=TRUE CUDA_ARCH=80 CUDA_LTO=TRUE
