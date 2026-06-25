@@ -1,0 +1,93 @@
+name: CHEQUP Physics CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-physics
+  cancel-in-progress: true
+
+jobs:
+  cloud-physics-tests:
+    name: ${{ matrix.job_name }}
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash -el {0}
+        
+    strategy:
+      fail-fast: false # If one physics test fails, let the others finish
+      matrix:
+        include:
+          - job_name: "Physics: DESY Benchmark (1D 2T)"
+            dim: 1
+            eos: "gamma_law_2T"
+            pytest_target: "test_1d_desy_benchmark"
+            
+          - job_name: "Physics: Sedov-Taylor (1D 2T)"
+            dim: 1
+            eos: "gamma_law_2T"
+            pytest_target: "test_1d_sedov_taylor"
+            
+          - job_name: "Physics: Transverse Expansion (2D 2T)"
+            dim: 2
+            eos: "gamma_law_2T"
+            # Ensure this matches the actual def name of your 2D test in test_physics.py
+            pytest_target: "test_2d_expansion" 
+
+    steps:
+    - name: Checkout CHEQUP
+      uses: actions/checkout@v4
+
+    - name: Checkout Castro Sub-module
+      run: |
+        git clone --recursive https://github.com/chequp-org/Castro.git --branch 2T_25.10
+
+    - name: Install System Dependencies (MPICH & CCache)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential mpich libmpich-dev make ccache libhdf5-mpich-dev
+
+    - name: CCache Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.ccache
+          ~/.cache/ccache
+        # The cache key isolates 1D and 2D. The two 1D jobs will share the exact same compiled cache!
+        key: ccache-${{ matrix.dim }}d-${{ matrix.eos }}-${{ hashFiles('.github/workflows/cpu.yml') }}-${{ github.event.repository.pushed_at }}
+        restore-keys: |
+          ccache-${{ matrix.dim }}d-${{ matrix.eos }}-${{ hashFiles('.github/workflows/cpu.yml') }}-
+          ccache-${{ matrix.dim }}d-${{ matrix.eos }}-
+
+    - name: Setup Conda Environment
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        python-version: "3.11"
+        activate-environment: chequp
+    
+    - name: Install Python Dependencies
+      run: |
+        conda install -y -c conda-forge scipy numpy numba tqdm pandas openpmd-api yt h5py jupyter pytest
+
+    - name: Compile Target
+      run: |
+        export CC="ccache gcc"
+        export CXX="ccache g++"
+        cd sim_folder/build
+        
+        # Inject the matrix variables and the HDF5 paths directly into Make
+        make -j 4 -s EOS_DIR=${{ matrix.eos }} DIM=${{ matrix.dim }} USE_MPI=TRUE \
+          EXTRA_CXXFLAGS="-I/usr/include/hdf5/mpich" \
+          EXTRA_CFLAGS="-I/usr/include/hdf5/mpich" \
+          EXTRA_LDFLAGS="-L/usr/lib/x86_64-linux-gnu/hdf5/mpich"
+
+    - name: Run Physics Integration Test
+      run: |
+        cd tests
+        # The -k flag ensures this runner ONLY executes the specific test function assigned in the matrix
+        pytest -v -m cpu -k "${{ matrix.pytest_target }}" --dim=${{ matrix.dim }} --eos=${{ matrix.eos }}
