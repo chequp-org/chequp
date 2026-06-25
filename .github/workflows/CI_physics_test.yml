@@ -22,25 +22,25 @@ jobs:
       fail-fast: false # If one physics test fails, let the others finish
       matrix:
         include:
-          - job_name: "Physics: 1D Sedov-Taylor"
+          - job_name: "1D Sedov-Taylor"
             dim: 1
             eos: "gamma_law"   # <-- Fixed to 1T to match Python script
             pytest_file: "test_1d.py"
             pytest_target: "test_1d_sedov_taylor"
             
-          - job_name: "Physics: 1D COMSOL benchmark"
+          - job_name: "1D COMSOL benchmark"
             dim: 1
             eos: "gamma_law_2T"
             pytest_file: "test_1d.py"
             pytest_target: "test_1d_desy_benchmark"
             
-          - job_name: "Physics: Sedov-Taylor 2D"
+          - job_name: "Sedov-Taylor 2D"
             dim: 2
             eos: "gamma_law"
             pytest_file: "test_2d.py"
             pytest_target: "test_2d_sedov_taylor"
             
-          - job_name: "Physics: Atomic process 0D"
+          - job_name: "Atomic process 0D"
             dim: 1
             eos: "gamma_law_2T"
             pytest_file: "test_atomic_process.py"
@@ -80,7 +80,7 @@ jobs:
     
     - name: Install Python Dependencies
       run: |
-        conda install -y -c conda-forge scipy numpy numba tqdm pandas openpmd-api yt h5py jupyter pytest
+        conda install -y -c conda-forge scipy "numpy<2.0.0" numba tqdm pandas openpmd-api yt h5py jupyter pytest
 
     - name: Compile Target
       run: |
