@@ -59,4 +59,4 @@ jobs:
         export LIBRARY_PATH="/usr/lib/x86_64-linux-gnu/hdf5/openmpi:${LIBRARY_PATH}"
         
         cd sim_folder/build
-        make -j 96 -s EOS_DIR=gamma_law_2T DIM=1 USE_CUDA=TRUE CUDA_ARCH=80 CUDA_LTO=TRUE
+        make -j 4 -s EOS_DIR=gamma_law_2T DIM=1 USE_CUDA=TRUE CUDA_ARCH=80
