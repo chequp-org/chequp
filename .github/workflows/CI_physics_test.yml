@@ -97,4 +97,4 @@ jobs:
       run: |
         cd tests
         # Use direct file::function targeting for maximum speed and to prevent cross-file conflicts
-        pytest -v -m cpu ${{ matrix.pytest_file }}::${{ matrix.pytest_target }} --dim=${{ matrix.dim }} --eos=${{ matrix.eos }}
+        pytest -v -m cpu ${{ matrix.pytest_file }}::${{ matrix.pytest_target }}
