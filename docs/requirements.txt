@@ -1,0 +1,11 @@
+sphinx>=7.0
+numba
+scipy
+openpmd-api
+openpmd-viewer
+pandas
+yt
+h5py
+streamlit
+matplotlib
+tqdm
