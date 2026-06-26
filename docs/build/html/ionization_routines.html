@@ -1,0 +1,221 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ionization_routines module &mdash; CHEQUP v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=34cd777e"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="openpmd_conversion module" href="openpmd_conversion.html" />
+    <link rel="prev" title="initial_condition" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CHEQUP
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">Physics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">initial_condition</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">ionization_routines module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ionization_routines.get_adk_parameters"><code class="docutils literal notranslate"><span class="pre">get_adk_parameters()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ionization_routines.get_fraction_and_temperature_multispecies"><code class="docutils literal notranslate"><span class="pre">get_fraction_and_temperature_multispecies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ionization_routines.load_intensity_profile"><code class="docutils literal notranslate"><span class="pre">load_intensity_profile()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ionization_routines.process_intensity_array_multispecies"><code class="docutils literal notranslate"><span class="pre">process_intensity_array_multispecies()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ionization_routines.save_to_openpmd"><code class="docutils literal notranslate"><span class="pre">save_to_openpmd()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="openpmd_conversion.html">openpmd_conversion module</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="analysis_tool.html">analysis_tool module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="checksum.html">checksum package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generate_initial_conditions.html">generate_initial_conditions module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hipace_to_chequp.html">hipace_to_chequp module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_1d.html">test_1d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_2d.html">test_2d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_atomic_process.html">test_atomic_process module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="authors.html">Authors &amp; Contributors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">References</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CHEQUP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">initial_condition</a></li>
+      <li class="breadcrumb-item active">ionization_routines module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/ionization_routines.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-ionization_routines">
+<span id="ionization-routines-module"></span><h1>ionization_routines module<a class="headerlink" href="#module-ionization_routines" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="ionization_routines.get_adk_parameters">
+<span class="sig-prename descclassname"><span class="pre">ionization_routines.</span></span><span class="sig-name descname"><span class="pre">get_adk_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ionization_routines.html#get_adk_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ionization_routines.get_adk_parameters" title="Link to this definition"></a></dt>
+<dd><p>Return arrays needed for calculation of ADK ionization rates</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ionization_routines.get_fraction_and_temperature_multispecies">
+<span class="sig-prename descclassname"><span class="pre">ionization_routines.</span></span><span class="sig-name descname"><span class="pre">get_fraction_and_temperature_multispecies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adk_prefactors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adk_powers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adk_exp_prefactors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_populations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npts_per_wavelength</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">80</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ionization_routines.html#get_fraction_and_temperature_multispecies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ionization_routines.get_fraction_and_temperature_multispecies" title="Link to this definition"></a></dt>
+<dd><p>a0: Peak laser amplitude
+tau: laser FWHM duration
+lambd: laser wavelength
+ell: polarization vector
+n0: electron density if the plasma was fully ionized
+charges : Charge state of each species (e.g., [0, 1, 0, 1, 2, 3] for H0, H1, N0, N1, N2, N3)
+initial_populations : Initial population fractions for each species (should sum to 1.0)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ionization_routines.load_intensity_profile">
+<span class="sig-prename descclassname"><span class="pre">ionization_routines.</span></span><span class="sig-name descname"><span class="pre">load_intensity_profile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ionization_routines.html#load_intensity_profile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ionization_routines.load_intensity_profile" title="Link to this definition"></a></dt>
+<dd><p>Load intensity profile from txt or csv file</p>
+<section id="parameters">
+<h2>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading"></a></h2>
+<p>filename : str, Path to file containing intensity data</p>
+</section>
+<section id="returns">
+<h2>Returns:<a class="headerlink" href="#returns" title="Link to this heading"></a></h2>
+<p>intensity_array : 1D or 2D array intensity values (W/m^2)</p>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ionization_routines.process_intensity_array_multispecies">
+<span class="sig-prename descclassname"><span class="pre">ionization_routines.</span></span><span class="sig-name descname"><span class="pre">process_intensity_array_multispecies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">intensity_nd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lambd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adk_prefactors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adk_powers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adk_exp_prefactors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">species_keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_populations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_extent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_total</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e+24</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ionization_routines.html#process_intensity_array_multispecies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ionization_routines.process_intensity_array_multispecies" title="Link to this definition"></a></dt>
+<dd><p>Process nD intensity array for multi-species plasma</p>
+<section id="id1">
+<h2>Parameters:<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>intensity_nd<span class="classifier">nD array</span></dt><dd><p>Laser intensity profile I in W/m^2</p>
+</dd>
+<dt>lambd<span class="classifier">float</span></dt><dd><p>Laser wavelength (m)</p>
+</dd>
+<dt>tau<span class="classifier">float</span></dt><dd><p>Laser pulse FWHM duration (s)</p>
+</dd>
+<dt>ell<span class="classifier">array-like</span></dt><dd><p>Polarization vector [2-element array]</p>
+</dd>
+<dt>initial_populations<span class="classifier">dictionary</span></dt><dd><p>Dictionary with elements of species_keys as keys and initial population fractions as values
+If an element from species_keys is not in the dictionary, it is assumed to be 0</p>
+</dd>
+<dt>output_file<span class="classifier">str, optional</span></dt><dd><p>Filename to save openPMD output with radius, temperature and densities</p>
+</dd>
+<dt>grid_extent<span class="classifier">dict, optional</span></dt><dd><p>Grid extent for openPMD output</p>
+</dd>
+<dt>n_total<span class="classifier">float</span></dt><dd><p>Total number density in m^-3 for converting fractions to densities (default: 1e24)</p>
+</dd>
+</dl>
+</section>
+<section id="id2">
+<h2>Returns:<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>all_populations<span class="classifier">nD array</span></dt><dd><p>Population fractions for all species (shape: <cite>[*intensity_nd.shape, len(species_keys)]</cite>)</p>
+</dd>
+<dt>T_array<span class="classifier">nD array</span></dt><dd><p>Electron temperatures in eV, same (shape: intensity_nd)</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ionization_routines.save_to_openpmd">
+<span class="sig-prename descclassname"><span class="pre">ionization_routines.</span></span><span class="sig-name descname"><span class="pre">save_to_openpmd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_extent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_populations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Te_eV</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">species_keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xmom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ymom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zmom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Th_eV</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ionization_routines.html#save_to_openpmd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ionization_routines.save_to_openpmd" title="Link to this definition"></a></dt>
+<dd><p>Save with all species densities (m^-3) to an openPMD file</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="initial_condition" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="openpmd_conversion.html" class="btn btn-neutral float-right" title="openpmd_conversion module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Thibault Benahmed, Remi Lehe, Maxence Thevenet, Christian McCombs, Alexander Sinn.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

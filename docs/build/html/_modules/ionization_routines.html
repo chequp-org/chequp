@@ -1,0 +1,496 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ionization_routines &mdash; CHEQUP v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=34cd777e"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            CHEQUP
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../physics.html">Physics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">initial_condition</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../analysis_tool.html">analysis_tool module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../checksum.html">checksum package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../generate_initial_conditions.html">generate_initial_conditions module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hipace_to_chequp.html">hipace_to_chequp module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test_1d.html">test_1d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test_2d.html">test_2d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../test_atomic_process.html">test_atomic_process module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../authors.html">Authors &amp; Contributors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../bibliography.html">References</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">CHEQUP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ionization_routines</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ionization_routines</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numba</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numba</span><span class="w"> </span><span class="kn">import</span> <span class="n">cuda</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tqdm</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.special</span><span class="w"> </span><span class="kn">import</span> <span class="n">gamma</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">m_e</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">hbar</span><span class="p">,</span> <span class="n">physical_constants</span><span class="p">,</span> <span class="n">epsilon_0</span><span class="p">,</span> <span class="n">k</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">openpmd_api</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+<div class="viewcode-block" id="get_adk_parameters">
+<a class="viewcode-back" href="../ionization_routines.html#ionization_routines.get_adk_parameters">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_adk_parameters</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return arrays needed for calculation of ADK ionization rates</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">fbpic.particles.elementary_process.ionization.read_atomic_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_ionization_energies</span>
+
+    <span class="c1"># Parse the name of the species that are used in Castro</span>
+    <span class="n">build_dir</span> <span class="o">=</span> <span class="s1">&#39;../sim_folder/build&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">build_dir</span><span class="p">,</span> <span class="s1">&#39;species.net&#39;</span><span class="p">),</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">species_keys</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\n\s.*\s([A-Z][a-z]*\d)&#39;</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+    <span class="c1"># Automatically find information about each transition</span>
+    <span class="n">ionization_levels</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">species_key</span> <span class="ow">in</span> <span class="n">species_keys</span><span class="p">:</span>
+        <span class="c1"># Parse the species name and initial charge</span>
+        <span class="n">species_name</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;[A-Z][a-z]*&#39;</span><span class="p">,</span> <span class="n">species_key</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">initial_charge</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d&#39;</span><span class="p">,</span> <span class="n">species_key</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="c1"># Only consider transitions if the final state is in species_keys</span>
+        <span class="k">if</span> <span class="n">species_name</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">initial_charge</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">in</span> <span class="n">species_keys</span><span class="p">:</span>
+            <span class="c1"># Get the ionization energy</span>
+            <span class="n">Uion_eV</span> <span class="o">=</span> <span class="n">get_ionization_energies</span><span class="p">(</span><span class="n">species_name</span><span class="p">)[</span><span class="n">initial_charge</span><span class="p">]</span> <span class="o">/</span> <span class="n">e</span>
+            <span class="c1"># Add the transition to the list</span>
+            <span class="n">ionization_levels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">{</span>
+                <span class="s1">&#39;species_name&#39;</span><span class="p">:</span> <span class="n">species_name</span><span class="p">,</span>
+                <span class="s1">&#39;initial_charge&#39;</span><span class="p">:</span> <span class="n">initial_charge</span><span class="p">,</span>
+                <span class="s1">&#39;final_charge&#39;</span><span class="p">:</span> <span class="n">initial_charge</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s1">&#39;Uion_eV&#39;</span><span class="p">:</span> <span class="n">Uion_eV</span>
+            <span class="p">}</span> <span class="p">)</span>
+
+    <span class="n">num_species</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">species_keys</span><span class="p">)</span>
+    <span class="n">num_transitions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ionization_levels</span><span class="p">)</span>
+
+    <span class="c1"># Calculate ADK parameters for all transitions</span>
+    <span class="n">UH</span> <span class="o">=</span> <span class="mf">13.6</span> <span class="o">*</span> <span class="n">e</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">physical_constants</span><span class="p">[</span><span class="s1">&#39;fine-structure constant&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">r_e</span> <span class="o">=</span> <span class="n">physical_constants</span><span class="p">[</span><span class="s1">&#39;classical electron radius&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">wa</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">**</span><span class="mi">3</span> <span class="o">*</span> <span class="n">c</span> <span class="o">/</span> <span class="n">r_e</span>
+    <span class="n">Ea</span> <span class="o">=</span> <span class="n">m_e</span><span class="o">*</span><span class="n">c</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">e</span> <span class="o">*</span> <span class="n">alpha</span><span class="o">**</span><span class="mi">4</span><span class="o">/</span><span class="n">r_e</span>
+
+    <span class="c1"># Calculate l_eff for each species based on their ground state. Generalized for future additions like helium</span>
+    <span class="n">species_l_eff</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">transition_dict</span> <span class="ow">in</span> <span class="n">ionization_levels</span><span class="p">:</span>
+        <span class="n">species_name</span> <span class="o">=</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;species_name&#39;</span><span class="p">]</span>
+        <span class="c1"># Only calculate l_eff for ground state (initial_charge = 0)</span>
+        <span class="k">if</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;initial_charge&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">species_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">species_l_eff</span><span class="p">:</span>
+            <span class="n">ground_state_Uion</span> <span class="o">=</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Uion_eV&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">e</span>
+            <span class="n">ground_state_Z</span> <span class="o">=</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;final_charge&#39;</span><span class="p">]</span>
+            <span class="n">ground_state_n_eff</span> <span class="o">=</span> <span class="n">ground_state_Z</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">UH</span><span class="o">/</span><span class="n">ground_state_Uion</span><span class="p">)</span>
+            <span class="n">species_l_eff</span><span class="p">[</span><span class="n">species_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">ground_state_n_eff</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="k">for</span> <span class="n">transition_dict</span> <span class="ow">in</span> <span class="n">ionization_levels</span><span class="p">:</span>
+        <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Uion&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Uion_eV&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">e</span>
+        <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Z&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;final_charge&#39;</span><span class="p">]</span>
+        <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Z&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">UH</span><span class="o">/</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Uion&#39;</span><span class="p">]</span> <span class="p">)</span>
+        <span class="c1"># Use the l_eff calculated from the ground state of this species</span>
+        <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;l_eff&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">species_l_eff</span><span class="p">[</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;species_name&#39;</span><span class="p">]]</span>
+        <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;C2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span><span class="o">**</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">gamma</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">]</span><span class="o">+</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;l_eff&#39;</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">gamma</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">]</span><span class="o">-</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;l_eff&#39;</span><span class="p">]))</span>
+        <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;adk_power&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;adk_prefactor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">wa</span> <span class="o">*</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;C2&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Uion&#39;</span><span class="p">]</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">UH</span><span class="p">)</span> <span class="p">)</span> \
+            <span class="o">*</span> <span class="p">(</span> <span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Uion&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">UH</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="mf">3.</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="n">Ea</span> <span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;n_eff&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;adk_exp_prefactor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.</span><span class="o">/</span><span class="mi">3</span> <span class="o">*</span> <span class="p">(</span> <span class="n">transition_dict</span><span class="p">[</span><span class="s1">&#39;Uion&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">UH</span> <span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="mf">3.</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">Ea</span>
+    <span class="c1"># Create numba-compatible arrays</span>
+    <span class="n">adk_prefactors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;adk_prefactor&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">ionization_levels</span><span class="p">])</span>
+    <span class="n">adk_powers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;adk_power&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">ionization_levels</span><span class="p">])</span>
+    <span class="n">adk_exp_prefactors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;adk_exp_prefactor&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">ionization_levels</span><span class="p">])</span>
+
+    <span class="c1"># Create arrays that map each transition to its source and target species index</span>
+    <span class="n">source_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_transitions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+    <span class="n">target_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_transitions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ionization_levels</span><span class="p">):</span>
+        <span class="n">source_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;species_name&#39;</span><span class="p">]</span><span class="si">}{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;initial_charge&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">target_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;species_name&#39;</span><span class="p">]</span><span class="si">}{</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;final_charge&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">source_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">species_keys</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">source_key</span><span class="p">)</span>
+        <span class="n">target_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">species_keys</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">target_key</span><span class="p">)</span>
+
+    <span class="n">charges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">key</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">species_keys</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">species_keys</span><span class="p">,</span> <span class="n">adk_prefactors</span><span class="p">,</span> <span class="n">adk_powers</span><span class="p">,</span> <span class="n">adk_exp_prefactors</span><span class="p">,</span> <span class="n">source_indices</span><span class="p">,</span> <span class="n">target_indices</span><span class="p">,</span> <span class="n">charges</span></div>
+
+
+
+<div class="viewcode-block" id="get_fraction_and_temperature_multispecies">
+<a class="viewcode-back" href="../ionization_routines.html#ionization_routines.get_fraction_and_temperature_multispecies">[docs]</a>
+<span class="nd">@numba</span><span class="o">.</span><span class="n">njit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_fraction_and_temperature_multispecies</span><span class="p">(</span><span class="n">a0</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">lambd</span><span class="p">,</span> <span class="n">ell</span><span class="p">,</span>
+                                             <span class="n">adk_prefactors</span><span class="p">,</span> <span class="n">adk_powers</span><span class="p">,</span> <span class="n">adk_exp_prefactors</span><span class="p">,</span>
+                                             <span class="n">source_indices</span><span class="p">,</span> <span class="n">target_indices</span><span class="p">,</span> <span class="n">charges</span><span class="p">,</span>
+                                             <span class="n">initial_populations</span><span class="p">,</span>
+                                             <span class="n">npts_per_wavelength</span><span class="o">=</span><span class="mi">80</span><span class="p">):</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    a0: Peak laser amplitude</span>
+<span class="sd">    tau: laser FWHM duration</span>
+<span class="sd">    lambd: laser wavelength</span>
+<span class="sd">    ell: polarization vector</span>
+<span class="sd">    n0: electron density if the plasma was fully ionized</span>
+<span class="sd">    charges : Charge state of each species (e.g., [0, 1, 0, 1, 2, 3] for H0, H1, N0, N1, N2, N3)</span>
+<span class="sd">    initial_populations : Initial population fractions for each species (should sum to 1.0)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">omega</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="n">c</span><span class="o">/</span><span class="n">lambd</span>
+    <span class="n">E0</span> <span class="o">=</span> <span class="n">m_e</span><span class="o">*</span><span class="n">omega</span><span class="o">*</span><span class="n">c</span><span class="o">/</span><span class="n">e</span>
+    <span class="n">inv_tau2</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="n">tau</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="n">kin_energy</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="o">-</span><span class="mi">3</span><span class="o">*</span><span class="n">tau</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">lambd</span><span class="o">/</span><span class="n">c</span><span class="o">/</span><span class="n">npts_per_wavelength</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">ell</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+    <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">ell</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ell</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.e-10</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">t</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="o">*</span><span class="n">tau</span><span class="p">):</span>
+        <span class="n">a_env</span> <span class="o">=</span> <span class="n">a0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">inv_tau2</span><span class="o">*</span><span class="n">t</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">a_env</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">ell</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">omega</span><span class="o">*</span><span class="n">t</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ell</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">omega</span><span class="o">*</span><span class="n">t</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+        <span class="n">E</span> <span class="o">=</span> <span class="n">E0</span> <span class="o">*</span> <span class="n">a_env</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">ell</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">omega</span><span class="o">*</span><span class="n">t</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">ell</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">omega</span><span class="o">*</span><span class="n">t</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span>
+
+        <span class="n">total_new_electrons</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">adk_prefactors</span><span class="p">)):</span>
+            <span class="n">source_idx</span> <span class="o">=</span> <span class="n">source_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">target_idx</span> <span class="o">=</span> <span class="n">target_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="n">w</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">if</span> <span class="n">E</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">adk_prefactors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">E</span><span class="o">**</span><span class="n">adk_powers</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span> <span class="n">adk_exp_prefactors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">E</span> <span class="p">)</span>
+
+            <span class="n">dp</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">w</span><span class="o">*</span><span class="n">dt</span><span class="p">)</span>
+            <span class="n">delta_p</span> <span class="o">=</span> <span class="n">dp</span> <span class="o">*</span> <span class="n">initial_populations</span><span class="p">[</span><span class="n">source_idx</span><span class="p">]</span>
+
+            <span class="n">initial_populations</span><span class="p">[</span><span class="n">source_idx</span><span class="p">]</span> <span class="o">-=</span> <span class="n">delta_p</span>
+            <span class="n">initial_populations</span><span class="p">[</span><span class="n">target_idx</span><span class="p">]</span> <span class="o">+=</span> <span class="n">delta_p</span>
+            <span class="n">total_new_electrons</span> <span class="o">+=</span> <span class="n">delta_p</span>
+
+        <span class="k">if</span> <span class="n">total_new_electrons</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">kin_energy</span> <span class="o">+=</span> <span class="n">total_new_electrons</span> <span class="o">*</span> <span class="n">m_e</span><span class="o">*</span><span class="n">c</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">a</span><span class="o">**</span><span class="mi">2</span> <span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">t</span> <span class="o">+=</span> <span class="n">dt</span>
+
+    <span class="n">T</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">z_average</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">charges</span><span class="p">)):</span>
+        <span class="n">z_average</span> <span class="o">+=</span> <span class="n">charges</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">initial_populations</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>    
+    <span class="k">if</span> <span class="n">z_average</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">kin_energy</span> <span class="o">/</span> <span class="p">(</span><span class="mi">3</span><span class="o">/</span><span class="mi">2</span> <span class="o">*</span> <span class="n">z_average</span> <span class="o">*</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">initial_populations</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">t</span>  <span class="c1"># Return full populations array</span></div>
+
+
+<span class="c1"># Automatically detect hardware: use &#39;cuda&#39; if GPU is available, otherwise &#39;parallel&#39; (CPU)</span>
+<span class="k">if</span> <span class="n">numba</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+    <span class="n">target_backend</span> <span class="o">=</span> <span class="s1">&#39;cuda&#39;</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">target_backend</span> <span class="o">=</span> <span class="s1">&#39;parallel&#39;</span>
+    
+<span class="nd">@numba</span><span class="o">.</span><span class="n">guvectorize</span><span class="p">(</span>
+    <span class="p">[</span><span class="s1">&#39;void(float64, float64, float64, float64[:], &#39;</span>
+     <span class="s1">&#39;float64[:], float64[:], float64[:], &#39;</span>
+     <span class="s1">&#39;int64[:], int64[:], float64[:], float64[:], &#39;</span>
+     <span class="s1">&#39;float64[:], float64[:])&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;(),(),(),(m),(t),(t),(t),(t),(t),(s),(s)-&gt;(s),()&#39;</span><span class="p">,</span>  
+    <span class="n">nopython</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">target</span><span class="o">=</span><span class="n">target_backend</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ionization_vectorized</span><span class="p">(</span>
+    <span class="n">a0</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">lambd</span><span class="p">,</span> <span class="n">ell</span><span class="p">,</span>
+    <span class="n">adk_prefactors</span><span class="p">,</span> <span class="n">adk_powers</span><span class="p">,</span> <span class="n">adk_exp_prefactors</span><span class="p">,</span>
+    <span class="n">source_indices</span><span class="p">,</span> <span class="n">target_indices</span><span class="p">,</span> <span class="n">charges</span><span class="p">,</span> <span class="n">initial_populations</span><span class="p">,</span>
+    <span class="n">populations_out</span><span class="p">,</span> <span class="n">T_out</span>
+<span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">initial_populations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">populations_out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">initial_populations</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="n">pops</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_fraction_and_temperature_multispecies</span><span class="p">(</span>
+        <span class="n">a0</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">lambd</span><span class="p">,</span> <span class="n">ell</span><span class="p">,</span>
+        <span class="n">adk_prefactors</span><span class="p">,</span> <span class="n">adk_powers</span><span class="p">,</span> <span class="n">adk_exp_prefactors</span><span class="p">,</span>
+        <span class="n">source_indices</span><span class="p">,</span> <span class="n">target_indices</span><span class="p">,</span> <span class="n">charges</span><span class="p">,</span>
+        <span class="n">populations_out</span><span class="p">,</span>
+        <span class="mi">80</span>
+    <span class="p">)</span>
+
+    <span class="n">T_out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">T</span>
+
+<div class="viewcode-block" id="save_to_openpmd">
+<a class="viewcode-back" href="../ionization_routines.html#ionization_routines.save_to_openpmd">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_to_openpmd</span><span class="p">(</span><span class="n">grid_extent</span><span class="p">,</span> <span class="n">all_populations</span><span class="p">,</span> <span class="n">Te_eV</span><span class="p">,</span> <span class="n">output_file</span><span class="p">,</span> <span class="n">species_keys</span><span class="p">,</span> <span class="n">xmom</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ymom</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">zmom</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">Th_eV</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Save with all species densities (m^-3) to an openPMD file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">Th_eV</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">Th_eV</span> <span class="o">=</span> <span class="mf">348.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">k</span> <span class="o">/</span> <span class="n">e</span><span class="p">)</span>
+    <span class="c1"># create openpmd file</span>
+    <span class="n">series</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">io</span><span class="o">.</span><span class="n">Access</span><span class="o">.</span><span class="n">create</span><span class="p">)</span>
+    <span class="c1"># only 1 iteration needed</span>
+    <span class="n">it</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">iterations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Extract information about the grid for openPMD</span>
+    <span class="n">grid_spacing</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span> <span class="p">(</span><span class="n">grid_extent</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">grid_extent</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">all_populations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">grid_extent</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="p">])</span>
+    <span class="n">grid_global_offset</span> <span class="o">=</span> <span class="p">[</span><span class="n">grid_extent</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">grid_extent</span><span class="o">.</span><span class="n">keys</span><span class="p">()]</span>
+    <span class="n">axis_labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">grid_extent</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+    <span class="c1"># Save the electron temperature</span>
+    <span class="n">Te</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="n">meshes</span><span class="p">[</span><span class="s2">&quot;Te&quot;</span><span class="p">]</span>
+    <span class="n">Te</span><span class="o">.</span><span class="n">grid_spacing</span> <span class="o">=</span> <span class="n">grid_spacing</span>
+    <span class="n">Te</span><span class="o">.</span><span class="n">grid_global_offset</span> <span class="o">=</span> <span class="n">grid_global_offset</span>
+    <span class="n">Te</span><span class="o">.</span><span class="n">axis_labels</span> <span class="o">=</span> <span class="n">axis_labels</span>
+    <span class="n">Te</span><span class="o">.</span><span class="n">unit_dimension</span> <span class="o">=</span> <span class="p">{</span><span class="n">io</span><span class="o">.</span><span class="n">Unit_Dimension</span><span class="o">.</span><span class="n">theta</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">Te_eV</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">Te_eV</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">Te_scalar</span> <span class="o">=</span> <span class="n">Te</span><span class="p">[</span><span class="n">io</span><span class="o">.</span><span class="n">Mesh_Record_Component</span><span class="o">.</span><span class="n">SCALAR</span><span class="p">]</span>
+    <span class="n">Te_scalar</span><span class="o">.</span><span class="n">reset_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+    <span class="n">Te_scalar</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid_extent</span><span class="p">)</span>
+    <span class="n">Te_scalar</span><span class="o">.</span><span class="n">store_chunk</span><span class="p">(</span><span class="n">Te_eV</span> <span class="o">*</span> <span class="p">(</span><span class="n">e</span> <span class="o">/</span> <span class="n">k</span><span class="p">))</span>  <span class="c1"># Convert eV to K</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">Th_eV</span><span class="p">):</span> <span class="c1"># If Th_eV is a scalar, convert to array</span>
+        <span class="n">Th_eV</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">Te_eV</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">Th_eV</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">Th_eV</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">Th_eV</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">Th_eV</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">Te_eV</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span> <span class="c1"># Check that the shapes match</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Th_eV shape </span><span class="si">{</span><span class="n">Th_eV</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> does not match Te_eV shape </span><span class="si">{</span><span class="n">Te_eV</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># Save the heavies temperature</span>
+    <span class="n">Th</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="n">meshes</span><span class="p">[</span><span class="s2">&quot;Th&quot;</span><span class="p">]</span>
+    <span class="n">Th</span><span class="o">.</span><span class="n">grid_spacing</span> <span class="o">=</span> <span class="n">grid_spacing</span>
+    <span class="n">Th</span><span class="o">.</span><span class="n">grid_global_offset</span> <span class="o">=</span> <span class="n">grid_global_offset</span>
+    <span class="n">Th</span><span class="o">.</span><span class="n">axis_labels</span> <span class="o">=</span> <span class="n">axis_labels</span>
+    <span class="n">Th</span><span class="o">.</span><span class="n">unit_dimension</span> <span class="o">=</span> <span class="p">{</span><span class="n">io</span><span class="o">.</span><span class="n">Unit_Dimension</span><span class="o">.</span><span class="n">theta</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">Th_eV</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">Th_eV</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">Th_scalar</span> <span class="o">=</span> <span class="n">Th</span><span class="p">[</span><span class="n">io</span><span class="o">.</span><span class="n">Mesh_Record_Component</span><span class="o">.</span><span class="n">SCALAR</span><span class="p">]</span>
+    <span class="n">Th_scalar</span><span class="o">.</span><span class="n">reset_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+    <span class="n">Th_scalar</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid_extent</span><span class="p">)</span>
+    <span class="n">Th_scalar</span><span class="o">.</span><span class="n">store_chunk</span><span class="p">(</span><span class="n">Th_eV</span> <span class="o">*</span> <span class="p">(</span><span class="n">e</span> <span class="o">/</span> <span class="n">k</span><span class="p">))</span>  <span class="c1"># Convert eV to K</span>
+
+    <span class="c1"># Save the species densities</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">species_key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">species_keys</span><span class="p">):</span>
+        <span class="n">pop</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="n">meshes</span><span class="p">[</span><span class="n">species_key</span> <span class="o">+</span> <span class="s2">&quot;_density&quot;</span><span class="p">]</span>
+        <span class="n">pop</span><span class="o">.</span><span class="n">grid_spacing</span> <span class="o">=</span> <span class="n">grid_spacing</span>
+        <span class="n">pop</span><span class="o">.</span><span class="n">grid_global_offset</span> <span class="o">=</span> <span class="n">grid_global_offset</span>
+        <span class="n">pop</span><span class="o">.</span><span class="n">axis_labels</span> <span class="o">=</span> <span class="n">axis_labels</span>
+        <span class="n">pop</span><span class="o">.</span><span class="n">unit_dimension</span> <span class="o">=</span> <span class="p">{</span><span class="n">io</span><span class="o">.</span><span class="n">Unit_Dimension</span><span class="o">.</span><span class="n">L</span><span class="p">:</span> <span class="o">-</span><span class="mi">3</span><span class="p">}</span>  <span class="c1"># m^-3</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">all_populations</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">all_populations</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">pop_scalar</span> <span class="o">=</span> <span class="n">pop</span><span class="p">[</span><span class="n">io</span><span class="o">.</span><span class="n">Mesh_Record_Component</span><span class="o">.</span><span class="n">SCALAR</span><span class="p">]</span>
+        <span class="n">pop_scalar</span><span class="o">.</span><span class="n">reset_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="n">pop_scalar</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid_extent</span><span class="p">)</span>
+        <span class="n">pop_scalar</span><span class="o">.</span><span class="n">store_chunk</span><span class="p">(</span><span class="n">all_populations</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+
+    <span class="c1"># Save the momentum density fields (kg m^-2 s^-1 = rho * v)</span>
+    <span class="k">for</span> <span class="n">mom_key</span><span class="p">,</span> <span class="n">mom_value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">([</span><span class="s2">&quot;xmom&quot;</span><span class="p">,</span> <span class="s2">&quot;ymom&quot;</span><span class="p">,</span> <span class="s2">&quot;zmom&quot;</span><span class="p">],</span> <span class="p">[</span><span class="n">xmom</span><span class="p">,</span> <span class="n">ymom</span><span class="p">,</span> <span class="n">zmom</span><span class="p">]):</span>
+        <span class="c1"># Accept either a scalar (constant field) or an array of the same shape as Te_eV</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">mom_value</span><span class="p">):</span>
+            <span class="n">mom_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">Te_eV</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">mom_value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mom_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mom_value</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mom_data</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">Te_eV</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">mom_key</span><span class="si">}</span><span class="s2"> shape </span><span class="si">{</span><span class="n">mom_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> does not match Te_eV shape </span><span class="si">{</span><span class="n">Te_eV</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">mom_mesh</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="n">meshes</span><span class="p">[</span><span class="n">mom_key</span><span class="p">]</span>
+        <span class="n">mom_mesh</span><span class="o">.</span><span class="n">grid_spacing</span> <span class="o">=</span> <span class="n">grid_spacing</span>
+        <span class="n">mom_mesh</span><span class="o">.</span><span class="n">grid_global_offset</span> <span class="o">=</span> <span class="n">grid_global_offset</span>
+        <span class="n">mom_mesh</span><span class="o">.</span><span class="n">axis_labels</span> <span class="o">=</span> <span class="n">axis_labels</span>
+        <span class="n">mom_mesh</span><span class="o">.</span><span class="n">unit_dimension</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">io</span><span class="o">.</span><span class="n">Unit_Dimension</span><span class="o">.</span><span class="n">M</span><span class="p">:</span>  <span class="mi">1</span><span class="p">,</span>
+            <span class="n">io</span><span class="o">.</span><span class="n">Unit_Dimension</span><span class="o">.</span><span class="n">L</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">io</span><span class="o">.</span><span class="n">Unit_Dimension</span><span class="o">.</span><span class="n">T</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="p">}</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">mom_data</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">mom_data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">mom_scalar</span> <span class="o">=</span> <span class="n">mom_mesh</span><span class="p">[</span><span class="n">io</span><span class="o">.</span><span class="n">Mesh_Record_Component</span><span class="o">.</span><span class="n">SCALAR</span><span class="p">]</span>
+        <span class="n">mom_scalar</span><span class="o">.</span><span class="n">reset_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="n">mom_scalar</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid_extent</span><span class="p">)</span>
+        <span class="n">mom_scalar</span><span class="o">.</span><span class="n">store_chunk</span><span class="p">(</span><span class="n">mom_data</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+
+    <span class="n">series</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="load_intensity_profile">
+<a class="viewcode-back" href="../ionization_routines.html#ionization_routines.load_intensity_profile">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_intensity_profile</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load intensity profile from txt or csv file</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    filename : str, Path to file containing intensity data</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    intensity_array : 1D or 2D array intensity values (W/m^2)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.csv&#39;</span><span class="p">):</span>
+        <span class="n">intensity_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">intensity_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">intensity_array</span></div>
+
+
+<div class="viewcode-block" id="process_intensity_array_multispecies">
+<a class="viewcode-back" href="../ionization_routines.html#ionization_routines.process_intensity_array_multispecies">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_intensity_array_multispecies</span><span class="p">(</span><span class="n">intensity_nd</span><span class="p">,</span> <span class="n">lambd</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">ell</span><span class="p">,</span>
+            <span class="n">adk_prefactors</span><span class="p">,</span> <span class="n">adk_powers</span><span class="p">,</span> <span class="n">adk_exp_prefactors</span><span class="p">,</span>
+            <span class="n">source_indices</span><span class="p">,</span> <span class="n">target_indices</span><span class="p">,</span> <span class="n">charges</span><span class="p">,</span> <span class="n">species_keys</span><span class="p">,</span>
+            <span class="n">initial_populations</span><span class="p">,</span> <span class="n">output_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">grid_extent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">n_total</span><span class="o">=</span><span class="mf">1e24</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process nD intensity array for multi-species plasma</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    intensity_nd : nD array</span>
+<span class="sd">        Laser intensity profile I in W/m^2</span>
+<span class="sd">    lambd : float</span>
+<span class="sd">        Laser wavelength (m)</span>
+<span class="sd">    tau : float</span>
+<span class="sd">        Laser pulse FWHM duration (s)</span>
+<span class="sd">    ell : array-like</span>
+<span class="sd">        Polarization vector [2-element array]</span>
+<span class="sd">    initial_populations : dictionary</span>
+<span class="sd">        Dictionary with elements of species_keys as keys and initial population fractions as values</span>
+<span class="sd">        If an element from species_keys is not in the dictionary, it is assumed to be 0</span>
+<span class="sd">    output_file : str, optional</span>
+<span class="sd">        Filename to save openPMD output with radius, temperature and densities</span>
+<span class="sd">    grid_extent : dict, optional</span>
+<span class="sd">        Grid extent for openPMD output</span>
+<span class="sd">    n_total : float</span>
+<span class="sd">        Total number density in m^-3 for converting fractions to densities (default: 1e24)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    all_populations : nD array</span>
+<span class="sd">        Population fractions for all species (shape: `[*intensity_nd.shape, len(species_keys)]`)</span>
+<span class="sd">    T_array : nD array</span>
+<span class="sd">        Electron temperatures in eV, same (shape: intensity_nd)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Convert intensity to normalized vector potential a0</span>
+    <span class="n">a0_array</span> <span class="o">=</span> <span class="n">e</span> <span class="o">*</span> <span class="n">lambd</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">m_e</span> <span class="o">*</span> <span class="n">c</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">intensity_nd</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">epsilon_0</span> <span class="o">*</span> <span class="n">c</span><span class="o">**</span><span class="mi">3</span><span class="p">))</span>
+
+    <span class="c1"># Prepare array of initial populations</span>
+    <span class="n">initial_populations</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">initial_populations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">species_keys</span><span class="p">])</span>
+    <span class="c1"># Check that the sum is 1 to machine precision</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">initial_populations</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.e-10</span>
+
+    <span class="c1"># Flatten, and prepare arrays for temperature and population</span>
+    <span class="n">a0_flat</span> <span class="o">=</span> <span class="n">a0_array</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+    <span class="n">T_flat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">a0_flat</span><span class="p">)</span>
+    <span class="n">all_populations_flat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">a0_flat</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">species_keys</span><span class="p">)))</span>
+
+    <span class="n">compute_ionization_vectorized</span><span class="p">(</span>
+        <span class="n">a0_flat</span><span class="p">,</span> <span class="n">tau</span><span class="p">,</span> <span class="n">lambd</span><span class="p">,</span> <span class="n">ell</span><span class="p">,</span>
+        <span class="n">adk_prefactors</span><span class="p">,</span> <span class="n">adk_powers</span><span class="p">,</span> <span class="n">adk_exp_prefactors</span><span class="p">,</span>
+        <span class="n">source_indices</span><span class="p">,</span> <span class="n">target_indices</span><span class="p">,</span> <span class="n">charges</span><span class="p">,</span>
+        <span class="n">initial_populations</span><span class="p">,</span>
+        <span class="n">all_populations_flat</span><span class="p">,</span> <span class="n">T_flat</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Reshape back to nD arrays</span>
+    <span class="n">all_populations</span> <span class="o">=</span> <span class="n">all_populations_flat</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">a0_array</span><span class="o">.</span><span class="n">shape</span> <span class="o">+</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">species_keys</span><span class="p">),))</span>
+    <span class="n">T_array</span> <span class="o">=</span> <span class="n">T_flat</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">a0_array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="c1"># Save openPMD output with species densities</span>
+    <span class="k">if</span> <span class="n">output_file</span> <span class="ow">and</span> <span class="n">grid_extent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">all_densities</span> <span class="o">=</span> <span class="n">all_populations</span> <span class="o">*</span> <span class="n">n_total</span>
+        <span class="n">save_to_openpmd</span><span class="p">(</span><span class="n">grid_extent</span><span class="p">,</span> <span class="n">all_densities</span><span class="p">,</span> <span class="n">T_array</span><span class="p">,</span> <span class="n">output_file</span><span class="p">,</span> <span class="n">species_keys</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">all_populations</span><span class="p">,</span> <span class="n">T_array</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Thibault Benahmed, Remi Lehe, Maxence Thevenet, Christian McCombs, Alexander Sinn.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

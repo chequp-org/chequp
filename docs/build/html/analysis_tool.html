@@ -1,0 +1,248 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis_tool module &mdash; CHEQUP v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=34cd777e"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="checksum package" href="checksum.html" />
+    <link rel="prev" title="openpmd_conversion module" href="openpmd_conversion.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CHEQUP
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">Physics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">initial_condition</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">analysis_tool module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#analysis_tool.CastroSimulation"><code class="docutils literal notranslate"><span class="pre">CastroSimulation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#analysis_tool.CastroSimulation.get_energy"><code class="docutils literal notranslate"><span class="pre">CastroSimulation.get_energy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#analysis_tool.CastroSimulation.get_field"><code class="docutils literal notranslate"><span class="pre">CastroSimulation.get_field()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#analysis_tool.CastroSimulation.get_particle_number"><code class="docutils literal notranslate"><span class="pre">CastroSimulation.get_particle_number()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#analysis_tool.CastroSimulation.sim_info"><code class="docutils literal notranslate"><span class="pre">CastroSimulation.sim_info()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="checksum.html">checksum package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generate_initial_conditions.html">generate_initial_conditions module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hipace_to_chequp.html">hipace_to_chequp module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_1d.html">test_1d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_2d.html">test_2d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_atomic_process.html">test_atomic_process module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="authors.html">Authors &amp; Contributors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">References</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CHEQUP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">analysis_tool module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/analysis_tool.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-analysis_tool">
+<span id="analysis-tool-module"></span><h1>analysis_tool module<a class="headerlink" href="#module-analysis_tool" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="analysis_tool.CastroSimulation">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">analysis_tool.</span></span><span class="sig-name descname"><span class="pre">CastroSimulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">run_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_start</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis_tool.html#CastroSimulation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis_tool.CastroSimulation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to postprocess and analyze results from Castro simulations.</p>
+<p>This class provides methods to:
+- Load simulation data from Castro output files
+- Extract physical quantities at different refinement levels
+- Calculate energies (kinetic, thermal, ionization, total)
+- Compute particle numbers for different species
+- Handle 1D/2D/3D simulations with Cartesian or cylindrical geometry</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis_tool.CastroSimulation.get_energy">
+<span class="sig-name descname"><span class="pre">get_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'total'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis_tool.html#CastroSimulation.get_energy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis_tool.CastroSimulation.get_energy" title="Link to this definition"></a></dt>
+<dd><p>Calculate the total energy content of the simulation at specified time(s).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>float</em><em> or </em><em>array-like</em>) – Time(s) at which to calculate energy</p></li>
+<li><p><strong>level</strong> (<em>int</em>) – AMR refinement level for energy calculation</p></li>
+<li><p><strong>energy_type</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of energy to calculate:
+- ‘total’: kinetic + thermal + ionization energy
+- ‘thermal’: internal energy only
+- ‘kinetic’: kinetic energy only
+- ‘ion’: ionization energy only</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>energy</strong> (<em>float or list</em>) – Total energy in erg (or erg/cm for 1D cylindrical)</p></li>
+<li><p><strong>time</strong> (<em>float or list</em>) – Exact time(s) at which energy was calculated</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If invalid energy_type is specified or ionization energy is requested
+    but not available in the simulation</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis_tool.CastroSimulation.get_field">
+<span class="sig-name descname"><span class="pre">get_field</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis_tool.html#CastroSimulation.get_field"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis_tool.CastroSimulation.get_field" title="Link to this definition"></a></dt>
+<dd><p>Extract a physical quantity from the simulation at a specific time and refinement level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>float</em>) – Time at which to extract the quantity (finds closest output)</p></li>
+<li><p><strong>quantity</strong> (<em>str</em>) – Name of the physical quantity to extract
+Special computed quantities: ‘T_e’ (electron temperature), ‘T_h’ (heavy particle temperature)</p></li>
+<li><p><strong>level</strong> (<em>int</em><em>, </em><em>optional</em>) – AMR refinement level to extract data from (default: 0, coarsest level)</p></li>
+<li><p><strong>positions</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary to extract 1D slices from 2D data (e.g., {‘r’: 0.5} or {‘z’: 1.0})</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary containing:
+- ‘t’: exact simulation time
+- ‘q’: the requested quantity values
+- coordinate arrays (‘r’, ‘z’, ‘x’, ‘y’) depending on geometry and dimension</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the requested quantity is not available in the simulation</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis_tool.CastroSimulation.get_particle_number">
+<span class="sig-name descname"><span class="pre">get_particle_number</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">species</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis_tool.html#CastroSimulation.get_particle_number"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis_tool.CastroSimulation.get_particle_number" title="Link to this definition"></a></dt>
+<dd><p>Calculate the total number of particles of a specific species in the simulation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>float</em><em> or </em><em>array-like</em>) – Time(s) at which to calculate particle number</p></li>
+<li><p><strong>species</strong> (<em>str</em>) – Species identifier (e.g., ‘H0’, ‘H1’, ‘N0’, ‘N1’, etc.)</p></li>
+<li><p><strong>level</strong> (<em>int</em>) – AMR refinement level for calculation</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>particle_number</strong> (<em>float or list</em>) – Total number of particles of the specified species</p></li>
+<li><p><strong>time</strong> (<em>float or list</em>) – Exact time(s) at which particle number was calculated</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If the specified species is not found in the simulation</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="analysis_tool.CastroSimulation.sim_info">
+<span class="sig-name descname"><span class="pre">sim_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/analysis_tool.html#CastroSimulation.sim_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#analysis_tool.CastroSimulation.sim_info" title="Link to this definition"></a></dt>
+<dd><p>Display comprehensive information about the loaded simulation.</p>
+<p>Prints simulation dimensionality, geometry, available fields,
+number of outputs, and time range.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="openpmd_conversion.html" class="btn btn-neutral float-left" title="openpmd_conversion module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="checksum.html" class="btn btn-neutral float-right" title="checksum package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Thibault Benahmed, Remi Lehe, Maxence Thevenet, Christian McCombs, Alexander Sinn.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

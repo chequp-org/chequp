@@ -1,0 +1,209 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>test_1d module &mdash; CHEQUP v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=34cd777e"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="test_2d module" href="test_2d.html" />
+    <link rel="prev" title="hipace_to_chequp module" href="hipace_to_chequp.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CHEQUP
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">Physics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">initial_condition</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="analysis_tool.html">analysis_tool module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="checksum.html">checksum package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generate_initial_conditions.html">generate_initial_conditions module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hipace_to_chequp.html">hipace_to_chequp module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">test_1d module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.check_blast_radius_t_Comsol"><code class="docutils literal notranslate"><span class="pre">check_blast_radius_t_Comsol()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.check_blast_radius_t_ST"><code class="docutils literal notranslate"><span class="pre">check_blast_radius_t_ST()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.check_density_profile_ST"><code class="docutils literal notranslate"><span class="pre">check_density_profile_ST()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.check_density_profile_r_Comsol"><code class="docutils literal notranslate"><span class="pre">check_density_profile_r_Comsol()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.check_energy_conservation"><code class="docutils literal notranslate"><span class="pre">check_energy_conservation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.cleanup_outputs"><code class="docutils literal notranslate"><span class="pre">cleanup_outputs()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.run_castro_simulation"><code class="docutils literal notranslate"><span class="pre">run_castro_simulation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.test_1d_desy_benchmark"><code class="docutils literal notranslate"><span class="pre">test_1d_desy_benchmark()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test_1d.test_1d_sedov_taylor"><code class="docutils literal notranslate"><span class="pre">test_1d_sedov_taylor()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="test_2d.html">test_2d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_atomic_process.html">test_atomic_process module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="authors.html">Authors &amp; Contributors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">References</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CHEQUP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">test_1d module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/test_1d.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-test_1d">
+<span id="test-1d-module"></span><h1>test_1d module<a class="headerlink" href="#module-test_1d" title="Link to this heading"></a></h1>
+<p>This script tests that the 1D code produce the correct Sedov-Taylor blast wave solution.
+It assumes that the code has already been compiled in ../sim_folder/build/</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.check_blast_radius_t_Comsol">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">check_blast_radius_t_Comsol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#check_blast_radius_t_Comsol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.check_blast_radius_t_Comsol" title="Link to this definition"></a></dt>
+<dd><p>Compare the time evolution of the blast radius with the one obtain from the COMSOL simulation.
+Raise an error if the L2 error is over the tol%.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.check_blast_radius_t_ST">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">check_blast_radius_t_ST</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#check_blast_radius_t_ST"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.check_blast_radius_t_ST" title="Link to this definition"></a></dt>
+<dd><p>This function check that the blast radius time evolution fit with the theory given by Sedov Taylor
+Raise an assertion error if the test fails</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.check_density_profile_ST">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">check_density_profile_ST</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">15</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#check_density_profile_ST"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.check_density_profile_ST" title="Link to this definition"></a></dt>
+<dd><p>This function check for different time (7, 8, 9 ns) that the density profile match with the one given by Sedov Taylor theory
+The function only compare radius below the blast radius (where the density peak is)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.check_density_profile_r_Comsol">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">check_density_profile_r_Comsol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#check_density_profile_r_Comsol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.check_density_profile_r_Comsol" title="Link to this definition"></a></dt>
+<dd><p>Compare radial density profiles at several output times to the COMSOL solution.
+Raise an error if the L2 error is over the tol%.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.check_energy_conservation">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">check_energy_conservation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sim_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#check_energy_conservation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.check_energy_conservation" title="Link to this definition"></a></dt>
+<dd><p>This function check that the total energy is conserved within a given tol
+Raise an assertion error if the test fails</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.cleanup_outputs">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">cleanup_outputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">extra_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#cleanup_outputs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.cleanup_outputs" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.run_castro_simulation">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">run_castro_simulation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gamma_law'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">runtime_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#run_castro_simulation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.run_castro_simulation" title="Link to this definition"></a></dt>
+<dd><p>Run the Castro simulation.
+Raise an error and print stdout/stderr if the command fails.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.test_1d_desy_benchmark">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">test_1d_desy_benchmark</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#test_1d_desy_benchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.test_1d_desy_benchmark" title="Link to this definition"></a></dt>
+<dd><p>Test the code in the scenario that benchmarked with DESY team
+(close - but not identical - to the one from Mewes et al., PRR 5, 033112, 2023)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="test_1d.test_1d_sedov_taylor">
+<span class="sig-prename descclassname"><span class="pre">test_1d.</span></span><span class="sig-name descname"><span class="pre">test_1d_sedov_taylor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/test_1d.html#test_1d_sedov_taylor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#test_1d.test_1d_sedov_taylor" title="Link to this definition"></a></dt>
+<dd><p>Test that code produce the exact Sedov-Taylor blast wave solution, in a simplified setup:
+- no ionization reactions (castro.add_ext_src=0)
+- no temperature diffusion (castro.diffuse_temp=0)</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hipace_to_chequp.html" class="btn btn-neutral float-left" title="hipace_to_chequp module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="test_2d.html" class="btn btn-neutral float-right" title="test_2d module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Thibault Benahmed, Remi Lehe, Maxence Thevenet, Christian McCombs, Alexander Sinn.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

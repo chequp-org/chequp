@@ -1,0 +1,288 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>checksum package &mdash; CHEQUP v0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=34cd777e"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="generate_initial_conditions module" href="generate_initial_conditions.html" />
+    <link rel="prev" title="analysis_tool module" href="analysis_tool.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            CHEQUP
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics.html">Physics</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">initial_condition</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="analysis_tool.html">analysis_tool module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">checksum package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-checksum.benchmark">checksum.benchmark module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#checksum.benchmark.Benchmark"><code class="docutils literal notranslate"><span class="pre">Benchmark</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#checksum.benchmark.Benchmark.get"><code class="docutils literal notranslate"><span class="pre">Benchmark.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#checksum.benchmark.Benchmark.reset"><code class="docutils literal notranslate"><span class="pre">Benchmark.reset()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-checksum.checksum">checksum.checksum module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#checksum.checksum.Checksum"><code class="docutils literal notranslate"><span class="pre">Checksum</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#checksum.checksum.Checksum.evaluate"><code class="docutils literal notranslate"><span class="pre">Checksum.evaluate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#checksum.checksum.Checksum.read_output_file"><code class="docutils literal notranslate"><span class="pre">Checksum.read_output_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#checksum.checksum.Checksum.trim_digits"><code class="docutils literal notranslate"><span class="pre">Checksum.trim_digits()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-checksum.checksumAPI">checksum.checksumAPI module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#checksum.checksumAPI.evaluate_checksum"><code class="docutils literal notranslate"><span class="pre">evaluate_checksum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#checksum.checksumAPI.reset_all_benchmarks"><code class="docutils literal notranslate"><span class="pre">reset_all_benchmarks()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#checksum.checksumAPI.reset_benchmark"><code class="docutils literal notranslate"><span class="pre">reset_benchmark()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-checksum.config">checksum.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-checksum">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="generate_initial_conditions.html">generate_initial_conditions module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hipace_to_chequp.html">hipace_to_chequp module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_1d.html">test_1d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_2d.html">test_2d module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test_atomic_process.html">test_atomic_process module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Project Info</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="authors.html">Authors &amp; Contributors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">References</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CHEQUP</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">checksum package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/checksum.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="checksum-package">
+<h1>checksum package<a class="headerlink" href="#checksum-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-checksum.benchmark">
+<span id="checksum-benchmark-module"></span><h2>checksum.benchmark module<a class="headerlink" href="#module-checksum.benchmark" title="Link to this heading"></a></h2>
+<p>Copyright 2020</p>
+<p>This file is part of WarpX.</p>
+<p>License: BSD-3-Clause-LBNL</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="checksum.benchmark.Benchmark">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">checksum.benchmark.</span></span><span class="sig-name descname"><span class="pre">Benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/benchmark.html#Benchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.benchmark.Benchmark" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Holds data and functions for referenc benchmark of one checksum test.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="checksum.benchmark.Benchmark.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/benchmark.html#Benchmark.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.benchmark.Benchmark.get" title="Link to this definition"></a></dt>
+<dd><p>Read benchmark from reference json file.</p>
+<p>&#64;param self The object pointer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="checksum.benchmark.Benchmark.reset">
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/benchmark.html#Benchmark.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.benchmark.Benchmark.reset" title="Link to this definition"></a></dt>
+<dd><p>Update the benchmark (overwrites reference json file).</p>
+<p>&#64;param self The object pointer.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-checksum.checksum">
+<span id="checksum-checksum-module"></span><h2>checksum.checksum module<a class="headerlink" href="#module-checksum.checksum" title="Link to this heading"></a></h2>
+<p>Copyright 2020</p>
+<p>This file is part of WarpX.</p>
+<p>License: BSD-3-Clause-LBNL</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="checksum.checksum.Checksum">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">checksum.checksum.</span></span><span class="sig-name descname"><span class="pre">Checksum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_particles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndigit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">14</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/checksum.html#Checksum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.checksum.Checksum" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class for checksum comparison of one test.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="checksum.checksum.Checksum.evaluate">
+<span class="sig-name descname"><span class="pre">evaluate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/checksum.html#Checksum.evaluate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.checksum.Checksum.evaluate" title="Link to this definition"></a></dt>
+<dd><p>Compare IO file checksum with benchmark.</p>
+<p>Read checksum from IO file, read benchmark
+corresponding to test_name, and assert that they are equal.
+Almost all the body of this functions is for
+user-readable print statements.</p>
+<p>&#64;param self The object pointer.
+&#64;param test_name Name of test, as found between [] in .ini file.
+&#64;param file_name IO file from which the checksum is computed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="checksum.checksum.Checksum.read_output_file">
+<span class="sig-name descname"><span class="pre">read_output_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">do_fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_particles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/checksum.html#Checksum.read_output_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.checksum.Checksum.read_output_file" title="Link to this definition"></a></dt>
+<dd><p>Get checksum from IO file.</p>
+<p>Read an simulation IO file, compute 1 checksum per field and return
+all checksums in a dictionary.
+The checksum of quantity Q is max(abs(Q)).</p>
+<p>&#64;param self The object pointer.
+&#64;param do_fields Whether to read fields from the IO file.
+&#64;param do_particles Whether to read particles from the IO file.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="checksum.checksum.Checksum.trim_digits">
+<span class="sig-name descname"><span class="pre">trim_digits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/checksum.html#Checksum.trim_digits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.checksum.Checksum.trim_digits" title="Link to this definition"></a></dt>
+<dd><p>Trim the number of signigicant digits</p>
+<p>&#64;param x number to trim</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-checksum.checksumAPI">
+<span id="checksum-checksumapi-module"></span><h2>checksum.checksumAPI module<a class="headerlink" href="#module-checksum.checksumAPI" title="Link to this heading"></a></h2>
+<p>Copyright 2020</p>
+<p>This file is part of WarpX.</p>
+<p>License: BSD-3-Clause-LBNL</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="checksum.checksumAPI.evaluate_checksum">
+<span class="sig-prename descclassname"><span class="pre">checksum.checksumAPI.</span></span><span class="sig-name descname"><span class="pre">evaluate_checksum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-40</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_particles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/checksumAPI.html#evaluate_checksum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.checksumAPI.evaluate_checksum" title="Link to this definition"></a></dt>
+<dd><p>Compare IO file checksum with benchmark.</p>
+<p>Read checksum from input file_name, read benchmark
+corresponding to test_name, and assert their equality.</p>
+<p>&#64;param test_name Name of test, as found between [] in .ini file.
+&#64;param file_name IO file from which the checksum is computed.
+&#64;param rtol Relative tolerance for the comparison.
+&#64;param atol Absolute tolerance for the comparison.
+&#64;param do_fields Whether to compare fields in the checksum.
+&#64;param do_particles Whether to compare particles in the checksum.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="checksum.checksumAPI.reset_all_benchmarks">
+<span class="sig-prename descclassname"><span class="pre">checksum.checksumAPI.</span></span><span class="sig-name descname"><span class="pre">reset_all_benchmarks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path_to_all_file_names</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/checksumAPI.html#reset_all_benchmarks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.checksumAPI.reset_all_benchmarks" title="Link to this definition"></a></dt>
+<dd><p>Update all benchmarks (overwrites reference json files)
+found in path_to_all_file_names</p>
+<p>&#64;param path_to_all_file_names Path to all IO files for which the benchmarks
+are to be reset. The IO files should be named &lt;test_name&gt;_plt, which is
+what regression_testing.regtests.py does, provided we’re careful enough.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="checksum.checksumAPI.reset_benchmark">
+<span class="sig-prename descclassname"><span class="pre">checksum.checksumAPI.</span></span><span class="sig-name descname"><span class="pre">reset_benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">do_particles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/checksum/checksumAPI.html#reset_benchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#checksum.checksumAPI.reset_benchmark" title="Link to this definition"></a></dt>
+<dd><p>Update the benchmark (overwrites reference json file).</p>
+<p>Overwrite value of benchmark corresponding to
+test_name with checksum read from input IO file.</p>
+<p>&#64;param test_name Name of test, as found between [] in .ini file.
+&#64;param file_name IO file from which the checksum is computed.
+&#64;param do_fields Whether to write field checksums in the benchmark.
+&#64;param do_particles Whether to write particles checksums in the benchmark.</p>
+</dd></dl>
+
+</section>
+<section id="module-checksum.config">
+<span id="checksum-config-module"></span><h2>checksum.config module<a class="headerlink" href="#module-checksum.config" title="Link to this heading"></a></h2>
+<p>Copyright 2020</p>
+<p>This file is part of WarpX.</p>
+<p>License: BSD-3-Clause-LBNL</p>
+</section>
+<section id="module-checksum">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-checksum" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="analysis_tool.html" class="btn btn-neutral float-left" title="analysis_tool module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="generate_initial_conditions.html" class="btn btn-neutral float-right" title="generate_initial_conditions module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Thibault Benahmed, Remi Lehe, Maxence Thevenet, Christian McCombs, Alexander Sinn.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
