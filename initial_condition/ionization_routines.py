@@ -144,7 +144,7 @@ def get_fraction_and_temperature_multispecies(a0, tau, lambd, ell,
     T = 0.0
     z_average = 0.0
     for i in range(len(charges)):
-        z_average += charges[i] * initial_populations[i]    
+        z_average += charges[i] * initial_populations[i]
     if z_average > 0:
         T = kin_energy / (3/2 * z_average * e)
 
@@ -155,13 +155,13 @@ if numba.cuda.is_available():
     target_backend = 'cuda'
 else:
     target_backend = 'parallel'
-    
+
 @numba.guvectorize(
     ['void(float64, float64, float64, float64[:], '
      'float64[:], float64[:], float64[:], '
      'int64[:], int64[:], float64[:], float64[:], '
      'float64[:], float64[:])'],
-    '(),(),(),(m),(t),(t),(t),(t),(t),(s),(s)->(s),()',  
+    '(),(),(),(m),(t),(t),(t),(t),(t),(s),(s)->(s),()',
     nopython=True,
     target=target_backend
 )

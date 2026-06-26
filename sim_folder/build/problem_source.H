@@ -4,9 +4,140 @@
 #include <prob_parameters.H>
 #include <fundamental_constants.H>
 #include <collision_frequencies.H>
+#include <conductivity.H>
 #include <collisional_ionization.H>
 
 using namespace amrex;
+
+// Returns the thermal conductivity coefficient k_th at point (i,j,k)
+AMREX_GPU_HOST_DEVICE AMREX_INLINE
+amrex::Real get_conductivity_coeff( int i, int j, int k, Array4<const Real> const& state )
+{
+    // Reproduces the same code as `fill_temp_cond` in `diffusion_util.cpp`
+
+    eos_t eos_state;
+    eos_state.rho  = state(i,j,k,URHO);
+    Real rhoinv = 1.0_rt/eos_state.rho;
+
+    eos_state.T = state(i,j,k,UTEMP);   // needed as an initial guess
+    eos_state.e = state(i,j,k,UEINT) * rhoinv;
+    for (int n = 0; n < NumSpec; n++) {
+      eos_state.xn[n] = state(i,j,k,UFS+n) * rhoinv;
+    }
+#if NAUX_NET > 0
+    for (int n = 0; n < NumAux; n++) {
+      eos_state.aux[n] = state(i,j,k,UFX+n) * rhoinv;
+    }
+#endif
+
+    if (eos_state.e < 0.0_rt) {
+      eos_state.T = castro::small_temp;
+      eos(eos_input_rt, eos_state);
+    } else {
+      eos(eos_input_re, eos_state);
+    }
+
+    if (eos_state.rho > castro::diffuse_cutoff_density) {
+      conductivity(eos_state);
+
+      if (eos_state.rho < castro::diffuse_cutoff_density_hi) {
+        Real multiplier = (eos_state.rho - castro::diffuse_cutoff_density) /
+          (castro::diffuse_cutoff_density_hi - castro::diffuse_cutoff_density);
+        eos_state.conductivity = eos_state.conductivity * multiplier;
+      }
+    } else {
+      eos_state.conductivity = 0.0_rt;
+    }
+    return castro::diffuse_cond_scale_fac * eos_state.conductivity;
+}
+
+// Returns the term ∇ ⋅(k_th ∇T) at point (i,j,k)
+AMREX_GPU_HOST_DEVICE AMREX_INLINE
+amrex::Real compute_temp_diffusion_term(
+    int i, int j, int k, Array4<const Real> const& state, const Real* problo, const Real* dx, const int coord )
+{
+    // Reproduces the same code as `getTempDiffusionTerm` in `Castro_diffusion.cpp`
+
+    amrex::Real temp_diffusion_term = 0.0;
+    for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
+        int il = i;
+        int jl = j;
+        int kl = k;
+
+        int ir = i;
+        int jr = j;
+        int kr = k;
+
+        Real dxinv2 = 1.0/(dx[idir]*dx[idir]);
+        Real kth_r;
+        Real kth_l;
+
+        if (idir == 0) {
+            il = i - 1;
+            ir = i + 1;
+        }
+#if AMREX_SPACEDIM >= 2
+        else if (idir == 1) {
+            jl = j - 1;
+            jr = j + 1;
+        }
+#endif
+#if AMREX_SPACEDIM == 3
+        else {
+            kl = k - 1;
+            kr = k + 1;
+        }
+#endif
+        // Conductivity at the cell edges: average of the conductivity from cell centers to the edges
+        // TODO: This could be made more efficient by avoiding to recalculate
+        // conductivity_coeffs(i,j,k,state) multiple times
+        kth_r = 0.5*(get_conductivity_coeff(ir,jr,kr,state) + get_conductivity_coeff(i,j,k,state));
+        kth_l = 0.5*(get_conductivity_coeff(il,jl,kl,state) + get_conductivity_coeff(i,j,k,state));
+
+#if AMREX_SPACEDIM < 3
+        // Apply geometric terms for curvilinear coordinates
+
+        if ((coord != 0) && (idir == 0)) {
+            // In curilinear radial direction
+
+            Real rr = problo[idir] + static_cast<Real>(ir) * dx[idir];
+            Real rl = problo[idir] + static_cast<Real>(i) * dx[idir];
+            Real rc = problo[idir] + (static_cast<Real>(i) + 0.5_rt) * dx[idir];
+
+            if (coord == 1) {
+                // Cylindrical radial equation looks like: 1/r d(r kth dT/dr)/dr
+
+                kth_r *= rr;
+                kth_l *= rl;
+                dxinv2 *= 1.0_rt / rc;
+            } else {
+                // Spherical radial equation looks like: 1/r^2 d(r^2 kth dT/dr)/dr
+
+                kth_r *= rr * rr;
+                kth_l *= rl * rl;
+                dxinv2 *= 1.0_rt / (rc * rc) ;
+            }
+        } else if ((coord == 2) && (idir == 1)) {
+            // In spherical theta direction
+            // Spherical theta equation looks like: 1/r^2 sin(θ) d(sin(θ) kth dT/dθ)/dθ
+
+            Real rc = problo[0] + (static_cast<Real>(i) + 0.5_rt) * dx[0];
+            Real thetar = problo[idir] + static_cast<Real>(jr) * dx[idir];
+            Real thetal = problo[idir] + static_cast<Real>(j) * dx[idir];
+            Real thetac = problo[idir] + (static_cast<Real>(j) + 0.5_rt) * dx[idir];
+
+            kth_r *= std::sin(thetar);
+            kth_l *= std::sin(thetal);
+            dxinv2 *= 1.0_rt / (rc * rc * std::sin(thetac));
+        }
+#endif
+        temp_diffusion_term += dxinv2 *
+            (kth_r * (state(ir,jr,kr,UTEMP) - state(i ,j ,k ,UTEMP)) -
+             kth_l * (state(i ,j ,k ,UTEMP) - state(il,jl,kl,UTEMP)));
+    }
+
+    return temp_diffusion_term;
+}
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
 void problem_source (int i, int j, int k,
@@ -27,7 +158,7 @@ void problem_source (int i, int j, int k,
 
     // Initialize species mass fractions and identify active species
     Real X_stage[NumSpec];
-    
+
     // Create mask to identify active species
     bool active_mask[NumSpec] = {false};
     int active_spec[NumSpec];
@@ -36,7 +167,7 @@ void problem_source (int i, int j, int k,
     // Extract mass fractions and mark active species
     for (int mu = 0; mu < NumSpec; mu++) {
         X_stage[mu] = state(i,j,k,UFS+mu) / rho;
-        
+
         // Mark species and neighbors as active if mass fraction is above threshold
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
@@ -44,7 +175,7 @@ void problem_source (int i, int j, int k,
             if (mu > 0 && get_atom_index(mu) == get_atom_index(mu-1)) active_mask[mu-1] = true;
             if (mu < NumSpec-1 && get_atom_index(mu) == get_atom_index(mu+1)) active_mask[mu+1] = true;
         }
-        
+
         // Build list of active species indices
         if (active_mask[mu]) {
             active_spec[n_active++] = mu;
@@ -87,8 +218,8 @@ void problem_source (int i, int j, int k,
     }
 
     // Update energy source terms
-    src(i,j,k,UEDEN) += e_ion;
-    src(i,j,k,UEINT) += e_ion;
+    src(i,j,k,UEDEN) = e_ion;
+    src(i,j,k,UEINT) = e_ion;
 
     // Calculate electron and neutral number densities (SI units)
     amrex::Real n_e = 0.0;
@@ -125,13 +256,71 @@ void problem_source (int i, int j, int k,
         Sc += rho * v_e_E[mu] * (1 - (1 + X_stage[mu]) * f);
     }
 
+    // Add contribution for temperature diffusion
+    if (true) {
+        auto coord = geomdata.Coord();
+        const Real* prob_lo = geomdata.ProbLo();
+        const Real* dx = geomdata.CellSize();
+        const amrex::Real temp_diffusion_term = compute_temp_diffusion_term(i,j,k,state,prob_lo,dx,coord);
+        src(i,j,k,UEDEN) += temp_diffusion_term;
+        src(i,j,k,UEINT) += temp_diffusion_term;
+    }
+
     // Protect against division by zero if internal energy is practically 0
     const Real tiny_e = 1.0e-30;
-    if (e > tiny_e) {
+    if (std::abs(e) > tiny_e) {
         src(i,j,k,UFX) = -f/e * src(i,j,k,UEDEN) + Sc;
     } else {
         src(i,j,k,UFX) = Sc;
     }
 }
+
+template <class... Ts>
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+void ignore__unused (const Ts&...) {}
+
+inline void
+fill_ext_source2 (const Real time, const Real dt,
+                  const MultiFab& state_old, const MultiFab& state_new,
+                  MultiFab& ext_src, const GeometryData& geomdata)
+{
+
+    ignore__unused(state_old);
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(ext_src, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.tilebox();
+
+        Array4<Real const> const snew = state_new.array(mfi);
+        Array4<Real> const src = ext_src.array(mfi);
+
+        amrex::ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            problem_source(i, j, k, geomdata, snew, src, dt, time);
+        });
+    }
+}
+
+// attack the line "amrex::ignore_unused(state_old);" in Castro_problem_source.cpp
+// to call our version of fill_ext_source instead
+// state_new_ghost.ParallelCopy(state_new, 0, 0, state_new.nComp(), 0, 1);
+#define ignore_unused \
+    Real x = 0; \
+    ignore__unused(x); \
+    if (state_new.nGrowVect().allGE(amrex::IntVect(1))) { \
+        fill_ext_source2(time, dt, state_old, state_new, ext_src, geom.data()); \
+        return; \
+    } else { \
+        amrex::MultiFab state_new_ghost(state_new.boxArray(), state_new.DistributionMap(), \
+                                        state_new.nComp(), amrex::IntVect(1)); \
+        expand_state(state_new_ghost, time, state_new_ghost.nGrow()); \
+        fill_ext_source2(time, dt, state_old, state_new_ghost, ext_src, geom.data()); \
+        return; \
+    } \
+    ignore__unused
 
 #endif

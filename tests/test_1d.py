@@ -65,7 +65,7 @@ def check_density_profile_ST(sim_data, sol, tol:int=15):
     t = np.array([sim_data.output_times[int(len(sim_data.output_times)*f)] for f in [0.7, 0.8, 0.9]])
     r = np.array([sim_data.get_field(t_, 'density', level=2)['r'] for t_ in t])
     # This get the density profile rho(r) from the sim for the differents time
-    rho_sim = np.array([sim_data.get_field(t_, 'density', level=2)['q'] for t_ in t]) 
+    rho_sim = np.array([sim_data.get_field(t_, 'density', level=2)['q'] for t_ in t])
     # This compute the theoretical density profile from Sedov Taylor for the time and the radius array
     rho_analytical = np.array([sol.evaluate('density', r_, t_) for r_, t_ in zip(r, t)])
     # compare up to the first peak present in both profiles
@@ -122,9 +122,9 @@ def test_1d_sedov_taylor():
     r = np.linspace(0, 5*Twidth, 1024)
     T0_eV = 1000
     # Gaussian profile to fasten convergence
-    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/Twidth**2) 
+    T_eV = np.ones_like(r) * T0_eV * np.exp(-r**2/Twidth**2)
     # put last value to zero as this is used outside of 5*sigma
-    T_eV[-1] = 0 
+    T_eV[-1] = 0
     # Parse the species names for which Castro has been compiled
     with open('../sim_folder/build/species.net', 'r') as f:
         species_keys = re.findall(r'\n\s.*\s([A-Z][a-z]*\d)', f.read())
@@ -231,7 +231,7 @@ def test_1d_desy_benchmark():
     Te_max = 27 # in eV
     kb = 8.617333262145e-5  # eV/K
     # Background temperature in eV (constrain from COMSOL simulation)
-    Ta = 2000 * kb  
+    Ta = 2000 * kb
     # Create r array from 0 to 6e-4 with 1e-6 increment
     r = np.arange(0, 6e-4 + 1e-6, 1e-6)
     # Calculate ionization fraction, with minimal ionization fraction of 1e-3
