@@ -5,8 +5,8 @@ Utility to extract ionization fields and temperature from a HiPACE++ simulation 
 and write CHEQUP initial-condition files in either 1-D (r) or 2-D (r-z)
 openPMD/HDF5 format.
 
-Typical usage
-    -------------
+Typical usage::
+
     from hipace_to_chequp import HipaceToChequpWriter
 
     writer = HipaceToChequpWriter(
@@ -19,8 +19,8 @@ Typical usage
         N_new=(200, 500)
     )
     writer.write_input(plot=True)
-    """
 
+"""
 import json
 import os
 import re
@@ -371,13 +371,13 @@ class HipaceToChequpWriter:
                     # CHEQUP needs physical number density divided by atomic mass.
                     # We also apply a floor of 1% of the maximum density to prevent 
                     # zero-density numerical instabilities in CHEQUP.
-                    densities_inputs[:, :, species_keys.index(sp_key)] = (n_inputs_sp + 0.01 * np.max(n_inputs_sp)) / aion[sp_key]
+                    densities_inputs[:, :, species_keys.index(sp_key)] = (n_inputs_sp + 1e-2 * np.max(n_inputs_sp)) / aion[sp_key]
             
             # Save to file
             save_to_openpmd(
                 {'r': [0, r_new.max()], 'z': [z_new.min(), z_new.max()]},
                 densities_inputs,
-                T_inputs + 1e-2 * np.max(T_inputs), # Add small baseline temperature floor 
+                T_inputs + 1e-2 * np.max(T_inputs),
                 self.output,
                 species_keys
             )
@@ -410,7 +410,7 @@ class HipaceToChequpWriter:
                     n_inputs_sp = n_zoom[half_idx:]
                     
                     # Convert to CHEQUP compatible density with 1% stability floor
-                    densities_inputs[:, species_keys.index(sp_key)] = (n_inputs_sp + 0.01 * np.max(n_inputs_sp)) / aion[sp_key]
+                    densities_inputs[:, species_keys.index(sp_key)] = (n_inputs_sp + 0.001 * np.max(n_inputs_sp)) / aion[sp_key]
                 
             save_to_openpmd(
                 {'r': [0, r_new.max()]}, 
