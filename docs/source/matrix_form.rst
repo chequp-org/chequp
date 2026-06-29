@@ -1,4 +1,4 @@
-Multispecies matrix formalism
----
+Multi-species matrix formalism
+------------------------------
 
-Description of the multispecies matrix formalism
+Multi-species matrix formalism

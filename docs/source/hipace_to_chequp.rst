@@ -1,4 +1,4 @@
-hipace\_to\_chequp module
+Hipace++ to CHEQUP input writer
 =========================
 
 .. automodule:: hipace_to_chequp
