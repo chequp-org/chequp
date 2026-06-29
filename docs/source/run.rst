@@ -17,7 +17,6 @@ Running in 1D
 ~~~~~~~~~~~~~
 
 If you compiled the 1D executable (using ``DIM=1``), you can run the simulation using the 1D inputs file.
-
 For a standard or serial execution:
 
 .. code-block:: sh
@@ -28,7 +27,6 @@ Running in 2D
 ~~~~~~~~~~~~~
 
 To run a 2D simulation, you must first ensure you compiled the 2D executable (using ``DIM=2``).
-
 For a standard or serial execution:
 
 .. code-block:: sh
