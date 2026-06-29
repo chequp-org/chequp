@@ -6,26 +6,24 @@ Welcome to CHEQUP's documentation!
    :caption: Getting Started
 
    installation
-   physics
+   run
+   analyze_basic
+   example_tutorial
+   test_suite
 
 .. toctree::
    :maxdepth: 2
-   :caption: Python API Reference
+   :caption: Physics
+   hyqup
+   matrix_form
+
+.. toctree::
+   :maxdepth: 2
+   :caption: User guide
+   hipace_to_chequp
+   output_analysis
 
    modules
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   analysis_tool
-   checksum
-   generate_initial_conditions
-   hipace_to_chequp
-   test_1d
-   test_2d
-   test_atomic_process
-
 .. toctree::
    :maxdepth: 1
    :caption: Project Info
