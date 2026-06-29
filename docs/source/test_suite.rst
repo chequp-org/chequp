@@ -11,7 +11,7 @@ Setup environment and compile CHEQUP as described . For the following, we assume
     py.test
 
 Add a new test
---------------
+~~~~~~~~~~~~~~~
 
 * In the ``/test``, folder create a new file, for example ``test_<test name>.py``, and add a new ``test_<test name>`` function similar to the existing ones (see ``test_1d.py`` for an example).
 
