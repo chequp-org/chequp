@@ -7,11 +7,21 @@ Welcome to CHEQUP's documentation!
 
    installation
    run
+   analyze_basic
+   example_tutorial
    test_suite
 
 .. toctree::
    :maxdepth: 2
    :caption: Physics
+   hyqup
+   matrix_form
+
+.. toctree::
+   :maxdepth: 2
+   :caption: User guide
+   hipace_to_chequp
+   output_analysis
 
    modules
 .. toctree::
