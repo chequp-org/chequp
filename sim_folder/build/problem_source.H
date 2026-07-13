@@ -94,15 +94,16 @@ void problem_source (int i, int j, int k,
         } 
     }
 
+
     // --- Classic Explicit Viscosity Scheme using Spitzer ---
     const amrex::Real T_h = T_e; // Using single-temperature assumption
-    
+
     // Calculate the dynamic viscosity using the simplified Spitzer formulation
     Real mu_visc = transport::compute_spitzer_viscosity(T_h, n_active, active_spec, n_s);
 
     // Call the abstracted spatial gradient and source term builder
     Real S_mx = 0.0, S_my = 0.0, S_mz = 0.0, S_visc = 0.0;
-    transport::compute_viscous_sources(i, j, k, state, mu_visc, geomdata.CellSize(), S_mx, S_my, S_mz, S_visc);
+    transport::compute_viscous_sources(i, j, k, state, mu_visc, geomdata, S_mx, S_my, S_mz, S_visc);
 
     // Apply explicit momentum sources
     src(i,j,k,UMX) += S_mx;
@@ -113,10 +114,7 @@ void problem_source (int i, int j, int k,
     Real u_c = state(i,j,k,UMX) / rho;
     Real v_c = state(i,j,k,UMY) / rho;
     Real w_c = state(i,j,k,UMZ) / rho;
-    src(i,j,k,UEDEN) += (S_mx * u_c + S_my * v_c + S_mz * w_c) + S_visc;
-    
-    // Internal energy strictly receives irreversible viscous heating
-    src(i,j,k,UEINT) += S_visc;
+    src(i,j,k,UEINT) += (S_mx * u_c + S_my * v_c + S_mz * w_c) + S_visc;
 
     // --- Energy Transfer ---
     amrex::Real v_ei;

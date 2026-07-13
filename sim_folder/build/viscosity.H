@@ -23,6 +23,7 @@ namespace transport {
         Real n_ions = 0.0;
         Real sum_Z  = 0.0;
         Real sum_A  = 0.0;
+        Real n_e    = 0.0; // Track local electron density
 
         Real n_neutrals = 0.0;
         Real sum_A_neut = 0.0;
@@ -41,6 +42,7 @@ namespace transport {
                 n_ions += n_density;
                 sum_Z  += n_density * Z_s;
                 sum_A  += n_density * A_s;
+                n_e    += n_density * Z_s; // Accumulate free electrons
             } else {
                 n_neutrals += n_density;
                 sum_A_neut += n_density * A_s;
@@ -50,16 +52,22 @@ namespace transport {
         Real mu_visc = 0.0;
 
         // --- 2. Plasma/Ion Viscosity (Spitzer) ---
-        if (n_ions > 1.0e-10) {
+        if (n_ions > 1.0e-10 && n_e > 1.0e-10) {
             Real Z_avg = sum_Z / n_ions;
             Real A_avg = sum_A / n_ions;
             
-            // Coulomb logarithm (typically ~10 in many laboratory/astrophysical plasmas)
-            const Real coulomb_log = 10.0; 
+            // Calculate dynamic Coulomb Logarithm (ln Lambda)
+            // Vacuum permittivity eps_0 = 8.8541878128e-12 F/m
+            Real T_term = 8.8541878128e-12 * C::k_B * T_h;
+            Real Lambda = 12.0 * M_PI * std::pow(T_term, 1.5) / 
+                          (Z_avg * Z_avg * std::pow(C::q_e, 3.0) * std::sqrt(n_e));
+            
+            // Protect against unphysical values in highly coupled (dense/cold) plasmas
+            Real coulomb_log = amrex::max(std::log(Lambda), 2.0); 
 
             // Equation 23.5 yields viscosity in CGS units (gm cm^-1 s^-1, also known as Poise)
             Real mu_cgs = 2.21e-15 * std::sqrt(A_avg) * std::pow(T_h, 2.5) / 
-                          (std::pow(Z_avg, 4) * coulomb_log);
+                          (std::pow(Z_avg, 4.0) * coulomb_log);
 
             // Convert CGS (Poise) to SI (Pa*s) -> 1 Poise = 0.1 Pa*s
             mu_visc += mu_cgs * 0.1; 
@@ -81,90 +89,150 @@ namespace transport {
         }
 
         // Impose a tiny floor to prevent solver crashes from absolute zero viscosity
-        return amrex::max(mu_visc, 1.0e-15);
+        return amrex::max(3.0 * mu_visc, 1.0e-15);
     }
 
-    // --- Explicit Viscous Momentum Sources & Heating ---
-    // (This remains entirely unchanged from the previous setup)
     AMREX_GPU_HOST_DEVICE AMREX_INLINE
     void compute_viscous_sources(int i, int j, int k,
-                                 Array4<const Real> const& state,
-                                 Real mu_visc,
-                                 const Real* dx,
-                                 Real& S_mx, Real& S_my, Real& S_mz, Real& S_visc)
+                                Array4<const Real> const& state,
+                                Real mu_visc,
+                                const GeometryData& geomdata,
+                                Real& S_mx, Real& S_my, Real& S_mz, Real& S_visc)
     {
-        const Real idx2 = 1.0 / (2.0 * dx[0]);
-        const Real idy2 = 1.0 / (2.0 * dx[1]);
-        const Real idz2 = 1.0 / (2.0 * dx[2]);
-        
-        const Real idx_sq = 1.0 / (dx[0] * dx[0]);
-        const Real idy_sq = 1.0 / (dx[1] * dx[1]);
-        const Real idz_sq = 1.0 / (dx[2] * dx[2]);
+        const Real* dx     = geomdata.CellSize();
+        const Real* problo = geomdata.ProbLo();
+        const int coord     = geomdata.Coord(); // 0 = Cartesian, 1 = R-Z, 2 = Spherical
 
-        auto get_vel = [&](int ii, int jj, int kk, int dir) {
-            return state(ii, jj, kk, UMX + dir) / state(ii, jj, kk, URHO);
+        AMREX_ALWAYS_ASSERT(coord != 2); // Spherical not yet implemented -- see note below
+
+        // Radius at cell center (only meaningful for coord != 0)
+        const Real r = problo[0] + (i + 0.5) * dx[0];
+
+        // Plain velocity fetch. No NaN-masking: if state has NaNs, that is a bug
+        // upstream (e.g. uninitialized ghost cells) that should be fixed there,
+        // not hidden here. Fill ghost cells properly instead.
+        auto get_vel = [&](int ii, int jj, int kk, int dir) -> Real {
+            return (dir == 0) ? state(ii, jj, kk, UMX) :
+                (dir == 1) ? state(ii, jj, kk, UMY) :
+                                state(ii, jj, kk, UMZ);
         };
 
-        Real u_c = get_vel(i, j, k, 0);
-        Real v_c = get_vel(i, j, k, 1);
-        Real w_c = get_vel(i, j, k, 2);
+        struct Grads {
+            Real dudx = 0.0, dudy = 0.0, dudz = 0.0;
+            Real dvdx = 0.0, dvdy = 0.0, dvdz = 0.0;
+            Real dwdx = 0.0, dwdy = 0.0, dwdz = 0.0;
+        };
 
-        // 1. First Derivatives
-        Real dudx = (get_vel(i+1, j, k, 0) - get_vel(i-1, j, k, 0)) * idx2;
-        Real dudy = (get_vel(i, j+1, k, 0) - get_vel(i, j-1, k, 0)) * idy2;
-        Real dudz = (get_vel(i, j, k+1, 0) - get_vel(i, j, k-1, 0)) * idz2;
+        // Full 3D velocity gradient tensor at (ii,jj,kk).
+        auto get_grads = [&](int ii, int jj, int kk) -> Grads {
+            Grads g;
+            const Real inv_dx = 0.5 / dx[0];
+            g.dudx = (get_vel(ii+1, jj, kk, 0) - get_vel(ii-1, jj, kk, 0)) * inv_dx;
+            g.dvdx = (get_vel(ii+1, jj, kk, 1) - get_vel(ii-1, jj, kk, 1)) * inv_dx;
+            g.dwdx = (get_vel(ii+1, jj, kk, 2) - get_vel(ii-1, jj, kk, 2)) * inv_dx;
 
-        Real dvdx = (get_vel(i+1, j, k, 1) - get_vel(i-1, j, k, 1)) * idx2;
-        Real dvdy = (get_vel(i, j+1, k, 1) - get_vel(i, j-1, k, 1)) * idy2;
-        Real dvdz = (get_vel(i, j, k+1, 1) - get_vel(i, j, k-1, 1)) * idz2;
+    #if (AMREX_SPACEDIM > 1)
+            const Real inv_dy = 0.5 / dx[1];
+            g.dudy = (get_vel(ii, jj+1, kk, 0) - get_vel(ii, jj-1, kk, 0)) * inv_dy;
+            g.dvdy = (get_vel(ii, jj+1, kk, 1) - get_vel(ii, jj-1, kk, 1)) * inv_dy;
+            g.dwdy = (get_vel(ii, jj+1, kk, 2) - get_vel(ii, jj-1, kk, 2)) * inv_dy;
+    #endif
 
-        Real dwdx = (get_vel(i+1, j, k, 2) - get_vel(i-1, j, k, 2)) * idx2;
-        Real dwdy = (get_vel(i, j+1, k, 2) - get_vel(i, j-1, k, 2)) * idy2;
-        Real dwdz = (get_vel(i, j, k+1, 2) - get_vel(i, j, k-1, 2)) * idz2;
+    #if (AMREX_SPACEDIM > 2)
+            const Real inv_dz = 0.5 / dx[2];
+            g.dudz = (get_vel(ii, jj, kk+1, 0) - get_vel(ii, jj, kk-1, 0)) * inv_dz;
+            g.dvdz = (get_vel(ii, jj, kk+1, 1) - get_vel(ii, jj, kk-1, 1)) * inv_dz;
+            g.dwdz = (get_vel(ii, jj, kk+1, 2) - get_vel(ii, jj, kk-1, 2)) * inv_dz;
+    #endif
+            return g;
+        };
 
-        Real div_u = dudx + dvdy + dwdz;
+        struct Tau {
+            Real xx = 0.0, yy = 0.0, zz = 0.0;
+            Real xy = 0.0, xz = 0.0, yz = 0.0;
+            Real theta_theta = 0.0; // only meaningful for coord != 0
+        };
 
-        // 2. Stress Tensor & Viscous Heating
-        Real tau_xx = mu_visc * (2.0 * dudx - (2.0/3.0) * div_u);
-        Real tau_yy = mu_visc * (2.0 * dvdy - (2.0/3.0) * div_u);
-        Real tau_zz = mu_visc * (2.0 * dwdz - (2.0/3.0) * div_u);
-        Real tau_xy = mu_visc * (dudy + dvdx);
-        Real tau_xz = mu_visc * (dudz + dwdx);
-        Real tau_yz = mu_visc * (dvdz + dwdy);
+        // Newtonian stress tensor, including R-Z geometric hoop term.
+        auto compute_tau = [&](int ii, int jj, int kk) -> Tau {
+            const Grads g = get_grads(ii, jj, kk);
+            const Real div_u = g.dudx + g.dvdy + g.dwdz;
 
-        S_visc = tau_xx * dudx + tau_yy * dvdy + tau_zz * dwdz + 
-                 tau_xy * (dudy + dvdx) + tau_xz * (dudz + dwdx) + tau_yz * (dvdz + dwdy);
+            Tau t;
+            t.xx = mu_visc * (2.0 * g.dudx - (2.0/3.0) * div_u);
+            t.yy = mu_visc * (2.0 * g.dvdy - (2.0/3.0) * div_u);
+            t.zz = mu_visc * (2.0 * g.dwdz - (2.0/3.0) * div_u);
+            t.xy = mu_visc * (g.dudy + g.dvdx);
+            t.xz = mu_visc * (g.dudz + g.dwdx);
+            t.yz = mu_visc * (g.dvdz + g.dwdy);
 
-        // 3. Second Derivatives (Laplacians)
-        Real lap_u = (get_vel(i+1,j,k,0) - 2.0*u_c + get_vel(i-1,j,k,0)) * idx_sq +
-                     (get_vel(i,j+1,k,0) - 2.0*u_c + get_vel(i,j-1,k,0)) * idy_sq +
-                     (get_vel(i,j,k+1,0) - 2.0*u_c + get_vel(i,j,k-1,0)) * idz_sq;
+            if (coord != 0) { // R-Z: hoop stress from u_r / r
+                const Real rr = problo[0] + (ii + 0.5) * dx[0];
+                const Real u_r = get_vel(ii, jj, kk, 0);
+                t.theta_theta = mu_visc * (2.0 * (u_r / rr) - (2.0/3.0) * div_u);
+            }
+            return t;
+        };
 
-        Real lap_v = (get_vel(i+1,j,k,1) - 2.0*v_c + get_vel(i-1,j,k,1)) * idx_sq +
-                     (get_vel(i,j+1,k,1) - 2.0*v_c + get_vel(i,j-1,k,1)) * idy_sq +
-                     (get_vel(i,j,k+1,1) - 2.0*v_c + get_vel(i,j,k-1,1)) * idz_sq;
+        // Compute tau once per stencil point and reuse everywhere.
+        const Tau t_c   = compute_tau(i,   j,   k);
+        const Tau t_ip1 = compute_tau(i+1, j,   k);
+        const Tau t_im1 = compute_tau(i-1, j,   k);
+        const Tau t_jp1 = compute_tau(i, j+1,   k);
+        const Tau t_jm1 = compute_tau(i, j-1,   k);
+    #if (AMREX_SPACEDIM > 2)
+        const Tau t_kp1 = compute_tau(i, j, k+1);
+        const Tau t_km1 = compute_tau(i, j, k-1);
+    #endif
 
-        Real lap_w = (get_vel(i+1,j,k,2) - 2.0*w_c + get_vel(i-1,j,k,2)) * idx_sq +
-                     (get_vel(i,j+1,k,2) - 2.0*w_c + get_vel(i,j-1,k,2)) * idy_sq +
-                     (get_vel(i,j,k+1,2) - 2.0*w_c + get_vel(i,j,k-1,2)) * idz_sq;
+        const Real inv_dx = 0.5 / dx[0];
+        const Real inv_dy = (AMREX_SPACEDIM > 1) ? 0.5 / dx[1] : 0.0;
+        const Real inv_dz = (AMREX_SPACEDIM > 2) ? 0.5 / dx[2] : 0.0;
 
-        // 4. Cross Derivatives for grad(div u)
-        Real d2v_dxdy = (get_vel(i+1,j+1,k,1) - get_vel(i-1,j+1,k,1) - get_vel(i+1,j-1,k,1) + get_vel(i-1,j-1,k,1)) * (idx2 * idy2);
-        Real d2w_dxdz = (get_vel(i+1,j,k+1,2) - get_vel(i-1,j,k+1,2) - get_vel(i+1,j,k-1,2) + get_vel(i-1,j,k-1,2)) * (idx2 * idz2);
-        Real grad_div_u_x = (get_vel(i+1,j,k,0) - 2.0*u_c + get_vel(i-1,j,k,0)) * idx_sq + d2v_dxdy + d2w_dxdz;
+        // S_mx = d(tau_xx)/dx + d(tau_xy)/dy + d(tau_xz)/dz + geometric term
+        S_mx = (t_ip1.xx - t_im1.xx) * inv_dx
+            + (t_jp1.xy - t_jm1.xy) * inv_dy;
+    #if (AMREX_SPACEDIM > 2)
+        S_mx += (t_kp1.xz - t_km1.xz) * inv_dz;
+    #endif
+        if (coord != 0) {
+            // R-Z divergence in cylindrical coords: (1/r) d(r*tau_xx)/dr - tau_theta_theta/r
+            // = tau_xx/r + d(tau_xx)/dr - tau_theta_theta/r  (product rule, dr term already in S_mx)
+            S_mx += (t_c.xx - t_c.theta_theta) / r;
+        }
 
-        Real d2u_dxdy = (get_vel(i+1,j+1,k,0) - get_vel(i-1,j+1,k,0) - get_vel(i+1,j-1,k,0) + get_vel(i-1,j-1,k,0)) * (idx2 * idy2);
-        Real d2w_dydz = (get_vel(i,j+1,k+1,2) - get_vel(i,j-1,k+1,2) - get_vel(i,j+1,k-1,2) + get_vel(i,j-1,k-1,2)) * (idy2 * idz2);
-        Real grad_div_u_y = d2u_dxdy + (get_vel(i,j+1,k,1) - 2.0*v_c + get_vel(i,j-1,k,1)) * idy_sq + d2w_dydz;
+        // S_my = d(tau_xy)/dx + d(tau_yy)/dy + d(tau_yz)/dz [+ R-Z curvature term]
+        S_my = (t_ip1.xy - t_im1.xy) * inv_dx
+            + (t_jp1.yy - t_jm1.yy) * inv_dy;
+    #if (AMREX_SPACEDIM > 2)
+        S_my += (t_kp1.yz - t_km1.yz) * inv_dz;
+    #endif
+        if (coord != 0) {
+            S_my += t_c.xy / r; // (1/r) d(r*tau_xy)/dr extra term beyond the dr derivative above
+        }
 
-        Real d2u_dxdz = (get_vel(i+1,j,k+1,0) - get_vel(i-1,j,k+1,0) - get_vel(i+1,j,k-1,0) + get_vel(i-1,j,k-1,0)) * (idx2 * idz2);
-        Real d2v_dydz = (get_vel(i,j+1,k+1,1) - get_vel(i,j-1,k+1,1) - get_vel(i,j+1,k-1,1) + get_vel(i,j-1,k-1,1)) * (idy2 * idz2);
-        Real grad_div_u_z = d2u_dxdz + d2v_dydz + (get_vel(i,j,k+1,2) - 2.0*w_c + get_vel(i,j,k-1,2)) * idz_sq;
+        // S_mz = d(tau_xz)/dx + d(tau_yz)/dy + d(tau_zz)/dz [+ R-Z curvature term]
+    #if (AMREX_SPACEDIM > 2)
+        S_mz = (t_ip1.xz - t_im1.xz) * inv_dx
+            + (t_jp1.yz - t_jm1.yz) * inv_dy
+            + (t_kp1.zz - t_km1.zz) * inv_dz;
+        if (coord != 0) {
+            S_mz += t_c.xz / r;
+        }
+    #else
+        S_mz = 0.0;
+    #endif
 
-        // 5. Assign Momentum Source Terms: S = mu * (laplacian(u) + 1/3 * grad(div u))
-        S_mx = mu_visc * (lap_u + (1.0/3.0) * grad_div_u_x);
-        S_my = mu_visc * (lap_v + (1.0/3.0) * grad_div_u_y);
-        S_mz = mu_visc * (lap_w + (1.0/3.0) * grad_div_u_z);
+        // Viscous heating: tau : grad(u), using the already-computed tau_c and grads at (i,j,k)
+        const Grads gc = get_grads(i, j, k);
+        S_visc = t_c.xx * gc.dudx + t_c.yy * gc.dvdy + t_c.zz * gc.dwdz
+            + t_c.xy * (gc.dudy + gc.dvdx)
+            + t_c.xz * (gc.dudz + gc.dwdx)
+            + t_c.yz * (gc.dvdz + gc.dwdy);
+        if (coord != 0) {
+            const Real u_r = get_vel(i, j, k, 0);
+            S_visc += t_c.theta_theta * (u_r / r); // hoop-stress heating contribution
+        }
     }
 
 } // namespace transport
