@@ -94,7 +94,6 @@ void problem_source (int i, int j, int k,
         } 
     }
 
-
     // --- Classic Explicit Viscosity Scheme using Spitzer ---
     const amrex::Real T_h = T_e; // Using single-temperature assumption
 
@@ -105,12 +104,12 @@ void problem_source (int i, int j, int k,
     Real S_mx = 0.0, S_my = 0.0, S_mz = 0.0, S_visc = 0.0;
     transport::compute_viscous_sources(i, j, k, state, mu_visc, geomdata, S_mx, S_my, S_mz, S_visc);
 
-    // Apply explicit momentum sources
+    // Momentum change due to viscosity
     src(i,j,k,UMX) += S_mx;
     src(i,j,k,UMY) += S_my;
     src(i,j,k,UMZ) += S_mz;
 
-    // Apply Mechanical Work to total energy: u dot S_m 
+    // Viscous heating
     Real u_c = state(i,j,k,UMX) / rho;
     Real v_c = state(i,j,k,UMY) / rho;
     Real w_c = state(i,j,k,UMZ) / rho;
