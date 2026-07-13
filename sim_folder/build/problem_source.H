@@ -60,7 +60,7 @@ void problem_source (int i, int j, int k,
         if (beta_next < NumSpec && get_atom_index(beta_next) == atom_idx && zion[beta] < zatom[atom_idx]) {
             Real coll_I_d = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
             Real coll_I_e = X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
-            Real three_body = 0.0 * X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, rho, T_e);
+            Real three_body = X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, rho, T_e);
             
             Real const coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / C::m_p);
             
