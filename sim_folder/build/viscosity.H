@@ -77,65 +77,49 @@ namespace transport {
             }
         }
 
-        Real mu_visc = 0.0;
+        Real mu_ion_si = 0.0;
+        Real mu_neut_si = 0.0;
 
         // --- STEP 2: Compute Plasma/Ion Viscosity (Spitzer) ---
         if (n_ions > 1.0e-10 && n_e > 1.0e-10) {
-            // Compute density-weighted averages for the ion pool
             Real Z_avg = sum_Z / n_ions;
             Real A_avg = sum_A / n_ions;
             
-            // Calculate dynamic Coulomb Logarithm (ln Lambda)
-            // Vacuum permittivity eps_0 = 8.8541878128e-12 F/m
             Real T_term = 8.8541878128e-12 * C::k_B * T_h;
-            
-            // Plasma parameter (Lambda) represents the number of particles in a Debye sphere
             Real Lambda = 12.0 * M_PI * std::pow(T_term, 1.5) / 
                           (Z_avg * Z_avg * std::pow(C::q_e, 3.0) * std::sqrt(n_e));
             
-            // Protect against unphysical values in highly coupled (dense/cold) plasmas
-            // where standard Debye theory breaks down
             Real coulomb_log = amrex::max(std::log(Lambda), 2.0); 
 
-            // Equation 23.5 yields viscosity in CGS units (gm cm^-1 s^-1, also known as Poise)
             Real mu_cgs = 2.21e-15 * std::sqrt(A_avg) * std::pow(T_h, 2.5) / 
                           (std::pow(Z_avg, 4.0) * coulomb_log);
 
-            // Convert CGS (Poise) to SI (Pa*s) -> 1 Poise = 0.1 Pa*s
-            mu_visc += mu_cgs * 0.1; 
+            // Convert CGS (Poise) to SI (Pa*s)
+            mu_ion_si = mu_cgs * 0.1; 
         }
 
         // --- STEP 3: Compute Neutral Gas Viscosity Fallback ---
         if (n_neutrals > 1.0e-10_rt) {
-            // Average neutral mass in atomic mass units, then converted to kg
             amrex::Real A_avg_neut = sum_A_neut / n_neutrals;
             amrex::Real m_neut = A_avg_neut * C::m_u;
-            
-            // Thermal velocity of the neutral gas
             amrex::Real v_th = std::sqrt(8.0_rt * C::k_B * T_h / (M_PI * m_neut));
-            
-            // Average collision energy (converted to eV)
             amrex::Real E_bar_eV = (4.0_rt / M_PI) * C::k_B * T_h / C::q_e;
-            
-            // Guard against log(0) at near-zero temperatures
             amrex::Real log_E_eV = std::log(std::max(E_bar_eV, 1.0e-10_rt));
-            
-            // Calculate cross-section using the rational fit defined above
             amrex::Real sigma_nn = get_sigma_m2_Ar_Ar(log_E_eV);
             
-            // Baseline neutral viscosity approximation using kinetic theory
-            amrex::Real mu_neut = (C::k_B * T_h) / (v_th * sigma_nn * 1e-2); 
-            
-            // Add to total mixture viscosity (converting to SI if necessary via the 0.1 factor)
-            mu_visc += 0.1 * mu_neut;
+            mu_neut_si = (C::k_B * T_h) / (v_th * sigma_nn); 
         }
 
-        // Impose a tiny floor (1.0e-15) to prevent CFD solver crashes (e.g., division by zero) 
-        // in regions where no particles exist (absolute zero viscosity)
-        return amrex::max(mu_visc, 1.0e-15);
+        // --- STEP 4: Mole-Fraction Mixture Rule ---
+        Real n_total = n_ions + n_neutrals + 1.0e-15; // Prevent div-by-zero
+        Real x_ion = n_ions / n_total;
+        Real x_neut = n_neutrals / n_total;
+        
+        Real mu_visc = (x_ion * mu_ion_si) + (x_neut * mu_neut_si);
+
+        return amrex::max(150*mu_visc, 1.0e-15);
+
     }
-
-
     /* =========================================================================
      * VISCOUS SOURCE TERMS (MOMENTUM & ENERGY)
      * ========================================================================= */
@@ -229,7 +213,7 @@ namespace transport {
             
             // Off-diagonal shear stresses (symmetric, so xy = yx)
             t.xy = mu_visc * (g.dudy + g.dvdx);
-            t.xz = mu_visc * (g.dudz + g.dwdx);
+            t.xz = mu_visc * (g.dwdx + g.dudz);
             t.yz = mu_visc * (g.dvdz + g.dwdy);
 
             // Cylindrical coordinate geometry correction (Hoop Stress)
