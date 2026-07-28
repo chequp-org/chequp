@@ -26,7 +26,7 @@ For a standard or serial execution:
 Running in 2D
 ~~~~~~~~~~~~~
 
-To run a 2D simulation, you must first ensure you compiled the 2D executable (using ``DIM=2``).
+If you compiled the 2D executable (using ``DIM=2``), you can run the simulation using the 1D inputs file.
 For a standard or serial execution:
 
 .. code-block:: sh

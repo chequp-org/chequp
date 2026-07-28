@@ -6,7 +6,7 @@ Download source code
 
 .. code-block:: text
 
-    git clone git@github.com:chequp-org/chequp.git
+    git clone https://github.com/chequp-org/chequp.git
     cd chequp
     git clone --recursive https://github.com/chequp-org/Castro.git --branch 2T_25.10
 
