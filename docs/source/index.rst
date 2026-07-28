@@ -23,7 +23,7 @@ Welcome to CHEQUP's documentation!
    :caption: User guide
 
    hipace_to_chequp
-   output_analysis
+   analysis_tool_python
 
 .. toctree::
    :maxdepth: 1
