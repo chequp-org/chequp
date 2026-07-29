@@ -2,17 +2,15 @@
 Example Tutorial
 ================
 
-This tutorial walks through creating initial conditions, running, and analyzing a 2D cylindrical (rz) Sedov-Taylor hydrodynamics expansion simulation. The simulation utilizes the Castro code, and requires the ``Castro2d`` executable compiled with the 1-temperature or 2-temperature model (``EOS_DIR := gamma_law`` or ``gamma_law_2T``).
+This tutorial walks through creating initial conditions, running, and analyzing a 2D cylindrical (rz) Sedov-Taylor hydrodynamics expansion simulation. The simulation utilizes the Castro code, and requires the ``Castro2d`` executable compiled with the 2-temperature model (``gamma_law_2T``).
 
-.. rubric:: Cell 1: Environment Setup
+.. rubric:: Environment Setup
 
 .. code-block:: python
 
     import os
     import sys
     import re
-    import glob
-    import subprocess
     import numpy as np
     import matplotlib.pyplot as plt
 
@@ -25,15 +23,6 @@ This tutorial walks through creating initial conditions, running, and analyzing 
 .. rubric:: Generating Initial Conditions
 
 .. code-block:: python
-
-    # ==========================================
-    # 1. GENERATING INITIAL CONDITIONS
-    # ==========================================
-    print("Generating initial conditions...")
-
-    # Create simulation directory
-    sim_folder = '../run/run_tutorial_2d/'
-    os.makedirs(sim_folder, exist_ok=True)
 
     # Define a 2D cylindrical grid: 100 um radius by 1 cm length
     r = np.linspace(0.0, 100e-6, 100)
@@ -62,50 +51,96 @@ This tutorial walks through creating initial conditions, running, and analyzing 
         {'r': [r.min(), r.max()], 'z': [z.min(), z.max()]},
         densities, 
         T_eV, 
-        f'{sim_folder}2d_inputs.h5', 
+        '2d_inputs.h5', # The name of the input file
         species_keys
     )
 
 
 .. rubric:: Executing the Simulation
 
-.. code-block:: python
+The input file ``inputs.2d.cyl``.
 
-    # ==========================================
-    # 2. RUNNING THE SIMULATION
-    # ==========================================
-    print("Running simulation...")
+.. code-block:: bash
 
-    def run_castro_simulation(model='gamma_law', runtime_options=''):
-        """Runs the Castro simulation locally inside the target directory."""
-        build_dir = os.path.abspath("../build")
-        executables = glob.glob(os.path.join(build_dir, f"Castro2d*.{model}.ex"))
-        
-        if not executables:
-            raise FileNotFoundError(f"No Castro2d executable found in {build_dir}")
-            
-        executable = os.path.abspath(executables[0])
-        inputs = os.path.abspath("../run/inputs.2d.cyl")
-        
-        command = f"{executable} {inputs} {runtime_options}"
-        subprocess.run(command, shell=True, check=True, cwd=sim_folder)
+    # ------------------  INPUTS TO MAIN PROGRAM  -------------------
+    max_step = 10000
+    stop_time = 5e-9
 
-    # Clean previous run files
-    os.system(f'rm -rf {sim_folder}/plt* {sim_folder}/spec* {sim_folder}/grid_diag.out {sim_folder}/amr_diag.out {sim_folder}/chk*')
+    # PROBLEM SIZE & GEOMETRY
+    geometry.is_periodic =  0 0 # Not periodic in either x or z
+    geometry.coord_sys   =  1       # r-z coordinates
+    geometry.prob_lo     =  0    0
+    geometry.prob_hi     =  0.01 1.0 # 100 um radius by 1 cm length
+    amr.n_cell           = 8   8 #number of cells in each direction at the coarsest level
 
-    # Define options and execute (Takes ~30 seconds)
-    options = "geometry.prob_hi = 0.01 1 amr.n_cell=8 8 castro.add_ext_src = 1 amr.max_level=4 castro.diffuse_temp = 0 problem.initial_conditions_file=2d_inputs.h5"
-    run_castro_simulation(model='gamma_law_2T', runtime_options=options)
+    # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+    # 0 = Interior           3 = Symmetry
+    # 1 = Inflow             4 = SlipWall
+    # 2 = Outflow            5 = NoSlipWall
+    # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+    castro.lo_bc       =  3   3
+    castro.hi_bc       =  2   2 #Outflow in all directions
+    castro.allow_non_unit_aspect_zones = 1
 
+    # WHICH PHYSICS
+    castro.do_hydro = 1 #time-advance the fluid dynamical equations
+    castro.do_react = 0 // Here, reactions (ionization) are included as ext_src
+    castro.add_ext_src = 1
+    castro.diffuse_temp = 0
+
+    # Get correct geometric terms in cylindrical
+    # (See https://github.com/AMReX-Astro/Castro/issues/3099)
+    castro.diffuse_use_amrex_mlmg = 0
+
+    # TIME STEP CONTROL
+    castro.cfl            = 0.5     # cfl number for hyperbolic system
+    castro.init_shrink    = 0.01    # scale back initial timestep
+    castro.change_max     = 100.     # maximum increase in dt over successive steps
+
+    # DIAGNOSTICS & VERBOSITY
+    castro.sum_interval   = 1       # timesteps between computing mass
+    castro.v              = 1       # verbosity in Castro.cpp
+    amr.v                 = 1       # verbosity in Amr.cpp
+
+    # REFINEMENT / REGRIDDING
+    amr.max_level       = 2       # maximum level number allowed
+    amr.ref_ratio       = 2 2 2 2 # refinement ratio
+    amr.regrid_int      = 5       # how often to regrid
+    amr.blocking_factor = 8       # block factor in grid generation
+    amr.max_grid_size   = 256
+
+    amr.refinement_indicators = dengrad pressgrad
+
+    amr.refine.dengrad.max_level = 2
+    amr.refine.dengrad.relative_gradient = 0.4
+    amr.refine.dengrad.field_name = density
+
+    amr.refine.pressgrad.max_level = 2
+    amr.refine.pressgrad.relative_gradient = 0.4
+    amr.refine.pressgrad.field_name = pressure
+
+    # PLOTFILES
+    amr.plot_file       = plt_2d_
+    amr.plot_int        = 10
+
+    # PROBLEM PARAMETERS
+    problem.initial_conditions_file = "2d_inputs.h5"
+    problem.p_ambient = 1.e-6
+
+    # EOS
+    eos.eos_assume_neutral = 0
+    eos.eos_gamma = 1.66666667
+
+
+Run the 2D simulation
+
+.. code-block:: bash
+
+   ../build/Castro2d.gnu.MPI.gamma_law_2T.ex inputs.2d.cyl
 
 .. rubric:: Data Initialization
 
 .. code-block:: python
-
-    # ==========================================
-    # 3. DATA ANALYSIS AND VISUALIZATION
-    # ==========================================
-    print("Analyzing data...")
 
     # Load the simulation data
     cs = CastroSimulation(sim_folder, 'plt_2d_')
@@ -119,7 +154,7 @@ This tutorial walks through creating initial conditions, running, and analyzing 
 .. code-block:: python
 
     # --- Plot 2D Density Field ---
-    t_2d = 5.0e-9
+    t_2d = 3.0e-9
     m = cs.get_field(t_2d, quantity='rho_H1', level=max_level)
 
     plt.figure(figsize=(6,3))
