@@ -24,6 +24,7 @@ extensions = [
     'nbsphinx',                 # Integrate Jupyter Notebooks
     'sphinx_copybutton',        # Add a "Copy" button to code blocks
     'sphinxcontrib.bibtex',     # Bibliography management (HiPACE++ style)
+    'sphinx_design'
 ]
 # Configure bibliography file
 bibtex_bibfiles = ['refs.bib']

@@ -4,7 +4,7 @@ Run
 First, create the initial conditions for the 1D simulation: 
 
 Create initial conditions
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: sh
 
