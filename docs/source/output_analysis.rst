@@ -1,4 +1,0 @@
-Output analysis
----------------
-
-Output analysis
