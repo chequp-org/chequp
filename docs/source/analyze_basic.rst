@@ -77,11 +77,11 @@ Calculate total energy evolution across different energy forms over time:
     times = sim.output_times
 
     # Integrate total, thermal, and kinetic energy over the domain
-    e_total, t_eval = sim.get_energy(t=times, level=0, energy_type='total')
-    e_thermal, _  = sim.get_energy(t=times, level=0, energy_type='thermal')
-    e_kinetic, _  = sim.get_energy(t=times, level=0, energy_type='kinetic')
+    e_total, t_eval = sim.get_energy(time=times, level=0, energy_type='total')
+    e_thermal, _  = sim.get_energy(time=times, level=0, energy_type='thermal')
+    e_kinetic, _  = sim.get_energy(time=times, level=0, energy_type='kinetic')
     # If ionization is enabled (castro.add_ext_src = 1), add the ionization energy
-    e_ion, _ = sim.get_energy(t=times, level=0, energy_type='ion')
+    e_ion, _ = sim.get_energy(time=times, level=0, energy_type='ion')
 
     # Plot energy conservation over time
     plt.figure(figsize=(8, 5))
@@ -103,8 +103,8 @@ Integrate mass densities to calculate total particle counts for target species:
 .. code-block:: python
 
     # Track species counts over time
-    n_H0, t_eval = sim.get_particle_number(t=times, species="H0", level=1)
-    n_H1, _      = sim.get_particle_number(t=times, species="H1", level=1)
+    n_H0, t_eval = sim.get_particle_number(time=times, species="H0", level=1)
+    n_H1, _      = sim.get_particle_number(time=times, species="H1", level=1)
 
     # Plot ionization progress
     plt.figure(figsize=(8, 5))

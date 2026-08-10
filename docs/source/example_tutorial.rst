@@ -58,9 +58,7 @@ This tutorial walks through creating initial conditions, running, and analyzing 
 
 .. rubric:: Executing the Simulation
 
-The input file ``inputs.2d.cyl``.
-
-.. code-block:: bash
+The input file ``inputs.2d.cyl``::
 
     # ------------------  INPUTS TO MAIN PROGRAM  -------------------
     max_step = 10000

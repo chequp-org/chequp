@@ -1,7 +1,7 @@
 CHEQUP |release| Documentation
 ==============================
 
-CHEQUP (Castro-based Hofi Expansion with QUasineutral Plasma) is a module built on the Castro code https://github.com/AMReX-Astro/Castro for high-performance physics simulations, and using the HYQUP model developed for the simulation of HOFI channel. It is designed to handle complex plasma dynamics, including ionization, recombination, and energy transfer processes, in a computationally efficient manner.
+CHEQUP (Castro-based Hofi Expansion with QUasineutral Plasma) is a module built on the Castro code https://github.com/AMReX-Astro/Castro for high-performance physics simulations, and inspired by the HYQUP model developed for the simulation of HOFI channel. It is designed to handle complex plasma dynamics, including ionization, recombination, and energy transfer processes, in a computationally efficient manner.
 
 .. grid:: 1 1 2 2
     :gutter: 2

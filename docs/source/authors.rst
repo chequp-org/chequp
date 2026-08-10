@@ -5,7 +5,7 @@ CHEQUP is developed and maintained by:
 
 * Thibault Benahmed
 * Remi Lehe
-* Maxence Thevenet
+* Maxence Thévenet
 * Christian McCombs
 * Alexander Sinn
 
