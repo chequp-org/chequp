@@ -5,7 +5,7 @@
 #include <fundamental_constants.H>
 #include <collision_frequencies.H>
 #include <collisional_ionization.H>
-
+#include <species_diffusion.H>
 using namespace amrex;
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
@@ -21,8 +21,6 @@ void problem_source (int i, int j, int k,
     Real rho = state(i,j,k,URHO);
 
     // Electron temperature
-    // In a single-temperature model (gamma_law), this will extract the average temperature
-    // In a two-temperature model (e.g. gamma_law_2T), this will extract the electron temperature
     const amrex::Real T_e = state(i,j,k,UTEMP);
 
     // Initialize species mass fractions and identify active species
@@ -131,6 +129,22 @@ void problem_source (int i, int j, int k,
         src(i,j,k,UFX) = -f/e * src(i,j,k,UEDEN) + Sc;
     } else {
         src(i,j,k,UFX) = Sc;
+    }
+    if (problem::do_species_diffusion) {
+        // NEW: Apply Mixture-Averaged Species Diffusion
+        // 1. Extract geometric grid properties required for spatial gradients
+        const Real* dx = geomdata.CellSize();
+        const Real* problo = geomdata.ProbLo();
+        const int coord = geomdata.Coord();
+
+        // 2. Compute and apply the diffusion source term for all active species
+        for (int ispe = 0; ispe < n_active; ispe++) {
+            int mu = active_spec[ispe];
+            
+            // This returns the mathematical divergence of the diffusion flux: div(j_mu)
+            amrex::Real div_j_mu = compute_species_diffusion_term(i, j, k, mu, state, problo, dx, coord);
+            src(i,j,k,UFS+mu) -= div_j_mu;
+        }
     }
 }
 
