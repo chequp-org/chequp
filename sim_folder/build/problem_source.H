@@ -107,14 +107,15 @@ void problem_source (int i, int j, int k,
     // Compute collision frequencies
     amrex::Real v_ei;
     amrex::Real v_en[NumSpec];
+    amrex::Real v_en_atom[num_atom_species];
     const amrex::Real T_h = T_e;
-    get_collision_frequencies(n_e, n_n_species, T_e, T_h, v_ei, v_en);
+    get_collision_frequencies(n_e, n_n_species, T_e, T_h, v_ei, v_en, v_en_atom);
 
     // Calculate momentum transfer collision frequencies
     amrex::Real v_e_E[NumSpec] = {};
     for (int ispe = 0; ispe < n_active; ispe++) {
         int mu = active_spec[ispe];
-        v_e_E[mu] = 2 * SI::m_e / (aion[get_atom_index(mu)] * C::m_u * 1e-3) *
+        v_e_E[mu] = 2 * SI::m_e / (get_atom_aion(get_atom_index(mu)) * C::m_u * 1e-3) *
                     (zion[mu] * v_ei + v_en[mu]);
     }
 

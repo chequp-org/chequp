@@ -61,6 +61,10 @@ amr.plot_int        = 10
 # PROBLEM PARAMETERS
 problem.initial_conditions_file = "example_1d_initial_conditions.h5"
 problem.p_ambient = 1.e-6
+# Free-streaming limiter on the thermal conductivity: largest trusted electron
+# mean free path, in cm. Uncomment for low-density runs where the diffusion
+# time step collapses. <= 0 disables it.
+#problem.conductivity_max_mfp = 5.e-3
 
 # EOS
 eos.eos_assume_neutral = 0

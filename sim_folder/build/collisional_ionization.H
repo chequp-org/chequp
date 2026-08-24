@@ -1,9 +1,10 @@
 #ifndef COLLISIONAL_IONIZATION_H 
 #define COLLISIONAL_IONIZATION_H 
 
-#include <AMReX_AmrCore.H> 
-#include <AMReX_REAL.H> 
-#include <map> 
+#include <AMReX_AmrCore.H>
+#include <AMReX_REAL.H>
+#include <network_properties.H>
+#include <map>
 #include <cmath>
 #include <algorithm>
 
@@ -29,6 +30,13 @@ int get_atom_index(int mu) {
 } 
 // Atomic numbers of each species (H, N, He, Ar)
 inline AMREX_GPU_MANAGED int zatom[num_atom_species] = {1, 7, 2, 18};
+// Index of the neutral stage of each atom species in species.net (inverse of get_atom_index)
+inline AMREX_GPU_MANAGED int atom_neutral_spec[num_atom_species] = {0, 2, 8, 11};
+
+// Atomic mass [amu] of an atom species. aion is indexed by simulation species,
+// so aion[idx_atom] would return the mass of an unrelated ionization stage.
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+amrex::Real get_atom_aion(int idx_atom) { return aion[atom_neutral_spec[idx_atom]]; }
 // Ionization energies of each species (H, N, He, Ar)
 inline AMREX_GPU_MANAGED amrex::Real ionization_energy[17] = { 
     13.598434_rt, 

@@ -12,6 +12,16 @@ namespace SI {
     constexpr double epsilon0 = 8.854187817e-12; // Permittivity of free space in F/m
     constexpr double m_e = 9.1093837015e-31; // Electron mass in kg
 }
+
+// Bounds keeping the collision frequencies finite in empty / cold cells
+namespace plasma_limits {
+    // Temperature floor in K, far below anything physical in these simulations
+    constexpr double T_floor = 1.0e-2;
+    // Coulomb logarithm bounds. The lower one is the usual ln(sqrt(2)) cutoff;
+    // the upper one keeps Lambda finite as n_e -> 0, where the raw expression diverges.
+    constexpr double Lambda_min = 0.34657359027997264; // 0.5 * ln(2)
+    constexpr double Lambda_max = 30.0;
+}
 // -------------------------------------------------------------------------
 // Cross-Section Helper Functions
 // -------------------------------------------------------------------------
@@ -72,41 +82,60 @@ amrex::Real get_sigma_m2_Ar(amrex::Real log_E_eV) {
  * for electron-neutral collisions.
  *
  * @param[in] n_e Electron density [m^-3]
- * @param[in] n_n Array of neutral densities [m^-3]
+ * @param[in] n_n Array of neutral densities per atom species [m^-3]
  * @param[in] T_e Electron temperature [K]
  * @param[in] T_h Ion temperature [K]
  * @param[out] v_ei Electron-ion collision frequency [Hz]
- * @param[out] v_en Array of electron-neutral collision frequencies [Hz]
+ * @param[out] v_en Array of electron-neutral collision frequencies, per simulation species [Hz]
+ * @param[out] v_en_atom Array of electron-neutral collision frequencies, per atom species [Hz]
  *
  * @see https://arxiv.org/pdf/2305.16779
  */
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_e, amrex::Real T_h,
-                              amrex::Real& v_ei, amrex::Real* v_en)
+                              amrex::Real& v_ei, amrex::Real* v_en, amrex::Real* v_en_atom)
 {
+    // Sanitize the inputs. The comparisons are false for NaN, so the sanitized
+    // values are always finite and positive.
+    amrex::Real T_e_s = plasma_limits::T_floor;
+    if (T_e > plasma_limits::T_floor) { T_e_s = T_e; }
+    amrex::Real T_h_s = plasma_limits::T_floor;
+    if (T_h > plasma_limits::T_floor) { T_h_s = T_h; }
+    amrex::Real n_e_s = 0.0_rt;
+    if (n_e > 0.0_rt) { n_e_s = n_e; }
+
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
-    // - Calculate Lambda_ei
-    const amrex::Real rawLambdaEi = std::log(
-        amrex::Real(3.0_rt / (2.0_rt * std::sqrt(M_PI))) * std::sqrt(
-            amrex::Math::powi<3>(4.0_rt * M_PI * SI::epsilon0 * SI::k_B * T_e) /
-            (amrex::Math::powi<6>(SI::q_e) * n_e * (1.0_rt + T_e / T_h))
-        )
-    );
-    // - Apply lower limit
-    const amrex::Real Lambda_ei = std::max(rawLambdaEi, 0.5_rt * std::log(2.0_rt));
-    // - Calculate v_ei using the corrected expression
-    v_ei = (4.0_rt / 3.0_rt) * std::sqrt(2.0_rt * M_PI / SI::m_e) *
-        (n_e * amrex::Math::powi<4>(SI::q_e) * Lambda_ei) /
-        (amrex::Math::powi<2>(4.0_rt * M_PI * SI::epsilon0) 
-        * (SI::k_B * T_e) * std::sqrt(SI::k_B * T_e));
+    if (n_e_s <= 0.0_rt) {
+        // No electrons: the Coulomb logarithm is undefined and v_ei vanishes.
+        // Evaluating the expression below would give v_ei = 0 * inf = NaN.
+        v_ei = 0.0_rt;
+    } else {
+        // - Calculate Lambda_ei
+        const amrex::Real rawLambdaEi = std::log(
+            amrex::Real(3.0_rt / (2.0_rt * std::sqrt(M_PI))) * std::sqrt(
+                amrex::Math::powi<3>(4.0_rt * M_PI * SI::epsilon0 * SI::k_B * T_e_s) /
+                (amrex::Math::powi<6>(SI::q_e) * n_e_s * (1.0_rt + T_e_s / T_h_s))
+            )
+        );
+        // - Apply lower and upper limits
+        const amrex::Real Lambda_ei = std::min(std::max(rawLambdaEi, amrex::Real(plasma_limits::Lambda_min)),
+                                               amrex::Real(plasma_limits::Lambda_max));
+        // - Calculate v_ei using the corrected expression
+        v_ei = (4.0_rt / 3.0_rt) * std::sqrt(2.0_rt * M_PI / SI::m_e) *
+            (n_e_s * amrex::Math::powi<4>(SI::q_e) * Lambda_ei) /
+            (amrex::Math::powi<2>(4.0_rt * M_PI * SI::epsilon0)
+            * (SI::k_B * T_e_s) * std::sqrt(SI::k_B * T_e_s));
+    }
 
     // Compute frequency of electron-neutral collisions (Eq. A5 in https://arxiv.org/pdf/2305.16779)
     // - Find mean energy and reduced mass
-    const amrex::Real E_bar = 4.0_rt / M_PI * SI::k_B * T_e;
+    const amrex::Real E_bar = 4.0_rt / M_PI * SI::k_B * T_e_s;
     const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
     amrex::Real mu_en[num_atom_species] = {};
-    for (int mu = 0; mu < num_atom_species; mu++) {
-            mu_en[mu] = SI::m_e * aion[mu] * C::m_u * 1e-3_rt / (SI::m_e + aion[mu] * C::m_u * 1e-3_rt);}
+    for (int idx_atom = 0; idx_atom < num_atom_species; idx_atom++) {
+        const amrex::Real m_atom = get_atom_aion(idx_atom) * C::m_u * 1e-3_rt; // kg
+        mu_en[idx_atom] = SI::m_e * m_atom / (SI::m_e + m_atom);
+    }
     // Populate cross sections using our helpers
     amrex::Real sigma_m2[num_atom_species] = {
         get_sigma_m2_H(log_E_eV),
@@ -115,13 +144,18 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_
         get_sigma_m2_Ar(log_E_eV)
     };
 
-    // Calculate v_en for each species
+    // Calculate v_en for each atom species
+    for (int idx_atom = 0; idx_atom < num_atom_species; idx_atom++) {
+        amrex::Real n_n_s = 0.0_rt;
+        if (n_n[idx_atom] > 0.0_rt) { n_n_s = n_n[idx_atom]; }
+        v_en_atom[idx_atom] = n_n_s * 4.0_rt / 3.0_rt
+            * std::sqrt(2.0_rt * E_bar / mu_en[idx_atom]) * sigma_m2[idx_atom];
+    }
+    // Map onto the simulation species
     for (int mu = 0; mu < NumSpec; mu++) {
         v_en[mu] = 0.0_rt; // default zero
-        const int idx_spec = get_atom_index(mu);
         if (zion[mu] > 0){
-            v_en[mu] = n_n[idx_spec] * 4.0_rt / 3.0_rt 
-                * std::sqrt(2.0_rt * E_bar / mu_en[idx_spec]) * sigma_m2[idx_spec];
+            v_en[mu] = v_en_atom[get_atom_index(mu)];
         }
     }
 }

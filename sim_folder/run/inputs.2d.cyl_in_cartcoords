@@ -58,6 +58,10 @@ amr.plot_int        = 10
 problem.initial_conditions_file = "example_initial_conditions.csv"
 problem.p_ambient = 1.e-6
 problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
+# Free-streaming limiter on the thermal conductivity: largest trusted electron
+# mean free path, in cm. Uncomment for low-density runs where the diffusion
+# time step collapses. <= 0 disables it.
+#problem.conductivity_max_mfp = 5.e-3
 
 # PARAMETERS OF ARRHENIUS LAW FOR DIRECT IONIZATION
 problem.a_direct_ioniz = 7.1e-9 // cm^3.s-1
