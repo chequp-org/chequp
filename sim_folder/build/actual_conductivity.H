@@ -52,13 +52,7 @@ void actual_conductivity (T& state)
 
     // Get collision frequencies
     amrex::Real v_ei;
-    amrex::Real v_en[NumSpec]; // electron-neutral collision frequency for all species
-
-    const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
-
-    get_collision_frequencies(n_e, n_n_species, T_e, T_h, v_ei, v_en);
-    amrex::Real v_ei;
-    amrex::Real v_en_atom[num_atom_species] = {};
+    amrex::Real v_en_atom[num_atom_species] = {}; // one entry per ATOM, not per stage
 
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
 
@@ -81,8 +75,12 @@ void actual_conductivity (T& state)
     // Calculate thermal conductivity using Eq. B1 in https://arxiv.org/pdf/2305.16779
     // The coefficient 3.16 comes from matching the Spitzer-Harm conductivity
     // in the fully ionized case (v_en = 0)
-    const amrex::Real conductivitySI =  SI::k_B * SI::k_B * n_e * T_e
-        / (SI::m_e * amrex::Real((2*M_PI/15) * v_en_tot + amrex::Real(1/3.16) * v_ei_tot));
+    const amrex::Real gamma0   = 12.471_rt * (Z_eff + 0.112_rt) / (Z_eff + 3.386_rt);
+
+    // Eq. B1 in https://arxiv.org/pdf/2305.16779, with the Braginskii
+    // coefficient generalized from its Z=1 value of 3.16.
+    const amrex::Real conductivitySI = SI::k_B * SI::k_B * n_e * T_e
+        / (SI::m_e * ((2.0_rt * M_PI / 15.0_rt) * v_en_tot + v_ei_tot / gamma0));
     // SI to cgs conversion factor for thermal conductivity
     const amrex::Real si_to_cgs_conversion_factor = 1e5; // (10^7 erg/J) / (10^2 cm/m)
 
