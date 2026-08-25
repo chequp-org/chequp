@@ -105,8 +105,11 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_
     const amrex::Real E_bar = 4.0_rt / M_PI * SI::k_B * T_e;
     const amrex::Real log_E_eV = std::log(E_bar / SI::q_e);
     amrex::Real mu_en[num_atom_species] = {};
+    const int atom_first_species[num_atom_species] = {0, 2, 8, 11};
     for (int mu = 0; mu < num_atom_species; mu++) {
-            mu_en[mu] = SI::m_e * aion[mu] * C::m_u * 1e-3_rt / (SI::m_e + aion[mu] * C::m_u * 1e-3_rt);}
+        const amrex::Real m_a = aion[atom_first_species[mu]] * C::m_u * 1e-3_rt;
+        mu_en[mu] = SI::m_e * m_a / (SI::m_e + m_a);
+    }
     // Populate cross sections using our helpers
     amrex::Real sigma_m2[num_atom_species] = {
         get_sigma_m2_H(log_E_eV),
