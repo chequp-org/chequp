@@ -132,7 +132,7 @@ void problem_source (int i, int j, int k,
         } else {
             nu_mu = v_en[get_atom_index(mu)];
         }
-        v_e_E[mu] = 2 * SI::m_e / (aion[[get_atom_index(mu)] * C::m_u * 1e-3) * nu_mu;
+        v_e_E[mu] = 2 * SI::m_e / (aion[atom_first_species[get_atom_index(mu)]] * C::m_u * 1e-3) * nu_mu;
     }
 
     // Calculate energy transfer source term

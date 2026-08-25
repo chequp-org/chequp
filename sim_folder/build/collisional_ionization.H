@@ -18,6 +18,7 @@ inline AMREX_GPU_MANAGED amrex::Real g_deg[21] = {
 constexpr int num_atom_species = 4; 
 constexpr amrex::Real X_min = 1e-20_rt; 
 
+inline AMREX_GPU_MANAGED int atom_first_species[num_atom_species] = {0, 2, 8, 11};
 // Helper function to get the index of the atom species from the atomic number
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
 int get_atom_index(int mu) { 
