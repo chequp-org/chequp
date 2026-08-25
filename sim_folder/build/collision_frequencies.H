@@ -64,17 +64,6 @@ amrex::Real get_sigma_m2_Ar(amrex::Real log_E_eV) {
     const amrex::Real den[] = {-1.425189e+00_rt, 9.207079e+00_rt, 4.881694e+01_rt, 4.621947e+01_rt};
     return eval_sigma_rational(log_E_eV, 2.128350e+00_rt, 6.152029e+00_rt, num, den);
 }
-
-// Helper function to compute the Spitzer-Harm gamma_0 parameter
-// See https://arxiv.org/pdf/2305.16779.pdf Eq. A1
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-amrex::Real spitzer_gamma0(amrex::Real Z)
-{
-    constexpr amrex::Real gamma_inf = 3.16_rt * 5.2_rt / 1.24_rt; // = 13.25
-    const amrex::Real Zc = amrex::max(Z, 1.0_rt);
-    return gamma_inf * (Zc + 0.24_rt) / (Zc + 4.2_rt);
-}
-
 /**
  * @brief Computes electron-ion and electron-neutral collision frequencies.
  *
@@ -86,16 +75,14 @@ amrex::Real spitzer_gamma0(amrex::Real Z)
  * @param[in] n_n Array of neutral densities [m^-3]
  * @param[in] T_e Electron temperature [K]
  * @param[in] T_h Ion temperature [K]
- * @param[in] Zbar Average Z of the atomic species [unitless]
  * @param[out] v_ei Electron-ion collision frequency [Hz]
  * @param[out] v_en Array of electron-neutral collision frequencies [Hz]
  *
  * @see https://arxiv.org/pdf/2305.16779
  */
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void get_collision_frequencies(amrex::Real n_e, const amrex::Real* n_n,
-                               amrex::Real T_e, amrex::Real T_h, amrex::Real Zbar,
-                               amrex::Real& v_ei, amrex::Real* v_en)
+void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_e, amrex::Real T_h,
+                              amrex::Real& v_ei, amrex::Real* v_en_atom)
 {
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
     // - Calculate Lambda_ei
@@ -130,11 +117,11 @@ void get_collision_frequencies(amrex::Real n_e, const amrex::Real* n_n,
         get_sigma_m2_Ar(log_E_eV)
     };
 
-    // Calculate v_en once per ATOM species.
-    for (int a = 0; a < num_atom_species; a++) {
-        v_en[a] = n_n[a] * 4.0_rt / 3.0_rt
-            * std::sqrt(2.0_rt * E_bar / mu_en[a]) * sigma_m2[a];
-    }
+    // Calculate v_en once per atom species
+        for (int a = 0; a < num_atom_species; ++a) {
+            v_en_atom[a] = n_n[a] * 4.0_rt / 3.0_rt
+                        * std::sqrt(2.0_rt * E_bar / mu_en[a]) * sigma_m2[a];
+        }
 }
 
 #endif
