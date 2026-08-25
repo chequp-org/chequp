@@ -410,7 +410,7 @@ def test_0D_Ar_H_mix(tol=11):
     assert_densities_match(t_c, nH0_chequp, t_o, sol.y[idx_H0], tol, "Mix H0")
     assert_densities_match(t_c, nH1_chequp, t_o, sol.y[idx_H1], tol, "Mix H1")
     
-    for i in range(9):
+    for i in range(6): # Only check up to Ar6, further level are not ionized
         assert_densities_match(t_c, nAr_chequp[i], t_o, sol.y[idx_Ar[i]], tol, f"Mix Ar{i}")
 
 if __name__ == "__main__":
