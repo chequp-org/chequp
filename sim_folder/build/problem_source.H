@@ -90,32 +90,49 @@ void problem_source (int i, int j, int k,
     src(i,j,k,UEDEN) += e_ion;
     src(i,j,k,UEINT) += e_ion;
 
-    // Calculate electron and neutral number densities (SI units)
-    amrex::Real n_e = 0.0;
-    amrex::Real n_n_species[num_atom_species] = {};
+    // Calculate electron, ion and neutral number densities (SI units)
+    amrex::Real n_e = 0.0;                          // electron density [m^-3]
+    amrex::Real n_h = 0.0;                          // total heavy density [m^-3]
+    amrex::Real n_ions = 0.0;                       // total ion density [m^-3]
+    amrex::Real sum_nZ2 = 0.0;                      // sum_s n_s Z_s^2 [m^-3]
+    amrex::Real n_species[NumSpec] = {};            // per-species density [m^-3]
+    amrex::Real n_n_species[num_atom_species] = {}; // per-atom neutral density [m^-3]
 
     for (int ispe = 0; ispe < n_active; ispe++) {
         int mu = active_spec[ispe];
         const amrex::Real n_mu = X_stage[mu] * rho * aion_inv[mu] / C::m_u * 1.e6;
-        n_e += zion[mu] * n_mu;
+        n_species[mu] = n_mu;
+        n_h     += n_mu;
+        n_e     += zion[mu] * n_mu;
+        sum_nZ2 += zion[mu] * zion[mu] * n_mu;
         if (zion[mu] == 0) {
-            int idx_atom = get_atom_index(mu);
-            n_n_species[idx_atom] += n_mu;
+            n_n_species[get_atom_index(mu)] += n_mu;
+        } else {
+            n_ions += n_mu;
         }
     }
 
+    const amrex::Real Zbar = (n_ions > 0.0_rt) ? n_e / n_ions : 1.0_rt;
+
     // Compute collision frequencies
     amrex::Real v_ei;
-    amrex::Real v_en[NumSpec];
+    amrex::Real v_en[num_atom_species];
     const amrex::Real T_h = T_e;
-    get_collision_frequencies(n_e, n_n_species, T_e, T_h, v_ei, v_en);
+    get_collision_frequencies(n_e, n_n_species, T_e, T_h, Zbar, v_ei, v_en);
 
     // Calculate momentum transfer collision frequencies
     amrex::Real v_e_E[NumSpec] = {};
     for (int ispe = 0; ispe < n_active; ispe++) {
         int mu = active_spec[ispe];
-        v_e_E[mu] = 2 * SI::m_e / (aion[get_atom_index(mu)] * C::m_u * 1e-3) *
-                    (zion[mu] * v_ei + v_en[mu]);
+        amrex::Real nu_mu;
+        if (zion[mu] > 0) {
+            nu_mu = (n_e > 0.0_rt)
+                ? (n_species[mu] * zion[mu] * zion[mu] / n_e) * v_ei
+                : 0.0_rt;
+        } else {
+            nu_mu = v_en[get_atom_index(mu)];
+        }
+        v_e_E[mu] = 2 * SI::m_e / (amass_atom[get_atom_index(mu)] * C::m_u * 1e-3) * nu_mu;
     }
 
     // Calculate energy transfer source term
