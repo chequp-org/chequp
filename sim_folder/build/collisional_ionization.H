@@ -270,33 +270,19 @@ namespace coll_ion
         const Real a_d = std::cbrt(3.0_rt / (4.0_rt * M_PI * n_e));
         const Real T_coulomb = (q_elem_esu * q_elem_esu / a_d) / C::k_B;
 
-        // Fermi temperature
-        const Real E_fermi = C::hbar * C::hbar
-                           * std::pow(3.0_rt * M_PI * M_PI * n_e, 2.0_rt / 3.0_rt)
-                           / (2.0_rt * C::m_e);
-        const Real T_fermi = E_fermi / C::k_B;
-
-        return std::sqrt(Te * Te + T_coulomb * T_coulomb + T_fermi * T_fermi);
+        return std::sqrt(Te * Te + T_coulomb * T_coulomb);
     }
 
     // Accesses the 3-body recombination rate for a given atomic number and
-    // temperature with the Saha equilibrium approximation, evaluated at the
-    // regularized effective temperature above.
+    // temperature with the Saha detailled balance.
     AMREX_GPU_HOST_DEVICE inline
     Real get_rate_3body(int ispe, Real rho, Real Te)
     {
         if (ispe + 1 >= NumSpec) return 0.0_rt;
         if (rho <= 0.0_rt) return 0.0_rt;
 
-        // Regularized evaluation temperature: never falls below the
-        // Coulomb / Fermi floors, so no hard cutoff is needed.
+        // Regularized evaluation temperature including Coulomb temperature
         Real Te_eff = get_effective_temperature(Te, rho, aion[ispe]);
-
-        // The rate tables are only tabulated above T_min. With the floors
-        // in place this clamp is essentially never active, but keep it so
-        // the rate stays continuous instead of dropping to zero.
-        Te_eff = amrex::max(Te_eff, T_min / K_to_eV);
-
         const Real Te_eff_eV = Te_eff * K_to_eV;
 
         const Real rate_dir = get_rate_direct_ion(ispe, Te_eff);
@@ -305,13 +291,10 @@ namespace coll_ion
         const int idx_atom = get_atom_index(ispe);
         const int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
 
-        // Assemble the product in log space. The individual factors
-        // (exp(E/Te), lambda_DeBroglie^3, n) can overflow / underflow on
-        // their own even when their product is perfectly representable.
+        // Assemble the product in log space
         const Real ln_tiny = -log_huge();
 
         // lambda_DeBroglie = hbar * sqrt(2 pi / (m_e k_B Te))
-        //   =>  log(lambda^3) = 1.5 * log(2 pi hbar^2 / (m_e k_B Te))
         const Real log_lambda3 = 1.5_rt * std::log(2.0_rt * M_PI * C::hbar * C::hbar
                                                    / (C::m_e * C::k_B * Te_eff));
 
@@ -329,7 +312,7 @@ namespace coll_ion
 
         const Real log_rate = log_rate_forward + log_lambda3 + log_geom;
 
-        // Final guard against floating-point overflow only -- not physics.
+        // Final guard against floating-point overflow only.
         if (log_rate < ln_tiny) return 0.0_rt;
         return std::exp(amrex::min(log_rate, log_huge()));
     }
