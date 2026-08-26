@@ -82,7 +82,7 @@ amrex::Real get_sigma_m2_Ar(amrex::Real log_E_eV) {
  */
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_e, amrex::Real T_h,
-                              amrex::Real& v_ei, amrex::Real* v_en)
+                              amrex::Real& v_ei, amrex::Real* v_en_atom)
 {
     // Compute frequency of electron-ion collisions (Eq. A1 in https://arxiv.org/pdf/2305.16779)
     // - Calculate Lambda_ei
@@ -117,15 +117,11 @@ void get_collision_frequencies(amrex::Real n_e, amrex::Real* n_n, amrex::Real T_
         get_sigma_m2_Ar(log_E_eV)
     };
 
-    // Calculate v_en for each species
-    for (int mu = 0; mu < NumSpec; mu++) {
-        v_en[mu] = 0.0_rt; // default zero
-        const int idx_spec = get_atom_index(mu);
-        if (zion[mu] > 0){
-            v_en[mu] = n_n[idx_spec] * 4.0_rt / 3.0_rt 
-                * std::sqrt(2.0_rt * E_bar / mu_en[idx_spec]) * sigma_m2[idx_spec];
+    // Calculate v_en once per atom species
+        for (int a = 0; a < num_atom_species; ++a) {
+            v_en_atom[a] = n_n[a] * 4.0_rt / 3.0_rt
+                        * std::sqrt(2.0_rt * E_bar / mu_en[a]) * sigma_m2[a];
         }
-    }
 }
 
 #endif

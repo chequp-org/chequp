@@ -33,12 +33,16 @@ void actual_conductivity (T& state)
     // Infer electron density by summing over species and assuming overall neutrality
     // See https://github.com/AMReX-Astro/Microphysics/blob/main/EOS/gamma_law/actual_eos.H#L62
     amrex::Real n_n_species[num_atom_species] = {};
-    amrex::Real n_e = 0.0;
-    for (int mu=0; mu < NumSpec; mu++) {
-        n_e += zion[mu] * state.xn[mu] * state.rho / C::m_u * 1.e6;
+    amrex::Real n_e   = 0.0;
+    amrex::Real n_iZ2 = 0.0;
+    for (int mu = 0; mu < NumSpec; mu++) {
+        // number density of stage mu in m^-3
+        const amrex::Real n_mu = state.xn[mu] * state.rho * aion_inv[mu] / C::m_u * 1.e6;
+        n_e += zion[mu] * n_mu;
         if (zion[mu] == 0) {
-            int idx_atom = get_atom_index(mu);
-            n_n_species[idx_atom] = state.rho * state.xn[mu] * aion_inv[mu] / C::m_u * 1.e6; // number density of neutral species mu in m^-3
+            n_n_species[get_atom_index(mu)] += n_mu;
+        } else {
+            n_iZ2 += zion[mu] * zion[mu] * n_mu;
         }
     }
     // Electron temperature
@@ -48,24 +52,35 @@ void actual_conductivity (T& state)
 
     // Get collision frequencies
     amrex::Real v_ei;
-    amrex::Real v_en[NumSpec]; // electron-neutral collision frequency for all species
+    amrex::Real v_en_atom[num_atom_species] = {};
 
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
 
-    get_collision_frequencies(n_e, n_n_species, T_e, T_h, v_ei, v_en);
-    amrex::Real v_en_tot = 0.0;
-    amrex::Real v_ei_tot = 0.0;
-    for (int mu = 0; mu < NumSpec; mu++) {
-        if (state.xn[mu] > X_min) {
-            v_en_tot += v_en[mu];
-            v_ei_tot += v_ei * std::pow(zion[mu],4);
-        }
+    // No electrons: no conduction, and Lambda_ei would blow up below.
+    if (n_e <= 0.0) {
+        state.conductivity = 0.0;
+        return;
     }
+
+    get_collision_frequencies(n_e, n_n_species, T_e, T_h, v_ei, v_en_atom);
+
+    amrex::Real v_en_tot = 0.0;
+    for (int a = 0; a < num_atom_species; ++a) {
+        v_en_tot += v_en_atom[a];
+    }
+
+    // Effective charge: Z_eff = sum_mu Z_mu^2 n_mu / n_e  (=1 for pure hydrogen)
+    const amrex::Real Z_eff = n_iZ2 / n_e;
+    const amrex::Real v_ei_tot = v_ei * Z_eff;
     // Calculate thermal conductivity using Eq. B1 in https://arxiv.org/pdf/2305.16779
     // The coefficient 3.16 comes from matching the Spitzer-Harm conductivity
     // in the fully ionized case (v_en = 0)
-    const amrex::Real conductivitySI =  SI::k_B * SI::k_B * n_e * T_e
-        / (SI::m_e * amrex::Real((2*M_PI/15) * v_en_tot + amrex::Real(1/3.16) * v_ei_tot));
+    const amrex::Real gamma0   = 12.471_rt * (Z_eff + 0.112_rt) / (Z_eff + 3.386_rt);
+
+    // Eq. B1 in https://arxiv.org/pdf/2305.16779, with the Braginskii
+    // coefficient generalized from its Z=1 value of 3.16.
+    const amrex::Real conductivitySI = SI::k_B * SI::k_B * n_e * T_e
+        / (SI::m_e * ((2.0_rt * M_PI / 15.0_rt) * v_en_tot + v_ei_tot / gamma0));
     // SI to cgs conversion factor for thermal conductivity
     const amrex::Real si_to_cgs_conversion_factor = 1e5; // (10^7 erg/J) / (10^2 cm/m)
 
