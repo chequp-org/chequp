@@ -5,6 +5,7 @@
 #include <AMReX_REAL.H> 
 #include <map> 
 #include <cmath>
+#include <limits>
 #include <algorithm>
 
 // Quantum degeneracy of each species (H, N, He, Ar)
@@ -37,6 +38,15 @@ inline AMREX_GPU_MANAGED amrex::Real ionization_energy[17] = {
     24.587388_rt, 54.417763_rt, 
     15.759611_rt, 27.62967_rt, 40.735_rt, 59.81_rt, 75.02_rt, 91.009_rt, 124.323_rt, 143.46_rt, 422.45_rt 
 }; 
+// Binding energies for each species (H, N, He, Ar)
+inline AMREX_GPU_MANAGED amrex::Real binding_energy[17] = {
+    13.5981_rt,
+    20.33_rt, 20.33_rt, 14.534_rt, 14.534_rt, 14.534_rt,
+    24.588_rt, 24.588_rt,
+    422.45_rt, 29.3_rt, 29.3_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt
+};
+// Number of levels to consider per atomic species (H, N, He, Ar)
+inline AMREX_GPU_MANAGED int num_simulated_electrons[num_atom_species] = {1, 5, 2, 9};
 // Gaunt factors polynomial coefficients for each species (H, N, He, Ar)
 inline AMREX_GPU_MANAGED amrex::Real gaunt_fit[num_atom_species][7] = { 
     {-7.61094672e-06_rt, 1.42014919e-04_rt, -5.26821513e-04_rt, -2.27233338e-03_rt, 2.38468040e-03_rt, 5.36211118e-02_rt, 2.56972926e-01_rt}, 
@@ -59,6 +69,15 @@ int get_energy_index(int Z)
     return 0; 
 } 
 
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+int get_atom_index_from_Z(int Z)
+{
+    if (Z == 7)  return 1;
+    if (Z == 2)  return 2;
+    if (Z == 18) return 3;
+    return 0;
+}
+
 namespace coll_ion 
 { 
     using namespace amrex; 
@@ -68,11 +87,24 @@ namespace coll_ion
     static constexpr Real T_max = 3.0e2_rt;  // Maximum temperature
     static constexpr Real K_to_eV = 8.617333262145e-5_rt;  // Conversion factor from Kelvin to eV
 
-    static constexpr int npoints = 100; 
+    static constexpr int n_gauss_laguerre = 16;
+    static constexpr Real sqrt_pi_over_2 = 0.8862269254527580_rt;  // \int_0^inf sqrt(x) e^{-x} dx
+
+    // Elementary charge in esu (statC). Used for the Coulomb temperature floor.
+    static constexpr Real q_elem_esu = 4.803204712570263e-10_rt;
+
+    // Largest / smallest exponent we can safely feed to std::exp() for the
+    // active precision (double or single). Used purely as an overflow guard.
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    Real log_huge()
+    {
+        constexpr Real ln2 = 0.6931471805599453_rt;
+        return 0.99_rt * static_cast<Real>(std::numeric_limits<Real>::max_exponent) * ln2;
+    }
 
     inline AMREX_GPU_MANAGED Real rate_table[NumSpec][NT];
     inline AMREX_GPU_MANAGED bool initialized = false; 
-    // Maxwellian weight function
+    // Maxwellian weight function. Unused by compute_rate(), kept for external callers.
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
     Real maxwell_weight(Real E, Real Te) 
     { 
@@ -87,39 +119,29 @@ namespace coll_ion
         Real sigma = 0.0_rt; 
         int n = 1; 
 
-        int atom_idx = 0; 
-        if (atomic_number == 7) atom_idx = 1; 
-        if (atomic_number == 2) atom_idx = 2; 
-        if (atomic_number == 18) atom_idx = 3; 
-        // Binding energies for each species (H, N, He, Ar)
-        static constexpr Real binding_energy[17] = { 
-            13.5981_rt, 
-            20.33_rt, 20.33_rt, 14.534_rt, 14.534_rt, 14.534_rt, 
-            24.588_rt, 24.588_rt, 
-            422.45_rt, 29.3_rt, 29.3_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt, 15.76_rt 
-        }; 
-        // Number of levels to consider per atomic species
-        static constexpr int num_simulated_electrons[num_atom_species] = {1, 5, 2, 9}; 
+        const int atom_idx = get_atom_index_from_Z(atomic_number);
+        const int base_idx = get_energy_index(atomic_number); 
 
-        int base_idx = get_energy_index(atomic_number); 
+        const int max_k = num_simulated_electrons[atom_idx] - zstar; 
+        if (max_k <= 0) return 0.0_rt;
+
         const Real me_c2 = 510998.0_rt; 
         const Real normalization = 2.0_rt * M_PI * std::pow(1.0_rt/137.0_rt, 4) * std::pow(5.29e-11_rt, 2); 
 
         const Real ep_mc2 = ep / me_c2; 
 
-        int neutral_valence_idx = base_idx + num_simulated_electrons[atom_idx] - 1;
-        Real neutral_valence_energy = binding_energy[neutral_valence_idx];
+        // Outermost shell of the current charge state, not of the neutral atom
+        const int valence_idx = base_idx + max_k - 1;
+        const Real valence_energy = binding_energy[valence_idx];
 
-        int max_k = num_simulated_electrons[atom_idx] - zstar; 
-        
         for (int k = 0; k < max_k; k++) { 
             int idx_k = base_idx + k; 
             int idx_k_p = base_idx + (k + 1); 
 
             Real bp_energy = binding_energy[idx_k];
 
-            if (std::abs(bp_energy - neutral_valence_energy) < 1e-5_rt) {
-                int idx_Eion = get_energy_index(atomic_number) + zstar;
+            if (std::abs(bp_energy - valence_energy) < 1e-5_rt) {
+                int idx_Eion = base_idx + zstar;
                 bp_energy = ionization_energy[idx_Eion];
             }
 
@@ -154,32 +176,60 @@ namespace coll_ion
         } 
         return sigma * 1e4_rt; 
     } 
-    // Computes the ionization rate for a given atomic number and temperature
-    // by integrating the electron impact ionization cross-section over a maxwellian
+    // Ionization rate <sigma v> = \int sqrt(E) e^{-E/Te} sigma v dE / \int sqrt(E) e^{-E/Te} dE.
+    // sigma vanishes below E_th, so E = E_th + u*Te turns the numerator into
+    // Te e^{-E_th/Te} \int_0^inf e^{-u} g(u) du: the Gauss-Laguerre form, with the
+    // Maxwellian tail carried analytically and the nodes scaling with Te.
+    // The denominator is sqrt(pi)/2 * Te^{3/2}, so the Te factors cancel to 1/sqrt(Te).
     inline AMREX_GPU_HOST_DEVICE 
     Real compute_rate(int atomic_number, int zstar, Real Te) 
     { 
-        Real sum = 0.0_rt; 
-        Real norm = 0.0_rt; 
+        // 16-point Gauss-Laguerre rule (weight e^{-x})
+        static constexpr Real gl_x[n_gauss_laguerre] = {
+            8.764941047892776e-02_rt, 4.626963289150804e-01_rt,
+            1.141057774831226e+00_rt, 2.129283645098381e+00_rt,
+            3.437086633893207e+00_rt, 5.078018614549768e+00_rt,
+            7.070338535048234e+00_rt, 9.438314336391938e+00_rt,
+            1.221422336886616e+01_rt, 1.544152736878162e+01_rt,
+            1.918015685675314e+01_rt, 2.351590569399191e+01_rt,
+            2.857872974288214e+01_rt, 3.458339870228662e+01_rt,
+            4.194045264768833e+01_rt, 5.170116033954333e+01_rt
+        };
+        static constexpr Real gl_w[n_gauss_laguerre] = {
+            2.061517149578049e-01_rt, 3.310578549508783e-01_rt,
+            2.657957776442144e-01_rt, 1.362969342963787e-01_rt,
+            4.732892869412563e-02_rt, 1.129990008033960e-02_rt,
+            1.849070943526327e-03_rt, 2.042719153082809e-04_rt,
+            1.484458687398150e-05_rt, 6.828319330871331e-07_rt,
+            1.881024841079722e-08_rt, 2.862350242973897e-10_rt,
+            2.127079033224121e-12_rt, 6.297967002517880e-15_rt,
+            5.050473700035608e-18_rt, 4.161462370372851e-22_rt
+        };
 
-        const Real E_min = 0.0_rt; 
-        const Real E_max = 1e3_rt; 
-        const Real dE = (E_max - E_min) / npoints; 
+        if (Te <= 0.0_rt) return 0.0_rt;
+        if (zstar < 0) return 0.0_rt;
 
-        for (int i = 0; i < npoints; i++) { 
-            Real E = E_min + i * dE; 
-            Real w = maxwell_weight(E, Te); 
-            Real sig = sigma_E(atomic_number, zstar, E); 
-            Real v = std::sqrt(2.0_rt * std::abs(E) * C::ev2erg / C::m_e); 
+        const int atom_idx = get_atom_index_from_Z(atomic_number);
+        const int base_idx = get_energy_index(atomic_number);
 
-            sum += sig * v * w; 
-            norm += w; 
-        } 
+        if (zstar >= num_simulated_electrons[atom_idx]) return 0.0_rt;
 
-        if (norm > 0.0_rt) { 
-            sum /= norm; 
-        } 
-        return sum; 
+        const Real E_th = ionization_energy[base_idx + zstar];
+        const Real arg = E_th / Te;
+
+        if (arg > log_huge()) return 0.0_rt;   // Boltzmann factor underflows
+
+        Real acc = 0.0_rt;
+        for (int i = 0; i < n_gauss_laguerre; i++) {
+            const Real E = E_th + gl_x[i] * Te;
+            const Real sig = sigma_E(atomic_number, zstar, E);
+            if (sig > 0.0_rt) {
+                const Real v = std::sqrt(2.0_rt * E * C::ev2erg / C::m_e);
+                acc += gl_w[i] * std::sqrt(E) * sig * v;
+            }
+        }
+
+        return acc * std::exp(-arg) / (sqrt_pi_over_2 * std::sqrt(Te));
     } 
     // Precomputes the ionization rate for all species and temperatures
     // and stores them in the rate_table array to speed up the computation
@@ -246,33 +296,62 @@ namespace coll_ion
         return rate; 
     } 
 
-    // Accesses the 3-body recombination rate for a given atomic number and temperature
-    // with the Saha equilibrium approximation
+    // Effective temperature used to regularize the 3-body recombination
+    // rate at low Te.
+    AMREX_GPU_HOST_DEVICE inline
+    Real get_effective_temperature(Real Te, Real rho, Real abar)
+    {
+        const Real n_e = amrex::max(rho / (abar * C::m_p), 1.e-30_rt);
+
+        // Wigner-Seitz radius and the associated Coulomb temperature
+        const Real a_d = std::cbrt(3.0_rt / (4.0_rt * M_PI * n_e));
+        const Real T_coulomb = (q_elem_esu * q_elem_esu / a_d) / C::k_B;
+
+        return std::sqrt(Te * Te + T_coulomb * T_coulomb);
+    }
+
+    // Accesses the 3-body recombination rate for a given atomic number and
+    // temperature with the Saha detailled balance.
     AMREX_GPU_HOST_DEVICE inline
     Real get_rate_3body(int ispe, Real rho, Real Te)
     {
         if (ispe + 1 >= NumSpec) return 0.0_rt;
+        if (rho <= 0.0_rt) return 0.0_rt;
 
-        const Real Te_eV = Te * K_to_eV;
-        if (Te_eV < T_min) return 0.0_rt;          
-        // Compute the De Broglie wavelength for the given temperature
-        Real lambda_DeBroglie = C::hbar * std::sqrt(2.0_rt * M_PI / (C::m_e * C::k_B * Te));
+        // Regularized evaluation temperature including Coulomb temperature
+        Real Te_eff = get_effective_temperature(Te, rho, aion[ispe]);
+        const Real Te_eff_eV = Te_eff * K_to_eV;
 
-        Real reverse_factor = rho * std::pow(lambda_DeBroglie, 3)
-                            / (aion[ispe] * C::m_p)
-                            * g_deg[ispe] / (2.0_rt * g_deg[ispe + 1]);
+        const Real rate_dir = get_rate_direct_ion(ispe, Te_eff);
+        const Real rate_ex  = get_rate_ex_ion(ispe, Te_eff);
 
-        int idx_atom = get_atom_index(ispe);
-        int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
-        // Limit ionization rate to prevent numerical instability
-        // for low temperatures and high ionization energies
-        Real exp_ion = std::exp(std::min(ionization_energy[idx_Eion] / Te_eV, 50.0_rt));
-        Real exp_ex  = std::exp(std::min(ex_energy_atom[idx_atom]    / Te_eV, 50.0_rt));
+        const int idx_atom = get_atom_index(ispe);
+        const int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
 
-        Real rate_forward = get_rate_direct_ion(ispe, Te) * exp_ion
-                          + get_rate_ex_ion(ispe, Te)     * exp_ex;
+        // Assemble the product in log space
+        const Real ln_tiny = -log_huge();
 
-        return rate_forward * reverse_factor;
+        // lambda_DeBroglie = hbar * sqrt(2 pi / (m_e k_B Te))
+        const Real log_lambda3 = 1.5_rt * std::log(2.0_rt * M_PI * C::hbar * C::hbar
+                                                   / (C::m_e * C::k_B * Te_eff));
+
+        const Real log_geom = std::log(rho) - std::log(aion[ispe] * C::m_p)
+                            + std::log(g_deg[ispe]) - std::log(2.0_rt * g_deg[ispe + 1]);
+
+        const Real a = (rate_dir > 0.0_rt ? std::log(rate_dir) : ln_tiny)
+                     + ionization_energy[idx_Eion] / Te_eff_eV;
+        const Real b = (rate_ex > 0.0_rt ? std::log(rate_ex) : ln_tiny)
+                     + ex_energy_atom[idx_atom] / Te_eff_eV;
+
+        // log-sum-exp of the two forward channels
+        const Real m = amrex::max(a, b);
+        const Real log_rate_forward = m + std::log(std::exp(a - m) + std::exp(b - m));
+
+        const Real log_rate = log_rate_forward + log_lambda3 + log_geom;
+
+        // Final guard against floating-point overflow only.
+        if (log_rate < ln_tiny) return 0.0_rt;
+        return std::exp(amrex::min(log_rate, log_huge()));
     }
 } 
 
