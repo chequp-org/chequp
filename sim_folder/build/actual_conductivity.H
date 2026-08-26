@@ -52,7 +52,7 @@ void actual_conductivity (T& state)
 
     // Get collision frequencies
     amrex::Real v_ei;
-    amrex::Real v_en_atom[num_atom_species] = {}; // one entry per ATOM, not per stage
+    amrex::Real v_en_atom[num_atom_species] = {};
 
     const amrex::Real T_h = T_e; // TODO: Extract correct ion temperature (this is only used for the Coulomb logarithm)
 
