@@ -124,23 +124,31 @@ void ignore__unused (const Ts&...) {}
 // ---------------------------------------------------------------------
 // fill_ext_source2: whole-MultiFab hook (host-side driver, not per-cell).
 //
-// 1. Applies the pointwise problem_source kernel everywhere (ionization,
-//    collisional energy exchange) exactly as before -- fully explicit.
-// 2. THEN solves thermal diffusion implicitly (backward Euler + JFNK) on
-//    a working copy of state_new that already includes the explicit
-//    source contributions from step 1, and writes the converged T, UEINT,
-//    UEDEN directly back into state_new.
-// 3. Zeroes ext_src's energy components so Castro's own explicit
-//    accumulation of ext_src into the state does not double-count the
-//    diffusion (or the energy sources already folded into state_new here).
+// IMPORTANT: state_new arrives here as `const MultiFab&` (this matches
+// the real Castro::fill_ext_source signature -- confirmed from the
+// build error, not assumed). This function NEVER writes into state_new.
+// The only writable output is ext_src, exactly as in the original
+// working explicit version.
 //
-// This keeps operator-splitting explicit: [explicit ionization/collision]
-// then [implicit diffusion], both within one Castro timestep, executed
-// from this single non-invasive hook.
+// 1. Applies the pointwise problem_source kernel everywhere (ionization,
+//    collisional energy exchange) exactly as before -- fully explicit,
+//    written into ext_src.
+// 2. Builds a local working copy of state_new with the explicit sources
+//    already folded in (this copy is owned here, so it's fine to mutate).
+// 3. Solves thermal diffusion implicitly (backward Euler + JFNK) on that
+//    working copy, and gets back the EFFECTIVE volumetric source rate
+//    that would reproduce the implicit result when Castro later does
+//    its own state_new += dt*ext_src.
+// 4. Adds that effective diffusion source into ext_src(UEINT/UEDEN), on
+//    top of (not replacing) the explicit ionization/collision sources
+//    from step 1.
+//
+// This keeps everything consistent with Castro's actual accumulation
+// contract: fill_ext_source2 only ever writes ext_src.
 // ---------------------------------------------------------------------
 inline void
 fill_ext_source2 (const Real time, const Real dt,
-                  const MultiFab& state_old, MultiFab& state_new,
+                  const MultiFab& state_old, const MultiFab& state_new,
                   MultiFab& ext_src, const GeometryData& geomdata)
 {
     ignore__unused(state_old);
@@ -163,39 +171,66 @@ fill_ext_source2 (const Real time, const Real dt,
         });
     }
 
-    // Fold the explicit sources into a working copy of state_new so the
-    // implicit diffusion solve starts from the post-explicit-source state.
-    // (state_new here should already have >=1 ghost cell -- see the
-    // ignore_unused macro below which guarantees this.)
-    amrex::MultiFab::Saxpy(state_new, dt, ext_src, 0, 0, ext_src.nComp(), 0);
+    // --- Step 2: local working copy with explicit sources folded in ---
+    // state_new has whatever ghost cells were provided by the caller
+    // (see the ignore_unused macro below, which guarantees >=1).
+    int nGrow = state_new.nGrow();
+    amrex::MultiFab state_work(state_new.boxArray(), state_new.DistributionMap(),
+                                state_new.nComp(), nGrow);
+    amrex::MultiFab::Copy(state_work, state_new, 0, 0, state_new.nComp(), nGrow);
+    amrex::MultiFab::Saxpy(state_work, dt, ext_src, 0, 0, ext_src.nComp(), 0);
+    // Note: ext_src has 0 ghost cells, so only the valid region of
+    // state_work is updated here; ghost cells of state_work still hold
+    // the pre-source values. FillBoundary is called inside the JFNK
+    // solver before any stencil evaluation, which corrects this for
+    // periodic BCs. For physical (non-periodic) BCs this is a known gap
+    // -- see note in the accompanying explanation.
 
-    // Re-derive UTEMP from the updated UEINT/species so the Newton
-    // initial guess is consistent before diffusion.
-    // (Uses same EOS call as sync_energy_from_temp but inverted: here we
-    // instead directly reuse UTEMP as initial guess and let
-    // sync_energy_from_temp inside the solver reconcile it on the first
-    // residual evaluation -- acceptable since Newton will correct any
-    // small inconsistency in the first iteration.)
+    // GeometryData exposes prob_domain as a field (not ProbDomain()),
+    // and isPeriodic(int) per-direction (not a no-arg isPeriodic()).
+    // Confirmed AMReX pattern: default-construct then .define(...) --
+    // there is no single Geometry constructor taking all four pieces.
+    amrex::Array<int,AMREX_SPACEDIM> is_periodic{};
+    for (int d = 0; d < AMREX_SPACEDIM; ++d) {
+        is_periodic[d] = geomdata.isPeriodic(d);
+    }
+    amrex::Geometry geom;
+    geom.define(geomdata.Domain(), geomdata.prob_domain,
+                geomdata.Coord(), is_periodic);
 
-    amrex::Geometry geom(geomdata.Domain(), geomdata.ProbDomain(), geomdata.Coord(),
-                          geomdata.isPeriodic());
-
-    // --- Step 2: implicit diffusion (backward Euler + JFNK) ---
-    bool converged = jfnk_diffusion::solve_implicit_diffusion(state_new, geom, dt);
+    // --- Step 3: implicit diffusion (backward Euler + JFNK) ---
+    amrex::MultiFab dsrc_mf(ext_src.boxArray(), ext_src.DistributionMap(), 1, 0);
+    bool converged = jfnk_diffusion::solve_implicit_diffusion(state_work, dsrc_mf, geom, dt, nGrow);
     if (!converged) {
         amrex::Print() << "WARNING: JFNK diffusion solve did not converge to tolerance "
                         << "within max_newton_iters at time " << time
                         << ", dt = " << dt << "\n";
     }
 
-    // --- Step 3: zero ext_src energy components so Castro's own
-    // explicit accumulation doesn't double-apply what we already folded
-    // into state_new above (species/UFX sources were already applied too).
-    ext_src.setVal(0.0);
+    // --- Step 4: add the effective diffusion source into ext_src,
+    // on top of the explicit ionization/collision sources already there.
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(ext_src, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.tilebox();
+        Array4<Real const> const dsrc = dsrc_mf.const_array(mfi);
+        Array4<Real> const src = ext_src.array(mfi);
+
+        amrex::ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+        {
+            src(i,j,k,UEDEN) += dsrc(i,j,k);
+            src(i,j,k,UEINT) += dsrc(i,j,k);
+        });
+    }
 }
 
 // attack the line "amrex::ignore_unused(state_old);" in Castro_problem_source.cpp
-// to call our version of fill_ext_source instead
+// to call our version of fill_ext_source instead.
+// Note: state_new is const here, matching Castro's real signature --
+// confirmed from the build error message rather than assumed.
 #define ignore_unused \
     Real x = 0; \
     ignore__unused(x); \
@@ -206,8 +241,7 @@ fill_ext_source2 (const Real time, const Real dt,
         amrex::MultiFab state_new_ghost(state_new.boxArray(), state_new.DistributionMap(), \
                                         state_new.nComp(), amrex::IntVect(1)); \
         expand_state(state_new_ghost, time, state_new_ghost.nGrow()); \
-        fill_ext_source2(time, dt, state_old, state_new_ghost, ext_src, geomdata.data()); \
-        state_new.ParallelCopy(state_new_ghost, 0, 0, state_new.nComp(), 0, 0); \
+        fill_ext_source2(time, dt, state_old, state_new_ghost, ext_src, geom.data()); \
         return; \
     } \
     ignore__unused

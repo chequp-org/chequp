@@ -259,7 +259,7 @@ namespace jfnk_diffusion {
             amrex::MultiFab::Copy(w_mf, w_pc, 0, 0, 1, 0);
 
             for (int i = 0; i <= k; ++i) {
-                H[i][k] = amrex::MultiFab::Dot(w_mf, *V[i], 0, 0, 1, 0);
+                H[i][k] = amrex::MultiFab::Dot(w_mf, 0, *V[i], 0, 1, 0);
                 amrex::MultiFab::Saxpy(w_mf, -H[i][k], *V[i], 0, 0, 1, 0);
             }
             H[k+1][k] = w_mf.norm2(0);
@@ -311,24 +311,45 @@ namespace jfnk_diffusion {
     }
 
     // ---------------------------------------------------------------
-    // Top-level Newton driver. On input, state_mf's UTEMP holds the
-    // initial guess (typically T^n, or the explicit-diffusion estimate)
-    // and URHO/UFS/UFX/UMX../UEINT/UEDEN are the OLD-time values that
-    // are held FIXED through the diffusion sub-step (operator splitting).
-    // On output, state_mf's UTEMP, UEINT, UEDEN hold the converged T^{n+1}.
-    // rhoe_n_mf must equal state_mf(UEINT) evaluated at the true old time
-    // (pass in a copy taken before iterating).
+    // Top-level Newton driver.
+    //
+    // state_in_mf : the CURRENT full state (e.g. state_new as handed to
+    //               fill_ext_source -- may be const in the caller; this
+    //               function never writes into it). UTEMP is used as the
+    //               initial Newton guess; URHO/UFS/UFX/UMom are held
+    //               fixed through the diffusion sub-step (operator
+    //               splitting -- diffusion only touches energy/UTEMP).
+    // dsrc_mf     : OUTPUT, single component. On return, contains the
+    //               effective volumetric energy source rate
+    //                   dsrc = (rho*e_implicit^{n+1} - rho*e^n) / dt
+    //               which the caller should ADD into ext_src(UEINT) and
+    //               ext_src(UEDEN) so that Castro's own
+    //               state_new += dt*ext_src reproduces the converged
+    //               implicit result.
+    // nGrow       : number of valid ghost cells already filled in
+    //               state_in_mf (must be >= 1).
+    //
     // Returns true if converged within max_newton_iters.
     // ---------------------------------------------------------------
     inline bool
-    solve_implicit_diffusion( amrex::MultiFab& state_mf,
+    solve_implicit_diffusion( const amrex::MultiFab& state_in_mf,
+                               amrex::MultiFab& dsrc_mf,
                                const amrex::Geometry& geom,
-                               Real dt )
+                               Real dt,
+                               int nGrow )
     {
-        const BoxArray& ba = state_mf.boxArray();
-        const DistributionMapping& dm = state_mf.DistributionMap();
+        const BoxArray& ba = state_in_mf.boxArray();
+        const DistributionMapping& dm = state_in_mf.DistributionMap();
 
-        // Freeze the old-time energy as the RHS anchor for the backward-Euler residual
+        // Working copy that JFNK is free to mutate. Owned locally --
+        // never aliases the caller's (possibly const) state_new.
+        amrex::MultiFab state_mf(ba, dm, state_in_mf.nComp(), nGrow);
+        amrex::MultiFab::Copy(state_mf, state_in_mf, 0, 0, state_in_mf.nComp(), nGrow);
+
+        // Freeze the old-time (pre-diffusion) energy as the RHS anchor
+        // for the backward-Euler residual. This is rho*e at the state
+        // handed in, i.e. AFTER any explicit sources already folded in
+        // by the caller, BEFORE diffusion is applied.
         amrex::MultiFab rhoe_n_mf(ba, dm, 1, 0);
         amrex::MultiFab::Copy(rhoe_n_mf, state_mf, UEINT, 0, 1, 0);
 
@@ -380,6 +401,27 @@ namespace jfnk_diffusion {
             F0norm = F_mf.norm2(0);
 
             converged = (F0norm <= tol);
+        }
+
+        // Back out the effective source: dsrc = (rho*e^{n+1} - rho*e_in) / dt
+        // Note rho*e_in here is UEINT of state_in_mf (pre-diffusion), NOT
+        // rhoe_n_mf necessarily -- they're the same by construction above,
+        // but we read from state_in_mf directly for clarity/robustness.
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+        for (MFIter mfi(dsrc_mf, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            Array4<Real const> const rhoe_new = state_mf.const_array(mfi);
+            Array4<Real const> const rhoe_old = state_in_mf.const_array(mfi);
+            Array4<Real> const dsrc = dsrc_mf.array(mfi);
+
+            amrex::ParallelFor(bx,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+            {
+                dsrc(i,j,k) = (rhoe_new(i,j,k,UEINT) - rhoe_old(i,j,k,UEINT)) / dt;
+            });
         }
 
         return converged;
