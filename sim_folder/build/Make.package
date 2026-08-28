@@ -1,1 +1,3 @@
 CEXE_headers += actual_conductivity.H
+CEXE_headers += diffusion_operator.H
+CEXE_headers += jfnk_diffusion.H
