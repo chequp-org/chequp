@@ -137,7 +137,7 @@ class CastroSimulation(object):
             
             # Calculate derived temperatures if requested (not directly stored)
             if quantity in ['T_e', 'T_h']:
-                f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Heavy particle fraction
+                f = ad['rho_f_heavie'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Heavy particle fraction
                 e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()            # Internal energy density
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze() # Hydrogen mass fraction
                 if quantity == 'T_e':
@@ -167,7 +167,7 @@ class CastroSimulation(object):
             
             # Calculate derived temperatures (same as 1D case)
             if quantity in ['T_e', 'T_h']:
-                f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
+                f = ad['rho_f_heavie'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 if quantity == 'T_e':
@@ -202,7 +202,7 @@ class CastroSimulation(object):
             
             # Calculate derived temperatures (same as previous cases)
             if quantity in ['T_e', 'T_h']:
-                f = ad['rho_f_heavies'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
+                f = ad['rho_f_heavie'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 e_ = ad['rho_e'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 X_H = ad['rho_H1'].to_ndarray().squeeze() / ad['density'].to_ndarray().squeeze()
                 
@@ -293,7 +293,8 @@ class CastroSimulation(object):
                     for spe in [f for f in self.fields_list if f[-1].isdigit()]:
                         m_rho_X = self.get_field(_t, f'{spe}', level)
                         # Add ionization energy: n_species * ionization_potential
-                        m_rho_E['q'] += self.data_species[spe.removeprefix("rho_")]['ion_energy'] * qe * m_rho_X['q'] / m_p * 1e-3
+                        a_ion = self.data_species[spe.removeprefix("rho_")]['mass'] / self.data_species['H0']['mass']
+                        m_rho_E['q'] += self.data_species[spe.removeprefix("rho_")]['ion_energy'] * qe * m_rho_X['q'] / (m_p * a_ion) * 1e-3
                         
             elif energy_type == 'ion':
                 # Calculate only ionization energy
@@ -302,7 +303,8 @@ class CastroSimulation(object):
                 if bool(self.parameters_list["castro.add_ext_src"]):
                     for spe in [f for f in self.fields_list if f[-1].isdigit()]:
                         m_rho_X = self.get_field(_t, f'{spe}', level)
-                        m_rho_E['q'] += self.data_species[spe.removeprefix("rho_")]['ion_energy'] * qe * m_rho_X['q'] / m_p * 1e-3
+                        a_ion = self.data_species[spe.removeprefix("rho_")]['mass'] / self.data_species['H0']['mass']
+                        m_rho_E['q'] += self.data_species[spe.removeprefix("rho_")]['ion_energy'] * qe * m_rho_X['q'] / (m_p * a_ion) * 1e-3
                 else:
                     raise ValueError("Ionization energy requested but 'castro.add_ext_src' is not activated")
                     

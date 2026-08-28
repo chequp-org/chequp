@@ -245,8 +245,8 @@ void problem_source (int i, int j, int k,
     amrex::Real v_e_E[NumSpec] = {};
     for (int ispe = 0; ispe < n_active; ispe++) {
         int mu = active_spec[ispe];
-        v_e_E[mu] = 2 * SI::m_e / (aion[get_atom_index(mu)] * C::m_u * 1e-3) *
-                    (zion[mu] * v_ei + v_en[mu]);
+        v_e_E[mu] = 2 * SI::m_e / (aion[atom_first_species[get_atom_index(mu)]] 
+        * C::m_u * 1e-3) * (zion[mu] * v_ei + v_en[mu]);
     }
 
     // Calculate energy transfer source term

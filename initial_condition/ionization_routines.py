@@ -184,10 +184,12 @@ def compute_ionization_vectorized(
 
     T_out[0] = T
 
-def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0, Th_eV=348.0*(k/e)):
+def save_to_openpmd(grid_extent, all_populations, Te_eV, output_file, species_keys, xmom=0, ymom=0, zmom=0, Th_eV=None):
     """
     Save with all species densities (m^-3) to an openPMD file
     """
+    if Th_eV is None:
+        Th_eV = 348.0 * (k / e)
     # create openpmd file
     series = io.Series(output_file, io.Access.create)
     # only 1 iteration needed
@@ -316,7 +318,7 @@ def process_intensity_array_multispecies(intensity_nd, lambd, tau, ell,
     Returns:
     --------
     all_populations : nD array
-        Population fractions for all species (shape: [*intensity_nd.shape, len(species_keys)])
+        Population fractions for all species (shape: `[*intensity_nd.shape, len(species_keys)]`)
     T_array : nD array
         Electron temperatures in eV, same (shape: intensity_nd)
     """

@@ -18,13 +18,14 @@ inline AMREX_GPU_MANAGED amrex::Real g_deg[21] = {
 constexpr int num_atom_species = 4; 
 constexpr amrex::Real X_min = 1e-20_rt; 
 
+inline AMREX_GPU_MANAGED int atom_first_species[num_atom_species] = {0, 2, 8, 11};
 // Helper function to get the index of the atom species from the atomic number
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
 int get_atom_index(int mu) { 
-    if (mu <= 1 && mu >= 0) return 0;   
-    if (mu <= 7 && mu > 1)  return 1;   
-    if (mu <= 10 && mu > 7) return 2;   
-    if (mu <= 19 && mu > 10)return 3; 
+    if (mu <= 1 && mu >= 0) return 0; // H
+    if (mu <= 7 && mu > 1)  return 1; // N
+    if (mu <= 10 && mu > 7) return 2; // He
+    if (mu <= 18 && mu > 10)return 3; // Ar
     return 0; 
 } 
 // Atomic numbers of each species (H, N, He, Ar)
