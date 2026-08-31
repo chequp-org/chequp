@@ -126,7 +126,7 @@ struct Params {
     Real reorth_tol       = 0.7_rt;
     Real fd_eps           = 1.0e-7_rt;   // finite-difference step for J*v
     int  max_linesearch   = 8;
-    bool verbose          = true;
+    bool verbose          = false;
 };
 
 // ---------------------------------------------------------------------
