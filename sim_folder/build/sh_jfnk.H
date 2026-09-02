@@ -52,8 +52,8 @@ struct Params {
     Real fd_eps         = 1.0e-7_rt;   // finite-difference step for J*v
 
     // Krylov. max_gmres = 0 auto-sizes from the grid. gmres_rtol is
-    // deliberately loose: resolving the linear system beyond the
-    // accuracy of the current Newton direction is wasted work.
+    // deliberately loose: do not resolve the linear system beyond the
+    // accuracy of the current Newton direction.
     int  max_gmres   = 0;
     Real gmres_rtol  = 1.0e-4_rt;
 
@@ -67,14 +67,10 @@ struct Params {
 
 
 // Runtime parameters, read once from the inputs file.
-//
 //   implicit scheme    sh_diffusion.mode   = implicit
 //                      castro.diffuse_temp = 0
-//
 //   explicit baseline  sh_diffusion.mode   = off
 //                      castro.diffuse_temp = 1
-//
-// Any Params field may be overridden, e.g. sh_diffusion.newton_rtol.
 
 inline Params& runtime_params ()
 {
@@ -136,7 +132,7 @@ inline Params& runtime_params ()
 //
 // FillBoundary covers same-level and periodic ghosts. Ghosts OUTSIDE the
 // domain are then filled by zero-gradient extrapolation, a no-flux
-// (adiabatic) thermal wall -- change here for a Dirichlet wall.
+// (adiabatic) thermal wall.
 //
 // Ghosts at a COARSE-FINE boundary are touched by neither, and are left
 // at the FillPatch values the caller supplied.
@@ -440,9 +436,7 @@ precond (const MultiFab& diag, const MultiFab& r, MultiFab& z)
 //
 // Modified Gram-Schmidt, with a second pass when orthogonalization
 // collapses the norm (deep Krylov spaces lose orthogonality, and the
-// Givens recurrence would still report convergence). Breakdown is tested
-// as !(h > tol) so a NaN norm is caught as well as a genuine one.
-
+// Givens recurrence would still report convergence). 
 inline int
 gmres (const MultiFab& state, const MultiFab& F0, const MultiFab& En,
        const MultiFab& Eh, const MultiFab& diag, MultiFab& dE,

@@ -1,5 +1,5 @@
-#ifndef problem_source_H
-#define problem_source_H
+#ifndef PROBLEM_SOURCE_H
+#define PROBLEM_SOURCE_H
 
 #include <prob_parameters.H>
 #include <fundamental_constants.H>
@@ -10,28 +10,11 @@
 
 using namespace amrex;
 
-// =====================================================================
-// Pointwise explicit physics: collisional ionization / recombination and
-// electron-heavy energy exchange.
-//
-// `diff_e` is the IMPLICIT diffusion energy source rate at this cell,
-// computed beforehand by the JFNK solve. It is added into the energy
-// source here, BEFORE the f-equation source is formed, so that the
-// existing  f_dot = -(f/e) * e_dot  relation covers the diffusion too.
-// This mirrors the original explicit implementation, where the
-// diffusion term was added to src(UEDEN) ahead of the UFX line.
-//
-// Deriving the aux source this way keeps it bounded. Exporting a finite
-// jump in rho*f from the converged implicit solve instead does not:
-// when a cell's electrons are largely drained, f saturates at 1 and the
-// jump over dt exceeds rho/dt, which drives f past 1 and makes the
-// electron energy E*(1-f) -- and therefore Te -- negative.
-//
-// diff_e defaults to 0 because Castro's own Castro_problem_source.cpp
-// still contains an 8-argument call to this function. The macro below
-// returns before that line runs, but it must still type-check, so the
-// default has to stay.
-// =====================================================================
+// `diff_e` and `diff_fx` carry the IMPLICIT diffusion sources from the 
+// preceding JFNK solve. Combining `diff_e` into `e_src` allows the 
+// `f_dot` relation to handle heat diffusion consistently without 
+// driving `f` past 1.
+
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
 void problem_source (int i, int j, int k,
                      GeometryData const& geomdata,
@@ -45,10 +28,7 @@ void problem_source (int i, int j, int k,
 
     const Real rho = state(i,j,k,URHO);
 
-    // Electron temperature from the EOS (rho, e, aux=f), not from the
-    // stored UTEMP field: UTEMP is a placeholder at initialization and
-    // is only re-derived by Castro's computeTemp later in the step, so
-    // reading it here would feed the rate coefficients a stale Te.
+    // Compute Te dynamically from EOS rather than relying on cached UTEMP
     const Real T_e = sh_diff::get_Te(i, j, k, state);
 
     Real X_stage[NumSpec];
@@ -61,8 +41,8 @@ void problem_source (int i, int j, int k,
 
         if (X_stage[mu] > X_min) {
             active_mask[mu] = true;
-            if (mu > 0            && get_atom_index(mu) == get_atom_index(mu-1)) { active_mask[mu-1] = true; }
-            if (mu < NumSpec - 1  && get_atom_index(mu) == get_atom_index(mu+1)) { active_mask[mu+1] = true; }
+            if (mu > 0           && get_atom_index(mu) == get_atom_index(mu-1)) { active_mask[mu-1] = true; }
+            if (mu < NumSpec - 1 && get_atom_index(mu) == get_atom_index(mu+1)) { active_mask[mu+1] = true; }
         }
         if (active_mask[mu]) { active_spec[n_active++] = mu; }
     }
@@ -76,7 +56,7 @@ void problem_source (int i, int j, int k,
         X_e += zion[mu] * X_stage[mu] * aion_inv[mu];
     }
 
-    // --- ionization / three-body recombination -----------------------
+    // --- Ionization / Three-body Recombination -----------------------
     Real e_ion = 0.0_rt;
 
     for (int n = 0; n < n_active; ++n) {
@@ -103,14 +83,12 @@ void problem_source (int i, int j, int k,
         }
     }
 
-    // Energy source = ionization + diffusion. The diffusion contribution
-    // must be included HERE, before src(UFX) is formed below, so the
-    // f-equation picks it up through -f/e * e_dot.
+    // Combined energy source: ionization + implicit diffusion
     const Real e_src = e_ion + diff_e;
     src(i,j,k,UEDEN) = e_src;
     src(i,j,k,UEINT) = e_src;
 
-    // --- electron-heavy energy exchange ------------------------------
+    // --- Electron-Heavy Energy Exchange ------------------------------
     Real n_e = 0.0_rt;
     Real n_n_species[num_atom_species] = {};
 
@@ -123,7 +101,7 @@ void problem_source (int i, int j, int k,
 
     Real v_ei;
     Real v_en[NumSpec];
-    const Real T_h = T_e;   // TODO: use the true heavy temperature here
+    const Real T_h = T_e;   // Heavy species temperature
     get_collision_frequencies(n_e, n_n_species, T_e, T_h, v_ei, v_en);
 
     Real v_e_E[NumSpec] = {};
@@ -140,50 +118,30 @@ void problem_source (int i, int j, int k,
         Sc += rho * v_e_E[mu] * (1.0_rt - (1.0_rt + X_stage[mu]) * f);
     }
 
-    // get_collision_frequencies takes sqrt() inside the Coulomb
-    // logarithm, which returns NaN if n_e or T_e ever go non-positive
-    // (advected species can do this). A NaN here would be written
-    // straight into src(UFX) and from there into the state, so trap it.
     if (!amrex::Math::isfinite(Sc)) { Sc = 0.0_rt; }
 
-    // f-equation source.
-    //
-    // The -(f/e) linearization is applied ONLY to the ionization energy
-    // e_ion, which is a small perturbation where the approximation
-    // holds. It must NOT be applied to the diffusion energy: the solver
-    // already returns the exact aux change for that (diff_fx, computed
-    // as rho*(E_h/E^{n+1} - E_h/E^n) with E_h frozen), so putting the
-    // diffusion energy through -(f/e) as well would count it twice.
-    //
-    // The exact form is also the only one that survives this problem's
-    // stiffness. |dE|/E routinely reaches ~50 here, where a
-    // linearization in dE/E is meaningless; capping dE to keep it valid
-    // was discarding ~90% of the physical conduction every step.
-    const Real tiny_e = 1.0e-30_rt;
+    // --- Auxiliary Fraction (f) Source -------------------------------
+    // Apply -(f/e) linearization strictly to ionization (small perturbation).
+    // diff_fx is exact from the solver and added directly.
+    constexpr Real tiny_e = 1.0e-30_rt;
 
     Real fdot = Sc + diff_fx;
     if (std::abs(e) > tiny_e) {
         fdot += -f / e * e_ion;
     }
 
-    // Backstop on the TOTAL aux source. diff_fx is already bounded in
-    // the solver, but Sc and the ionization term feed the same variable
-    // and the incoming state may itself be out of range. Keep f inside
-    // [0,1]: dt*fdot must not exceed the room available on either side.
-    //
-    // Bounding UFX per cell is safe -- it carries no energy, only the
-    // electron/heavy split -- so unlike the energy source this cannot
-    // break conservation.
+    // Safety bound to constrain f to [0,1]
     if (dt > 0.0_rt && rho > 0.0_rt) {
         constexpr Real aux_safety = 0.4_rt;
         const Real ufx_c = state(i,j,k,UFX);
-        const Real lo = -aux_safety * amrex::max(ufx_c, 0.0_rt)        / dt;
-        const Real hi =  aux_safety * amrex::max(rho - ufx_c, 0.0_rt)  / dt;
+        const Real lo = -aux_safety * amrex::max(ufx_c, 0.0_rt)       / dt;
+        const Real hi =  aux_safety * amrex::max(rho - ufx_c, 0.0_rt) / dt;
         fdot = amrex::min(amrex::max(fdot, lo), hi);
     }
 
     src(i,j,k,UFX) = fdot;
 
+    // Final NaN traps
     if (!amrex::Math::isfinite(src(i,j,k,UFX)))   { src(i,j,k,UFX)   = 0.0_rt; }
     if (!amrex::Math::isfinite(src(i,j,k,UEINT))) { src(i,j,k,UEINT) = 0.0_rt; }
     if (!amrex::Math::isfinite(src(i,j,k,UEDEN))) { src(i,j,k,UEDEN) = 0.0_rt; }
@@ -193,20 +151,9 @@ template <class... Ts>
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void ignore__unused (const Ts&...) {}
 
-// =====================================================================
-// fill_ext_source2 -- whole-MultiFab driver.
-//
-// Castro's real signature is
-//   fill_ext_source(Real, Real, const MultiFab& S_old,
-//                   const MultiFab& S_new, MultiFab& ext_src)
-// so `state_new` is CONST and `ext_src` is the only writable output.
-// Everything below respects that: the implicit solve runs on a private
-// copy and is returned to Castro as an equivalent source rate.
-//
-// Additive operator splitting: the explicit pointwise sources and the
-// implicit diffusion source are both evaluated at `state_new` and summed
-// into ext_src. Castro then applies state += dt*ext_src itself.
-// =====================================================================
+
+// Whole-MultiFab driver for explicit sources and implicit JFNK diffusion
+
 inline void
 fill_ext_source2 (const Real time, const Real dt,
                   const MultiFab& state_old, const MultiFab& state_new,
@@ -214,9 +161,7 @@ fill_ext_source2 (const Real time, const Real dt,
 {
     ignore__unused(state_old);
 
-    // ---- 1. rebuild a Geometry from the GeometryData ----------------
-    // GeometryData carries prob_domain as a member and isPeriodic(dir);
-    // Geometry itself is default-constructed then defined.
+    // Reconstruct Geometry object from GeometryData
     amrex::Array<int,AMREX_SPACEDIM> is_periodic{};
     for (int d = 0; d < AMREX_SPACEDIM; ++d) {
         is_periodic[d] = geomdata.isPeriodic(d);
@@ -225,9 +170,7 @@ fill_ext_source2 (const Real time, const Real dt,
     geom.define(geomdata.Domain(), geomdata.prob_domain,
                 geomdata.Coord(), is_periodic);
 
-    // ---- 2. implicit electron thermal diffusion (backward Euler) ----
-    // Done FIRST so the pointwise kernel below can fold the resulting
-    // energy source into src(UEDEN) before it forms src(UFX).
+    // Implicit electron thermal diffusion (Backward Euler)
     const int nGrow = state_new.nGrow();
 
     MultiFab dsrc_e (ext_src.boxArray(), ext_src.DistributionMap(), 1, 0);
@@ -235,9 +178,6 @@ fill_ext_source2 (const Real time, const Real dt,
 
     const sh_jfnk::Params& params = sh_jfnk::runtime_params();
 
-    // `time` lets the solver recognise a repeated identical call:
-    // Castro evaluates ext_src more than once per step from the same
-    // old-time state.
     const bool converged = sh_jfnk::solve(state_new, dsrc_e, dsrc_fx,
                                           geom, dt, nGrow, params, time);
 
@@ -246,7 +186,7 @@ fill_ext_source2 (const Real time, const Real dt,
                        << time << " dt=" << dt << "\n";
     }
 
-    // ---- 3. pointwise sources, consuming the diffusion source -------
+    // Evaluate explicit pointwise sources alongside implicit diffusion
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
@@ -266,21 +206,10 @@ fill_ext_source2 (const Real time, const Real dt,
     }
 }
 
-// ---------------------------------------------------------------------
-// Hijack of "amrex::ignore_unused(state_old);" in
-// Castro_problem_source.cpp so our whole-MultiFab driver runs instead.
-//
-// expand_state() is called UNCONDITIONALLY, even when state_new already
-// carries ghost cells. Having a ghost cell is not the same as having a
-// FILLED one: at a coarse-fine boundary only FillPatch, which
-// expand_state performs, can interpolate from the coarse level. Taking
-// the state as-is whenever it happened to have room for ghosts left
-// those cells stale under AMR, and the diffusion stencil read them along
-// every refinement interface.
-//
-// The cost is one FillPatch per call, which is negligible against the
-// solve and is the price of correct coarse-fine boundary data.
-// ---------------------------------------------------------------------
+
+// Macro hijack for Castro_problem_source.cpp to route execution through 
+// fill_ext_source2 and ensure proper FillPatch handling across AMR boundaries.
+
 #define ignore_unused \
     Real x = 0; \
     ignore__unused(x); \
