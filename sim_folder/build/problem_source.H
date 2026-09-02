@@ -38,8 +38,7 @@ void problem_source (int i, int j, int k,
                      Array4<const Real> const& state,
                      Array4<Real> const& src,
                      const Real dt, const Real time,
-                     const Real diff_e = 0.0_rt, const Real diff_fx = 0.0_rt,
-                     const bool aux_only = false)
+                     const Real diff_e = 0.0_rt, const Real diff_fx = 0.0_rt)
 {
     using namespace problem;
     amrex::ignore_unused(geomdata, dt, time);
@@ -107,11 +106,7 @@ void problem_source (int i, int j, int k,
     // Energy source = ionization + diffusion. The diffusion contribution
     // must be included HERE, before src(UFX) is formed below, so the
     // f-equation picks it up through -f/e * e_dot.
-    //
-    // In aux_only mode Castro is applying conduction to the energy
-    // itself, so diff_e must be kept OUT of the energy source; it is
-    // still used for the f-equation below.
-    const Real e_src = aux_only ? e_ion : (e_ion + diff_e);
+    const Real e_src = e_ion + diff_e;
     src(i,j,k,UEDEN) = e_src;
     src(i,j,k,UEINT) = e_src;
 
@@ -166,21 +161,9 @@ void problem_source (int i, int j, int k,
     // was discarding ~90% of the physical conduction every step.
     const Real tiny_e = 1.0e-30_rt;
 
-    // Which energy the -(f/e) linearisation is applied to.
-    //
-    // Normally only the ionisation term: the solver returns the EXACT
-    // auxiliary change for conduction in diff_fx, and putting the
-    // conduction energy through -(f/e) as well would count it twice.
-    //
-    // In aux_only mode the solver returns diff_fx = 0 and hands back
-    // L in diff_e purely so the conduction term reaches the f-equation,
-    // in the differential form of the governing document. It is excluded
-    // from the energy source above, since Castro applies it there.
-    const Real e_lin = aux_only ? (e_ion + diff_e) : e_ion;
-
     Real fdot = Sc + diff_fx;
     if (std::abs(e) > tiny_e) {
-        fdot += -f / e * e_lin;
+        fdot += -f / e * e_ion;
     }
 
     // Backstop on the TOTAL aux source. diff_fx is already bounded in
@@ -250,23 +233,8 @@ fill_ext_source2 (const Real time, const Real dt,
     MultiFab dsrc_e (ext_src.boxArray(), ext_src.DistributionMap(), 1, 0);
     MultiFab dsrc_fx(ext_src.boxArray(), ext_src.DistributionMap(), 1, 0);
 
-    // Parameters come from the inputs file via sh_diffusion.*, so
-    // switching schemes needs no rebuild:
-    //
-    //   implicit scheme    sh_diffusion.mode = implicit
-    //                      castro.diffuse_temp = 0
-    //
-    //   explicit baseline  sh_diffusion.mode = off
-    //                      castro.diffuse_temp = 1
-    //                      sh_diffusion.aux_for_castro_diffusion = 1
     const sh_jfnk::Params& params = sh_jfnk::runtime_params();
 
-    // Aux-only: Castro applies conduction to the energy itself, and the
-    // solver returns L only so the f-equation can pick up its
-    // -(f/e)*div(lambda_e grad Te) term. It must reach the auxiliary
-    // source but NOT the energy source.
-    const bool aux_only = (params.mode == sh_jfnk::MODE_OFF &&
-                           params.aux_for_castro_diffusion);
     // `time` lets the solver recognise a repeated identical call:
     // Castro evaluates ext_src more than once per step from the same
     // old-time state.
@@ -293,7 +261,7 @@ fill_ext_source2 (const Real time, const Real dt,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
             problem_source(i, j, k, geomdata, s, src, dt, time,
-                           de(i,j,k), dfx(i,j,k), aux_only);
+                           de(i,j,k), dfx(i,j,k));
         });
     }
 }

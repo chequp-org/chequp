@@ -35,13 +35,6 @@ enum DiffMode { MODE_OFF = 0, MODE_IMPLICIT = 1 };
 struct Params {
     DiffMode mode = MODE_IMPLICIT;
 
-    // With mode = off and castro.diffuse_temp = 1, Castro applies
-    // conduction to the energy but knows nothing about f, so the
-    // -(f/e)*div(kappa grad Te) term of the f-equation goes missing.
-    // Setting this true evaluates L once per step to supply that term
-    // only, contributing nothing to the energy.
-    bool aux_for_castro_diffusion = false;
-
     // Castro evaluates ext_src more than once per step from the same
     // old-time state. Reuse the result when the input is identical;
     // guarded by a checksum, so a mismatch falls through to a real solve.
@@ -80,7 +73,6 @@ struct Params {
 //
 //   explicit baseline  sh_diffusion.mode   = off
 //                      castro.diffuse_temp = 1
-//                      sh_diffusion.aux_for_castro_diffusion = 1
 //
 // Any Params field may be overridden, e.g. sh_diffusion.newton_rtol.
 
@@ -108,9 +100,7 @@ inline Params& runtime_params ()
     pp.query("reorth_tol",   p.reorth_tol);
     pp.query("fd_eps",       p.fd_eps);
 
-    int itmp = p.aux_for_castro_diffusion ? 1 : 0;
-    if (pp.query("aux_for_castro_diffusion", itmp)) { p.aux_for_castro_diffusion = itmp; }
-    itmp = p.verbose ? 1 : 0;
+    int itmp = p.verbose ? 1 : 0;
     if (pp.query("verbose", itmp))   { p.verbose = itmp; }
     itmp = p.use_cache ? 1 : 0;
     if (pp.query("use_cache", itmp)) { p.use_cache = itmp; }
@@ -623,24 +613,6 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
     if (p.mode == MODE_OFF) {
         dsrc_e.setVal(0.0_rt);
         dsrc_fx.setVal(0.0_rt);
-
-        // Optionally supply only the f-equation's conduction term, for
-        // the case where Castro applies conduction to the energy itself.
-        if (p.aux_for_castro_diffusion) {
-            MultiFab st(ba, dm, ncomp, amrex::max(nGrow, 1));
-            MultiFab::Copy(st, state_in, 0, 0, ncomp,
-                           amrex::min(amrex::max(nGrow,1), state_in.nGrow()));
-            fill_ghosts(st, geom);
-
-            sh_diff::Workspace aux_ws;
-            aux_ws.define(ba, dm);
-            MultiFab L(ba, dm, 1, 0);
-            sh_diff::compute_L(st, L, geom, &aux_ws);
-
-            // Returned through the ENERGY channel; problem_source uses it
-            // for the -(f/e) term only and must keep it out of UEINT/UEDEN.
-            MultiFab::Copy(dsrc_e, L, 0, 0, 1, 0);
-        }
         return true;
     }
 
