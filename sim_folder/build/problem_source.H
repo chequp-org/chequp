@@ -5,8 +5,8 @@
 #include <fundamental_constants.H>
 #include <collision_frequencies.H>
 #include <collisional_ionization.H>
-#include <sh_diffusion_operator.H>
-#include <sh_jfnk.H>
+#include <thd_diffusion_operator.H>
+#include <thd_jfnk.H>
 
 using namespace amrex;
 
@@ -29,7 +29,7 @@ void problem_source (int i, int j, int k,
     const Real rho = state(i,j,k,URHO);
 
     // Compute Te dynamically from EOS rather than relying on cached UTEMP
-    const Real T_e = sh_diff::get_Te(i, j, k, state);
+    const Real T_e = thd_diff::get_Te(i, j, k, state);
 
     Real X_stage[NumSpec];
     bool active_mask[NumSpec] = {false};
@@ -176,10 +176,10 @@ fill_ext_source2 (const Real time, const Real dt,
     MultiFab dsrc_e (ext_src.boxArray(), ext_src.DistributionMap(), 1, 0);
     MultiFab dsrc_fx(ext_src.boxArray(), ext_src.DistributionMap(), 1, 0);
 
-    const sh_jfnk::Params& params = sh_jfnk::runtime_params();
+    const thd_jfnk::Params& params = thd_jfnk::runtime_params();
 
-    const bool converged = sh_jfnk::solve(state_new, dsrc_e, dsrc_fx,
-                                          geom, dt, nGrow, params, time);
+    const bool converged = thd_jfnk::solve(state_new, dsrc_e, dsrc_fx,
+                                            geom, dt, nGrow, params, time);
 
     if (!converged) {
         amrex::Print() << "WARNING: implicit diffusion did not converge, t="
