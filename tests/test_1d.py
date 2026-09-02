@@ -255,7 +255,7 @@ def test_1d_desy_benchmark():
     # Run the code
     # The runtime options are the parameters that are temporary overwritten in the input file to lauch the simulation.
     # This avoid to modify each time we want to run with differents parameters
-    run_castro_simulation(model='gamma_law_2T', runtime_options="castro.add_ext_src=1 castro.diffuse_temp=0 amr.plot_int = 100 problem.initial_conditions_file=1d_desy_benchmark.h5")
+    run_castro_simulation(model='gamma_law_2T', runtime_options="castro.add_ext_src=1 castro.cfl = 0.5 castro.diffuse_temp=0 amr.plot_int = 10 problem.initial_conditions_file=1d_desy_benchmark.h5")
     # Physical tests
     sim_data = CastroSimulation('.', 'plt_1d_*')
 
