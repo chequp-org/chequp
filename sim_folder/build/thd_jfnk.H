@@ -67,9 +67,9 @@ struct Params {
 
 
 // Runtime parameters, read once from the inputs file.
-//   implicit scheme    sh_diffusion.mode   = implicit
+//   implicit scheme    thd_diffusion.mode   = implicit
 //                      castro.diffuse_temp = 0
-//   explicit baseline  sh_diffusion.mode   = off
+//   explicit baseline  thd_diffusion.mode   = off
 //                      castro.diffuse_temp = 1
 
 inline Params& runtime_params ()
@@ -79,13 +79,13 @@ inline Params& runtime_params ()
     if (initialised) { return p; }
     initialised = true;
 
-    amrex::ParmParse pp("sh_diffusion");
+    amrex::ParmParse pp("thd_diffusion");
 
     std::string m;
     if (pp.query("mode", m)) {
         if      (m == "off")      { p.mode = MODE_OFF; }
         else if (m == "implicit") { p.mode = MODE_IMPLICIT; }
-        else { amrex::Abort("sh_diffusion.mode must be 'off' or 'implicit'"); }
+        else { amrex::Abort("thd_diffusion.mode must be 'off' or 'implicit'"); }
     }
 
     pp.query("source_scale", p.source_scale);
@@ -111,16 +111,16 @@ inline Params& runtime_params ()
     const bool we_diffuse = (p.mode != MODE_OFF);
 
     if (we_diffuse && castro_diffuse_temp == 1) {
-        amrex::Abort("Conduction applied TWICE: sh_diffusion.mode != off and "
+        amrex::Abort("Conduction applied TWICE: thd_diffusion.mode != off and "
                      "castro.diffuse_temp = 1. Set one of them off.");
     }
     if (!we_diffuse && castro_diffuse_temp != 1) {
-        amrex::Print() << "[SH-JFNK] WARNING: no thermal conduction anywhere "
+        amrex::Print() << "[THD-JFNK] WARNING: no thermal conduction anywhere "
                        << "(mode = off, castro.diffuse_temp != 1).\n";
     }
 
     if (p.verbose) {
-        amrex::Print() << "[SH-JFNK] mode = "
+        amrex::Print() << "[THD-JFNK] mode = "
                        << ((p.mode == MODE_OFF) ? "off" : "implicit")
                        << ", castro.diffuse_temp = " << castro_diffuse_temp << "\n";
     }
@@ -234,10 +234,10 @@ refresh_aux (MultiFab& state, const MultiFab& Eh)
 // consistent with its UEINT.
 inline void
 residual (const MultiFab& state, const MultiFab& En, MultiFab& F,
-          const Geometry& geom, Real dt, sh_diff::Workspace* ws = nullptr)
+          const Geometry& geom, Real dt, thd_diff::Workspace* ws = nullptr)
 {
     MultiFab L(F.boxArray(), F.DistributionMap(), 1, 0);
-    sh_diff::compute_L(state, L, geom, ws);
+    thd_diff::compute_L(state, L, geom, ws);
 
 #ifdef _OPENMP
 #pragma omp parallel
@@ -302,7 +302,7 @@ jac_vec (const MultiFab& state, const MultiFab& F0, const MultiFab& v,
          MultiFab& Jv, const MultiFab& En, const MultiFab& Eh,
          const Geometry& geom, Real dt, const Params& p,
          MultiFab* pert_ws = nullptr, MultiFab* base_ws = nullptr,
-         sh_diff::Workspace* ws = nullptr)
+         thd_diff::Workspace* ws = nullptr)
 {
     const Real norm_E = state.norm2(UEINT);
     const Real norm_v = v.norm2(0);
@@ -349,16 +349,16 @@ jac_vec (const MultiFab& state, const MultiFab& F0, const MultiFab& v,
 
 inline void
 build_precond (const MultiFab& state, const MultiFab& Eh, MultiFab& diag,
-               const Geometry& geom, Real dt, sh_diff::Workspace* ws = nullptr)
+               const Geometry& geom, Real dt, thd_diff::Workspace* ws = nullptr)
 {
-    sh_diff::Workspace local;
-    sh_diff::Workspace* w = ws;
+    thd_diff::Workspace local;
+    thd_diff::Workspace* w = ws;
     if (w == nullptr) {
         local.define(state.boxArray(), state.DistributionMap());
         w = &local;
     }
-    sh_diff::compute_coeffs(state, w->coef);
-    sh_diff::compute_face_coeffs(w->coef, w->fk, geom);
+    thd_diff::compute_coeffs(state, w->coef);
+    thd_diff::compute_face_coeffs(w->coef, w->fk, geom);
 
     // *Array() returns by value; geom.CellSize() would be a host pointer
     // captured into a device lambda.
@@ -382,7 +382,7 @@ build_precond (const MultiFab& state, const MultiFab& Eh, MultiFab& diag,
         amrex::ParallelFor(bx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            const Real Te_c = cc(i,j,k,sh_diff::CTE);
+            const Real Te_c = cc(i,j,k,thd_diff::CTE);
 
             Real stiff = 0.0_rt;
             for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
@@ -394,7 +394,7 @@ build_precond (const MultiFab& state, const MultiFab& Eh, MultiFab& diag,
 #if AMREX_SPACEDIM == 3
                 if (idir == 2) { kl = fz(i,j,k); kr = fz(i,j,k+1); }
 #endif
-                stiff += sh_diff::cell_metric(i, j, k, idir,
+                stiff += thd_diff::cell_metric(i, j, k, idir,
                                               problo.data(), dx.data(), coord)
                          * (kl + kr);
             }
@@ -441,7 +441,7 @@ inline int
 gmres (const MultiFab& state, const MultiFab& F0, const MultiFab& En,
        const MultiFab& Eh, const MultiFab& diag, MultiFab& dE,
        const Geometry& geom, Real dt, const Params& p,
-       sh_diff::Workspace* ws = nullptr, Real* final_resid = nullptr)
+       thd_diff::Workspace* ws = nullptr, Real* final_resid = nullptr)
 {
     const BoxArray&            ba = F0.boxArray();
     const DistributionMapping& dm = F0.DistributionMap();
@@ -625,7 +625,7 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
             MultiFab::Copy(dsrc_e,  c.dsrc_e,  0, 0, 1, 0);
             MultiFab::Copy(dsrc_fx, c.dsrc_fx, 0, 0, 1, 0);
             if (p.verbose) {
-                amrex::Print() << "[SH-JFNK] repeat solve, reusing result\n";
+                amrex::Print() << "[THD-JFNK] repeat solve, reusing result\n";
             }
             return c.converged;
         }
@@ -648,7 +648,7 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
         !amrex::Math::isfinite(state.min(UEINT, nG)) ||
         !amrex::Math::isfinite(state.max(UEINT, nG)))
     {
-        amrex::Print() << "[SH-JFNK] WARNING: ghost cells look invalid (rho min = "
+        amrex::Print() << "[THD-JFNK] WARNING: ghost cells look invalid (rho min = "
                        << state.min(URHO, nG) << "). Caller must supply a "
                        << "FillPatch'd state with >= 1 ghost cell.\n";
     }
@@ -685,22 +685,22 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
 
     // Cell coefficients + face conductivities, reused by every residual
     // and preconditioner build in this solve.
-    sh_diff::Workspace wsp;
+    thd_diff::Workspace wsp;
     wsp.define(ba, dm);
 
     // Te bounds before the solve, for the maximum-principle check below.
     Real Te_lo_old = 0.0_rt, Te_hi_old = 0.0_rt;
     if (p.verbose) {
-        sh_diff::compute_coeffs(state, wsp.coef);
-        Te_lo_old = wsp.coef.min(sh_diff::CTE);
-        Te_hi_old = wsp.coef.max(sh_diff::CTE);
+        thd_diff::compute_coeffs(state, wsp.coef);
+        Te_lo_old = wsp.coef.min(thd_diff::CTE);
+        Te_hi_old = wsp.coef.max(thd_diff::CTE);
     }
 
     residual(state, En, F, geom, dt, &wsp);
     Real Fnorm = F.norm2(0);
 
     if (!amrex::Math::isfinite(Fnorm)) {
-        amrex::Print() << "[SH-JFNK] ERROR: initial residual not finite.\n"
+        amrex::Print() << "[THD-JFNK] ERROR: initial residual not finite.\n"
                        << "          rho  valid/ghost min = " << state.min(URHO,0)
                        << " / " << state.min(URHO,nG) << "\n"
                        << "          eint valid/ghost min = " << state.min(UEINT,0)
@@ -719,7 +719,7 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
         // |F(E^n)| = |dt*L(E^n)|, so this ratio is the explicit stability
         // parameter. Above ~0.5 an explicit treatment would be unstable.
         const Real stab = Fnorm / escale;
-        amrex::Print() << "[SH-JFNK] enter  |F|=" << Fnorm << "  tol=" << tol
+        amrex::Print() << "[THD-JFNK] enter  |F|=" << Fnorm << "  tol=" << tol
                        << "  |dt*L|/|E|=" << stab
                        << (stab > 0.5_rt ? "  (explicit would be unstable)" : "")
                        << "\n";
@@ -734,7 +734,7 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
         // A silent inner failure returns a partial vector and Newton then
         // follows a wrong direction with no indication.
         if (kres > p.gmres_rtol) {
-            amrex::Print() << "[SH-JFNK] WARNING: GMRES stopped at " << nkr
+            amrex::Print() << "[THD-JFNK] WARNING: GMRES stopped at " << nkr
                            << " iterations, relative residual " << kres
                            << " > " << p.gmres_rtol
                            << ". Newton direction is inexact.\n";
@@ -776,7 +776,7 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
             // Committing a step known to increase the residual is how a
             // converging solve turns into a diverging one.
             if (p.verbose) {
-                amrex::Print() << "[SH-JFNK]   it=" << it
+                amrex::Print() << "[THD-JFNK]   it=" << it
                                << "  line search failed, keeping previous iterate\n";
             }
             break;
@@ -788,7 +788,7 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
         converged = (Fnorm <= tol);
 
         if (p.verbose) {
-            amrex::Print() << "[SH-JFNK]   it=" << it << "  krylov=" << nkr
+            amrex::Print() << "[THD-JFNK]   it=" << it << "  krylov=" << nkr
                            << "  lambda=" << lambda << "  |F|=" << Fnorm
                            << (converged ? "  CONVERGED" : "") << "\n";
         }
@@ -869,19 +869,19 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
 
     // ---- diagnostics -------------------------------------------------
     if (p.verbose) {
-        amrex::Print() << "[SH-JFNK] lambda=" << lam
+        amrex::Print() << "[THD-JFNK] lambda=" << lam
                        << (lam < 0.99_rt ? "  (source damped)" : "") << "\n";
 
         // Maximum principle applies to Te, the quantity actually
         // diffused -- NOT to E, whose bounds legitimately widen when n_e
         // varies in space.
-        sh_diff::compute_coeffs(state, wsp.coef);
-        const Real Te_lo_new = wsp.coef.min(sh_diff::CTE);
-        const Real Te_hi_new = wsp.coef.max(sh_diff::CTE);
+        thd_diff::compute_coeffs(state, wsp.coef);
+        const Real Te_lo_new = wsp.coef.min(thd_diff::CTE);
+        const Real Te_hi_new = wsp.coef.max(thd_diff::CTE);
         const Real slack = 1.0e-8_rt * amrex::max(std::abs(Te_hi_old), 1.0_rt);
         const bool violated = (Te_hi_new > Te_hi_old + slack) ||
                               (Te_lo_new < Te_lo_old - slack);
-        amrex::Print() << "[SH-JFNK] Te [" << Te_lo_old << ", " << Te_hi_old
+        amrex::Print() << "[THD-JFNK] Te [" << Te_lo_old << ", " << Te_hi_old
                        << "] -> [" << Te_lo_new << ", " << Te_hi_new << "]"
                        << (violated ? "  *** MAX-PRINCIPLE VIOLATED ***" : "  ok")
                        << "\n";
@@ -909,10 +909,10 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
         }
         const Real fmin = fpred.min(0);
         const Real fmax = fpred.max(0);
-        amrex::Print() << "[SH-JFNK] f in [" << fmin << ", " << fmax << "]"
+        amrex::Print() << "[THD-JFNK] f in [" << fmin << ", " << fmax << "]"
                        << ((fmin < 0.0_rt || fmax > 1.0_rt)
                                ? "  *** OUT OF RANGE ***" : "  ok") << "\n"
-                       << "[SH-JFNK] dsrc_e  " << dsrc_e.min(0)  << " / " << dsrc_e.max(0)
+                       << "[THD-JFNK] dsrc_e  " << dsrc_e.min(0)  << " / " << dsrc_e.max(0)
                        << "   dsrc_fx " << dsrc_fx.min(0) << " / " << dsrc_fx.max(0) << "\n";
     }
 
@@ -932,6 +932,6 @@ solve (const MultiFab& state_in, MultiFab& dsrc_e, MultiFab& dsrc_fx,
     return converged;
 }
 
-} // namespace sh_jfnk
+} // namespace thd_jfnk
 
 #endif

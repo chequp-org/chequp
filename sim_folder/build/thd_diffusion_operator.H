@@ -361,6 +361,6 @@ compute_L (const MultiFab& state, MultiFab& L_mf, const Geometry& geom,
     }
 }
 
-}
+} // namespace thd_diff
 
 #endif
