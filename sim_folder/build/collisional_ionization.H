@@ -71,8 +71,8 @@ namespace coll_ion
 
     static constexpr int npoints = 100; 
 
-    // Elementary charge in esu (statC). Used for the Coulomb temperature floor.
-    static constexpr Real q_elem_esu = 4.803204712570263e-10_rt;
+    // Elementary charge in CGS. Used for the Coulomb temperature floor.
+    static constexpr Real q_elem_cgs = 4.803204712570263e-10_rt;
 
     // Largest / smallest exponent we can safely feed to std::exp() for the
     // active precision (double or single). Used purely as an overflow guard.
