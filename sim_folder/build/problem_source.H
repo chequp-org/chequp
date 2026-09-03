@@ -61,6 +61,8 @@ void problem_source (int i, int j, int k,
         int mu = active_spec[ispe];
         X_e += zion[mu] * X_stage[mu] * aion_inv[mu];
     }
+    // electron density
+    Real n_e = rho * X_e / C::m_u * 1.e6; // in cm^-3
     // Initialize sources
     Real e_ion = 0.0;
 
@@ -73,7 +75,7 @@ void problem_source (int i, int j, int k,
             // Calculate Rates
             Real coll_I_d = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
             Real coll_I_e = X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
-            Real three_body = X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, rho, T_e);
+            Real three_body = X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, n_e, rho, T_e);
             // Net Rate Coefficient
             Real const coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / C::m_p);
             // Update Mass Fraction Sources
