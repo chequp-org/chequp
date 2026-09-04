@@ -61,6 +61,20 @@ void problem_source (int i, int j, int k,
         int mu = active_spec[ispe];
         X_e += zion[mu] * X_stage[mu] * aion_inv[mu];
     }
+    
+    // Calculate electron and neutral number densities m-3
+    Real n_e = 0.0;
+    amrex::Real n_n_species[num_atom_species] = {};
+
+    for (int ispe = 0; ispe < n_active; ispe++) {
+        int mu = active_spec[ispe];
+        const amrex::Real n_mu = X_stage[mu] * rho * aion_inv[mu] / C::m_u * 1.e6;
+        n_e += zion[mu] * n_mu;
+        if (zion[mu] == 0) {
+            int idx_atom = get_atom_index(mu);
+            n_n_species[idx_atom] += n_mu;
+        }
+    }
     // Initialize sources
     Real e_ion = 0.0;
 
@@ -73,7 +87,7 @@ void problem_source (int i, int j, int k,
             // Calculate Rates
             Real coll_I_d = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
             Real coll_I_e = X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
-            Real three_body = X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, rho, T_e);
+            Real three_body = X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, n_e, rho, T_e);
             // Net Rate Coefficient
             Real const coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / C::m_p);
             // Update Mass Fraction Sources
@@ -89,20 +103,6 @@ void problem_source (int i, int j, int k,
     // Update energy source terms
     src(i,j,k,UEDEN) += e_ion;
     src(i,j,k,UEINT) += e_ion;
-
-    // Calculate electron and neutral number densities (SI units)
-    amrex::Real n_e = 0.0;
-    amrex::Real n_n_species[num_atom_species] = {};
-
-    for (int ispe = 0; ispe < n_active; ispe++) {
-        int mu = active_spec[ispe];
-        const amrex::Real n_mu = X_stage[mu] * rho * aion_inv[mu] / C::m_u * 1.e6;
-        n_e += zion[mu] * n_mu;
-        if (zion[mu] == 0) {
-            int idx_atom = get_atom_index(mu);
-            n_n_species[idx_atom] += n_mu;
-        }
-    }
 
     // Compute collision frequencies
     amrex::Real v_ei;

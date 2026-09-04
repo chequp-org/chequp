@@ -75,7 +75,7 @@ namespace coll_ion
     static constexpr Real q_elem_cgs = 4.803204712570263e-10_rt;
 
     // Largest / smallest exponent we can safely feed to std::exp() for the
-    // Used purely as an overflow guard.
+    // active precision (double or single). Used purely as an overflow guard.
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     Real log_huge()
     {
@@ -262,27 +262,24 @@ namespace coll_ion
     // Effective temperature used to regularize the 3-body recombination
     // rate at low Te.
     AMREX_GPU_HOST_DEVICE inline
-    Real get_effective_temperature(Real Te, Real rho, Real abar)
+    Real get_effective_temperature(Real Te, Real n_e)
     {
-        const Real n_e = amrex::max(rho / (abar * C::m_p), 1.e-30_rt);
-
+        // Prevent n_e from being too small (in cm^-3)
+        const Real n_e_safe = amrex::max(n_e * 1e-6_rt, 1.e-30_rt);
         // Wigner-Seitz radius and the associated Coulomb temperature
-        const Real a_d = std::cbrt(3.0_rt / (4.0_rt * M_PI * n_e));
+        const Real a_d = std::cbrt(3.0_rt / (4.0_rt * M_PI * n_e_safe));
         const Real T_coulomb = (q_elem_cgs * q_elem_cgs / a_d) / C::k_B;
-
+        // Regularized evaluation temperature including Coulomb temperature
         return std::sqrt(Te * Te + T_coulomb * T_coulomb);
     }
 
     // Accesses the 3-body recombination rate for a given atomic number and
     // temperature with the Saha detailled balance.
     AMREX_GPU_HOST_DEVICE inline
-    Real get_rate_3body(int ispe, Real rho, Real Te)
+    Real get_rate_3body(int ispe, Real n_e, Real rho, Real Te)
     {
-        if (ispe + 1 >= NumSpec) return 0.0_rt;
-        if (rho <= 0.0_rt) return 0.0_rt;
-
         // Regularized evaluation temperature including Coulomb temperature
-        Real Te_eff = get_effective_temperature(Te, rho, aion[ispe]);
+        Real Te_eff = get_effective_temperature(Te, n_e);
         const Real Te_eff_eV = Te_eff * K_to_eV;
 
         const Real rate_dir = get_rate_direct_ion(ispe, Te_eff);
@@ -301,19 +298,30 @@ namespace coll_ion
         const Real log_geom = std::log(rho) - std::log(aion[ispe] * C::m_p)
                             + std::log(g_deg[ispe]) - std::log(2.0_rt * g_deg[ispe + 1]);
 
-        const Real a = (rate_dir > 0.0_rt ? std::log(rate_dir) : ln_tiny)
-                     + ionization_energy[idx_Eion] / Te_eff_eV;
-        const Real b = (rate_ex > 0.0_rt ? std::log(rate_ex) : ln_tiny)
-                     + ex_energy_atom[idx_atom] / Te_eff_eV;
+        // Calculate the log of the rate for two different physical processes (ionization and excitation)
 
-        // log-sum-exp of the two forward channels
-        const Real m = amrex::max(a, b);
-        const Real log_rate_forward = m + std::log(std::exp(a - m) + std::exp(b - m));
+        // Compute log of each rate contribution
+        // If rate_dir is valid (> 0), take its natural log; otherwise use a tiny number to prevent -infinity
+        const Real log_rate_dir = (rate_dir > 0.0_rt) ? std::log(rate_dir) : ln_tiny;
+        // Add the energy contribution (energy divided by electron temperature)
+        const Real a = log_rate_dir + ionization_energy[idx_Eion] / Te_eff_eV;
 
+        // Same process for the excitation channel
+        const Real log_rate_ex = (rate_ex > 0.0_rt) ? std::log(rate_ex) : ln_tiny;
+        const Real b = log_rate_ex + ex_energy_atom[idx_atom] / Te_eff_eV;
+
+        // Combine the two channels using the "log-sum-exp" trick
+        // This is a numerically stable way to compute log(e^a + e^b) without overflow
+        const Real max_val = amrex::max(a, b);  // Find the larger value
+        const Real log_rate_forward = max_val + std::log(std::exp(a - max_val) + std::exp(b - max_val));
+
+        // Add additional physical factors (lambda and geometry corrections)
         const Real log_rate = log_rate_forward + log_lambda3 + log_geom;
 
-        // Final guard against floating-point overflow only.
+        // If the rate is too small (underflow), return zero
         if (log_rate < ln_tiny) return 0.0_rt;
+
+        // Convert back from log space to actual rate, but cap at a maximum to prevent overflow
         return std::exp(amrex::min(log_rate, log_huge()));
     }
 } 
