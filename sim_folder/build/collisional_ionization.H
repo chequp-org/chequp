@@ -265,7 +265,7 @@ namespace coll_ion
     Real get_effective_temperature(Real Te, Real n_e)
     {
         // Prevent n_e from being too small (in cm^-3)
-        const Real n_e_safe = amrex::max(n_e * 1e-3_rt, 1.e-30_rt);
+        const Real n_e_safe = amrex::max(n_e * 1e-6_rt, 1.e-30_rt);
         // Wigner-Seitz radius and the associated Coulomb temperature
         const Real a_d = std::cbrt(3.0_rt / (4.0_rt * M_PI * n_e_safe));
         const Real T_coulomb = (q_elem_cgs * q_elem_cgs / a_d) / C::k_B;
