@@ -61,8 +61,20 @@ void problem_source (int i, int j, int k,
         int mu = active_spec[ispe];
         X_e += zion[mu] * X_stage[mu] * aion_inv[mu];
     }
-    // electron density
-    Real n_e = rho * X_e / C::m_u * 1.e6; // in cm^-3
+    
+    // Calculate electron and neutral number densities m-3
+    Real n_e = 0.0;
+    amrex::Real n_n_species[num_atom_species] = {};
+
+    for (int ispe = 0; ispe < n_active; ispe++) {
+        int mu = active_spec[ispe];
+        const amrex::Real n_mu = X_stage[mu] * rho * aion_inv[mu] / C::m_u * 1.e6;
+        n_e += zion[mu] * n_mu;
+        if (zion[mu] == 0) {
+            int idx_atom = get_atom_index(mu);
+            n_n_species[idx_atom] += n_mu;
+        }
+    }
     // Initialize sources
     Real e_ion = 0.0;
 
@@ -91,20 +103,6 @@ void problem_source (int i, int j, int k,
     // Update energy source terms
     src(i,j,k,UEDEN) += e_ion;
     src(i,j,k,UEINT) += e_ion;
-
-    // Calculate electron and neutral number densities (SI units)
-    n_e = 0.0;
-    amrex::Real n_n_species[num_atom_species] = {};
-
-    for (int ispe = 0; ispe < n_active; ispe++) {
-        int mu = active_spec[ispe];
-        const amrex::Real n_mu = X_stage[mu] * rho * aion_inv[mu] / C::m_u * 1.e6;
-        n_e += zion[mu] * n_mu;
-        if (zion[mu] == 0) {
-            int idx_atom = get_atom_index(mu);
-            n_n_species[idx_atom] += n_mu;
-        }
-    }
 
     // Compute collision frequencies
     amrex::Real v_ei;
