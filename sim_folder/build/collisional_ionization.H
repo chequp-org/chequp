@@ -5,6 +5,7 @@
 #include <AMReX_REAL.H> 
 #include <map> 
 #include <cmath>
+#include <limits>
 #include <algorithm>
 
 // Quantum degeneracy of each species (H, N, He, Ar)
@@ -69,6 +70,18 @@ namespace coll_ion
     static constexpr Real K_to_eV = 8.617333262145e-5_rt;  // Conversion factor from Kelvin to eV
 
     static constexpr int npoints = 100; 
+
+    // Elementary charge in CGS. Used for the Coulomb temperature floor.
+    static constexpr Real q_elem_cgs = 4.803204712570263e-10_rt;
+
+    // Largest / smallest exponent we can safely feed to std::exp() for the
+    // active precision (double or single). Used purely as an overflow guard.
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    Real log_huge()
+    {
+        constexpr Real ln2 = 0.6931471805599453_rt;
+        return 0.99_rt * static_cast<Real>(std::numeric_limits<Real>::max_exponent) * ln2;
+    }
 
     inline AMREX_GPU_MANAGED Real rate_table[NumSpec][NT];
     inline AMREX_GPU_MANAGED bool initialized = false; 
@@ -246,33 +259,70 @@ namespace coll_ion
         return rate; 
     } 
 
-    // Accesses the 3-body recombination rate for a given atomic number and temperature
-    // with the Saha equilibrium approximation
+    // Effective temperature used to regularize the 3-body recombination
+    // rate at low Te.
     AMREX_GPU_HOST_DEVICE inline
-    Real get_rate_3body(int ispe, Real rho, Real Te)
+    Real get_effective_temperature(Real Te, Real n_e)
     {
-        if (ispe + 1 >= NumSpec) return 0.0_rt;
+        // Prevent n_e from being too small (in cm^-3)
+        const Real n_e_safe = amrex::max(n_e * 1e-6_rt, 1.e-30_rt);
+        // Wigner-Seitz radius and the associated Coulomb temperature
+        const Real a_d = std::cbrt(3.0_rt / (4.0_rt * M_PI * n_e_safe));
+        const Real T_coulomb = (q_elem_cgs * q_elem_cgs / a_d) / C::k_B;
+        // Regularized evaluation temperature including Coulomb temperature
+        return std::sqrt(Te * Te + T_coulomb * T_coulomb);
+    }
 
-        const Real Te_eV = Te * K_to_eV;
-        if (Te_eV < T_min) return 0.0_rt;          
-        // Compute the De Broglie wavelength for the given temperature
-        Real lambda_DeBroglie = C::hbar * std::sqrt(2.0_rt * M_PI / (C::m_e * C::k_B * Te));
+    // Accesses the 3-body recombination rate for a given atomic number and
+    // temperature with the Saha detailled balance.
+    AMREX_GPU_HOST_DEVICE inline
+    Real get_rate_3body(int ispe, Real n_e, Real rho, Real Te)
+    {
+        // Regularized evaluation temperature including Coulomb temperature
+        Real Te_eff = get_effective_temperature(Te, n_e);
+        const Real Te_eff_eV = Te_eff * K_to_eV;
 
-        Real reverse_factor = rho * std::pow(lambda_DeBroglie, 3)
-                            / (aion[ispe] * C::m_p)
-                            * g_deg[ispe] / (2.0_rt * g_deg[ispe + 1]);
+        const Real rate_dir = get_rate_direct_ion(ispe, Te_eff);
+        const Real rate_ex  = get_rate_ex_ion(ispe, Te_eff);
 
-        int idx_atom = get_atom_index(ispe);
-        int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
-        // Limit ionization rate to prevent numerical instability
-        // for low temperatures and high ionization energies
-        Real exp_ion = std::exp(std::min(ionization_energy[idx_Eion] / Te_eV, 50.0_rt));
-        Real exp_ex  = std::exp(std::min(ex_energy_atom[idx_atom]    / Te_eV, 50.0_rt));
+        const int idx_atom = get_atom_index(ispe);
+        const int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
 
-        Real rate_forward = get_rate_direct_ion(ispe, Te) * exp_ion
-                          + get_rate_ex_ion(ispe, Te)     * exp_ex;
+        // Assemble the product in log space
+        const Real ln_tiny = -log_huge();
 
-        return rate_forward * reverse_factor;
+        // lambda_DeBroglie = hbar * sqrt(2 pi / (m_e k_B Te))
+        const Real log_lambda3 = 1.5_rt * std::log(2.0_rt * M_PI * C::hbar * C::hbar
+                                                   / (C::m_e * C::k_B * Te_eff));
+
+        const Real log_geom = std::log(rho) - std::log(aion[ispe] * C::m_p)
+                            + std::log(g_deg[ispe]) - std::log(2.0_rt * g_deg[ispe + 1]);
+
+        // Calculate the log of the rate for two different physical processes (ionization and excitation)
+
+        // Compute log of each rate contribution
+        // If rate_dir is valid (> 0), take its natural log; otherwise use a tiny number to prevent -infinity
+        const Real log_rate_dir = (rate_dir > 0.0_rt) ? std::log(rate_dir) : ln_tiny;
+        // Add the energy contribution (energy divided by electron temperature)
+        const Real a = log_rate_dir + ionization_energy[idx_Eion] / Te_eff_eV;
+
+        // Same process for the excitation channel
+        const Real log_rate_ex = (rate_ex > 0.0_rt) ? std::log(rate_ex) : ln_tiny;
+        const Real b = log_rate_ex + ex_energy_atom[idx_atom] / Te_eff_eV;
+
+        // Combine the two channels using the "log-sum-exp" trick
+        // This is a numerically stable way to compute log(e^a + e^b) without overflow
+        const Real max_val = amrex::max(a, b);  // Find the larger value
+        const Real log_rate_forward = max_val + std::log(std::exp(a - max_val) + std::exp(b - max_val));
+
+        // Add additional physical factors (lambda and geometry corrections)
+        const Real log_rate = log_rate_forward + log_lambda3 + log_geom;
+
+        // If the rate is too small (underflow), return zero
+        if (log_rate < ln_tiny) return 0.0_rt;
+
+        // Convert back from log space to actual rate, but cap at a maximum to prevent overflow
+        return std::exp(amrex::min(log_rate, log_huge()));
     }
 } 
 
