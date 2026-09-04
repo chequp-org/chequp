@@ -69,7 +69,7 @@ namespace coll_ion
     static constexpr Real T_max = 3.0e2_rt;  // Maximum temperature
     static constexpr Real K_to_eV = 8.617333262145e-5_rt;  // Conversion factor from Kelvin to eV
 
-    static constexpr int npoints = 100; 
+    static constexpr int npoints = 1000; 
 
     // Elementary charge in CGS. Used for the Coulomb temperature floor.
     static constexpr Real q_elem_cgs = 4.803204712570263e-10_rt;
