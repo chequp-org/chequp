@@ -84,12 +84,36 @@ void problem_source (int i, int j, int k,
         int atom_idx = get_atom_index(beta);
 
         if (beta_next < NumSpec && get_atom_index(beta_next) == atom_idx && zion[beta] < zatom[atom_idx]) {
-            // Calculate Rates
-            Real coll_I_d = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
-            Real coll_I_e = X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
-            Real three_body = X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, n_e, rho, T_e);
+            // Loss rates [1/s] acting on the mass fractions of beta (ionization)
+            // and beta_next (three-body recombination). Written as per-second
+            // rates so that they can be made stiff-safe below; the product
+            // k * rho * X reproduces the original explicit rate coefficient
+            // (coll_I_d + coll_I_e - three_body) * rho^2 / m_p.
+            const Real n_ref = rho / C::m_p;
+            Real k_ion = X_e * (coll_ion::get_rate_direct_ion(beta, T_e) +
+                                coll_ion::get_rate_ex_ion(beta, T_e)) * n_ref;
+            Real k_rec = X_e * X_e * coll_ion::get_rate_3body(beta, n_e, rho, T_e) * n_ref;
+
+            // Stiff-safe effective rates: an explicit update X -= k*dt*X
+            // overshoots below zero when k*dt > 1 (three-body recombination in
+            // cool, partially ionized gas does this at ~1e18 cm^-3, e.g. in the
+            // side-lobe rings of a Bessel-beam ionization profile). Replace
+            // k*dt by 1 - exp(-k*dt), the exact one-step loss for a linear
+            // decay, which removes at most the available fraction. Below the
+            // gate the explicit rate is kept unchanged (relative error k*dt/2).
+            const Real stiff_gate = 0.05;
+            if (k_ion * dt > stiff_gate) k_ion = (1.0 - std::exp(-k_ion * dt)) / dt;
+            if (k_rec * dt > stiff_gate) k_rec = (1.0 - std::exp(-k_rec * dt)) / dt;
+
+            // Recombination acts only on the ion fraction above a tiny floor so
+            // that n_e never reaches exactly zero (the collision-frequency and
+            // conductivity routines are guarded, but a finite n_e is the
+            // well-posed state). 1e-10 is far below the 1e-3 IC floor.
+            const Real X_rec_floor = 1.0e-10;
+            const Real X_rec_avail = amrex::max(X_stage[beta+1] - X_rec_floor, 0.0_rt);
+
             // Net Rate Coefficient
-            Real const coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / C::m_p);
+            Real const coeff = (k_ion * X_stage[beta] - k_rec * X_rec_avail) * rho;
             // Update Mass Fraction Sources
             src(i,j,k,UFS+beta)      -= coeff;
             src(i,j,k,UFS+beta_next) += coeff;
