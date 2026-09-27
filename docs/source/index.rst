@@ -37,7 +37,7 @@ CHEQUP (Castro-based Hofi Expansion with QUasineutral Plasma) is a module built 
     .. grid-item-card:: User guide
         :text-align: center
 
-        Detailed guides on using the Python analysis tools and running HiPACE++ workflows.
+        Detailed guides on using the Python analysis tools and how to link to other codes.
 
         +++
 
@@ -88,6 +88,7 @@ CHEQUP (Castro-based Hofi Expansion with QUasineutral Plasma) is a module built 
 
    analysis_tool_python
    hipace_to_chequp
+   chequp_to_fbpic
 
 .. toctree::
    :hidden:
