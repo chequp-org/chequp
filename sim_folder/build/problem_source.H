@@ -127,7 +127,7 @@ void problem_source (int i, int j, int k,
 
     // Energy transfer source term
     // If no heavy particles, no energy transfer
-    const amrex::Real Sc = (n_h > 0.0) ? rho * nu_E * (1.0 - (1.0 + n_e / n_h) * f) : 0.0;
+    amrex::Real Sc = (n_h > 0.0) ? rho * nu_E * (1.0 - (1.0 + n_e / n_h) * f) : 0.0;
 
     if (!amrex::Math::isfinite(Sc)) { Sc = 0.0_rt; }
 
