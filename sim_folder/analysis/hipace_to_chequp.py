@@ -108,12 +108,7 @@ class HipaceToChequpWriter:
         Loop over every iteration in z_list and collect:
           - electron temperature T_eV  (Nr x Nz)
           - ion weight density n_rz    per species (Nr x Nz)
-
-        Accept either 3D fields (using the existing [0, :, :] plane) or
-        2D xz/yz fields. For 2D fields, use x or y as the radial coordinate.
-        As before, each iteration supplies one radial column; the output
-        z coordinate is constructed from ts.t, not the plane's internal z grid.
-
+          
         Returns a dict with the same layout as species_field_hipace.json.
         """
         species_field = {}
