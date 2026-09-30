@@ -109,28 +109,75 @@ class HipaceToChequpWriter:
           - electron temperature T_eV  (Nr x Nz)
           - ion weight density n_rz    per species (Nr x Nz)
 
+        Accept either 3D fields (using the existing [0, :, :] plane) or
+        2D xz/yz fields. For 2D fields, use x or y as the radial coordinate.
+        As before, each iteration supplies one radial column; the output
+        z coordinate is constructed from ts.t, not the plane's internal z grid.
+
         Returns a dict with the same layout as species_field_hipace.json.
         """
         species_field = {}
-        z_list = ts.iterations  # In HiPACE++ 2D outputs, iterations represent z-slices
-        
-        # Grab a sample field to establish grid dimensions
-        sample_field, m = ts.get_field(field="grid_ionization_ux^2_elec", iteration=ts.iterations[0])
-        species_field['r'] = m.x  # m.x is the radial array
+        z_list = ts.iterations  # Each iteration supplies one output z column
+        if len(z_list) == 0:
+            raise ValueError("No HiPACE++ iterations found.")
+
+        # Detect the input dimensionality independently of self.dim, which
+        # selects the CHEQUP output dimensionality.
+        sample_field, m = ts.get_field(field="grid_ionization_ux^2_elec", iteration=z_list[0])
+        sample_field = np.asarray(sample_field)
+        if sample_field.ndim == 3:
+            sample_plane = sample_field[0, :, :]
+            r = np.asarray(m.x)
+            radial_axis = 0
+        elif sample_field.ndim == 2:
+            sample_plane = sample_field
+            axes = getattr(m, 'axes', {})
+            radial_name = next((name for name in ('x', 'y') if name in axes.values()), None)
+            if radial_name is None:
+                radial_name = next((name for name in ('x', 'y') if hasattr(m, name)), None)
+            if radial_name is None:
+                raise ValueError("The 2D field must provide an x or y coordinate.")
+            r = np.asarray(getattr(m, radial_name))
+            radial_axis = next((axis for axis, name in axes.items() if name == radial_name), None)
+            if radial_axis is None:
+                # Without axis labels, prefer the requested (Nr, Nslice)
+                # layout; use the other axis if only that one matches r.
+                radial_axis = next((axis for axis, size in enumerate(sample_plane.shape) if size == len(r)), None)
+            if radial_axis is None:
+                raise ValueError("The 2D field shape does not match its radial coordinate.")
+            sample_plane = np.moveaxis(sample_plane, radial_axis, 0)
+        else:
+            raise ValueError(f"Expected a 2D or 3D HiPACE++ field, got shape {sample_field.shape}.")
+
+        Nr, Nz = sample_plane.shape[0], len(z_list)
+        if len(r) != Nr:
+            raise ValueError("The radial coordinate length does not match the field shape.")
+        species_field['r'] = r
         species_field['z'] = m.zmin + scc.c * ts.t  # Convert time to longitudinal z-coordinate
-        Nr, Nz = sample_field[0, :, :].shape[0], len(z_list)
+
+        def read_plane(field_name, iteration):
+            """Return a plane with its radial axis first for every field read."""
+            field = np.asarray(ts.get_field(field=field_name, iteration=iteration)[0])
+            if field.shape != sample_field.shape:
+                raise ValueError(
+                    f"Field {field_name} at iteration {iteration} has shape {field.shape}; "
+                    f"expected {sample_field.shape}."
+                )
+            if field.ndim == 3:
+                return field[0, :, :]
+            return np.moveaxis(field, radial_axis, 0)
 
         # electron temperature
         T_eV = np.zeros((Nr, Nz))
         for idx, it in tqdm.tqdm(enumerate(z_list), desc="Extracting T_eV", total=Nz):
             # Fetch relativistic momenta (ux, uy, uz) and statistical weights (w)
-            ux2 = ts.get_field(field="grid_ionization_ux^2_elec", iteration=it)[0][0, :, :]
-            uy2 = ts.get_field(field="grid_ionization_uy^2_elec", iteration=it)[0][0, :, :]
-            uz2 = ts.get_field(field="grid_ionization_uz^2_elec", iteration=it)[0][0, :, :]
-            w = ts.get_field(field="grid_ionization_w_elec", iteration=it)[0][0, :, :]
+            ux2 = read_plane("grid_ionization_ux^2_elec", it)
+            uy2 = read_plane("grid_ionization_uy^2_elec", it)
+            uz2 = read_plane("grid_ionization_uz^2_elec", it)
+            w = read_plane("grid_ionization_w_elec", it)
             
             # Protect against division by zero where particle weight is 0
-            w_inv = np.where(w != 0, 1.0 / w, 0.0)
+            w_inv = np.divide(1.0, w, out=np.zeros_like(w, dtype=float), where=w != 0)
             
             # Calculate relativistic kinetic energy / temperature in eV
             T_ij = (
@@ -151,12 +198,11 @@ class HipaceToChequpWriter:
                     print(f"Field {field_name} not found in ts.fields")
                     continue
                 
-                sample = ts.get_field(field=field_name, iteration=ts.iterations[0])[0][0, :, :]
-                n_rz = np.zeros((sample.shape[0], Nz))
+                n_rz = np.zeros((Nr, Nz))
                 
                 for idx, it in tqdm.tqdm(enumerate(z_list), desc=f"Extracting {atom+i_level}", total=Nz):
-                    # Extract density and take the center slice radially
-                    rho = ts.get_field(field=field_name, iteration=it)[0][0, :, :]
+                    # Extract density from a 2D or 3D diagnostic plane
+                    rho = read_plane(field_name, it)
                     n_rz[:, idx] = rho[:, rho.shape[1] // 2]
                 
                 species_field['n'][atom + i_level] = n_rz
