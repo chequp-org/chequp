@@ -193,9 +193,15 @@ class HipaceToChequpWriter:
         
         for atom in self.species:
             for i_level in self._get_atom_level(atom):
-                field_name = f"grid_ionization_w_ion_{atom}_{i_level}"
+                field_name = f"grid_ionization_w_{atom}_{i_level}"
+                # Accept files that use an additional 'ion_' prefix as well.
                 if field_name not in ts.avail_fields:
-                    print(f"Field {field_name} not found in ts.fields")
+                    field_name = f"grid_ionization_w_ion_{atom}_{i_level}"
+                if field_name not in ts.avail_fields:
+                    print(
+                        f"Neither grid_ionization_w_{atom}_{i_level} nor "
+                        f"{field_name} found in ts.avail_fields"
+                    )
                     continue
                 
                 n_rz = np.zeros((Nr, Nz))
