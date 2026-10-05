@@ -189,7 +189,7 @@ namespace coll_ion
     }
 
     // ln of the reduced rate R = <sigma v> exp(E_ion/T), T and E in eV.
-    AMREX_GPU_HOST_DEVICE inline
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     Real compute_log_reduced_rate(int atomic_number, int zstar, Real Te, Real E_ion)
     {
         const Real h = x_max / static_cast<Real>(npoints);
@@ -208,7 +208,8 @@ namespace coll_ion
 
     // Lowest energy [eV] at which sigma_E(atomic_number, zstar, E) > 0, or a
     // negative value if the stage cannot ionise in the model.
-    inline Real cross_section_threshold(int atomic_number, int zstar)
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    Real cross_section_threshold(int atomic_number, int zstar)
     {
         Real lo = 0.0_rt, hi = 2.0e3_rt;
         if (!(sigma_E(atomic_number, zstar, hi) > 0.0_rt)) { return -1.0_rt; }
@@ -223,7 +224,8 @@ namespace coll_ion
     }
 
     // Maxwellian-averaged ionisation rate [cm^3/s] at Te [eV].
-    inline Real compute_rate(int atomic_number, int zstar, Real Te)
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    Real compute_rate(int atomic_number, int zstar, Real Te)
     {
         const Real E_ref = cross_section_threshold(atomic_number, zstar);
         if (E_ref < 0.0_rt) { return 0.0_rt; }
@@ -268,7 +270,7 @@ namespace coll_ion
     }
 
     // Direct ionisation rate [cm^3/s] of stage ispe at Te [K]
-    AMREX_GPU_HOST_DEVICE inline
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     Real get_rate_direct_ion(int ispe, Real Te)
     {
         const Real lnR = get_log_reduced_rate_direct(ispe, Te);
@@ -279,7 +281,7 @@ namespace coll_ion
     }
     // Accesses the excitation ionization rate for a given atomic number and temperature
     // by interpolating the precomputed rate_table array
-    AMREX_GPU_HOST_DEVICE inline 
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     Real get_rate_ex_ion(int ispe, Real Te) 
     { 
         Real rate = 0.0_rt; 
@@ -309,7 +311,7 @@ namespace coll_ion
     } 
 
     // ln of the excitation channel's rate with its own maxwellian factor exp(-E_ex/T).
-    AMREX_GPU_HOST_DEVICE inline
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     Real get_log_reduced_rate_ex(int ispe, Real Te)
     {
         if (zion[ispe] != 0) { return ln_rate_floor; }
@@ -326,7 +328,7 @@ namespace coll_ion
 
     // Effective temperature used to regularize the 3-body recombination
     // rate at low Te.
-    AMREX_GPU_HOST_DEVICE inline
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     Real get_effective_temperature(Real Te, Real n_e)
     {
         // Prevent n_e from being too small (in cm^-3)
