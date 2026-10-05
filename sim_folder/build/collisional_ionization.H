@@ -258,7 +258,7 @@ namespace coll_ion
 
     // ln R of the direct (electron-impact) ionisation of stage ispe at Te [K],
     // R = k_ion exp(+E_ref/T), interpolated linearly in ln T.
-    AMREX_GPU_HOST_DEVICE inline
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
     Real get_log_reduced_rate_direct(int ispe, Real Te)
     {
         const Real TeV = amrex::Clamp(Te * K_to_eV, T_min, T_max);
