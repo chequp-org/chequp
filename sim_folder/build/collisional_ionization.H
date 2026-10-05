@@ -69,7 +69,14 @@ namespace coll_ion
     static constexpr Real T_max = 3.0e2_rt;  // Maximum temperature
     static constexpr Real K_to_eV = 8.617333262145e-5_rt;  // Conversion factor from Kelvin to eV
 
-    static constexpr int npoints = 1000; 
+    // Quadrature of the Maxwellian average, in x = (E - E_ion)/T (see
+    // compute_log_reduced_rate): composite Simpson on [0, x_max], npoints even.
+    static constexpr int  npoints = 4000;
+    static constexpr Real x_max   = 60.0_rt;
+
+    // Stands for log(0): a stage that cannot ionise.  Finite, so that
+    // interpolating between two such nodes never produces 0 * inf = NaN.
+    static constexpr Real ln_rate_floor = -1.0e4_rt;
 
     // Elementary charge in CGS. Used for the Coulomb temperature floor.
     static constexpr Real q_elem_cgs = 4.803204712570263e-10_rt;
@@ -83,7 +90,27 @@ namespace coll_ion
         return 0.99_rt * static_cast<Real>(std::numeric_limits<Real>::max_exponent) * ln2;
     }
 
-    inline AMREX_GPU_MANAGED Real rate_table[NumSpec][NT];
+    // ln R(T) of each stage, with R = k_ion(T) exp(+E_ion/T) the *reduced*
+    // ionisation rate, on NT nodes uniform in ln T between T_min and T_max.
+    //
+    // The rate itself varies as exp(-E_ion/T): by ~1e7 between two nodes at
+    // 0.1 eV, so linear interpolation of k_ion was wrong by up to ~1e9 between
+    // nodes below 0.3 eV, and k_ion underflows to 0 below ~0.018 eV for H.
+    // Three-body recombination is the Saha inverse k_ion exp(+E_ion/T), so it
+    // inherited both errors and, once k_ion had underflowed, grew without
+    // bound.  R is smooth and O(1) in magnitude: its logarithm interpolates to
+    // ~0.1%, k_ion = exp(ln R - E_ion/T) underflows gracefully to 0, and the
+    // recombination rate needs no exp(+E_ion/T) at all.
+    inline AMREX_GPU_MANAGED Real ln_reduced_table[NumSpec][NT];
+
+    // Reference energy of each stage's reduced rate: the lowest energy at
+    // which its cross section is non-zero.  It equals the stage's ionisation
+    // energy for H, He, N0, Ar0 and Ar1.  For N1-N4 and Ar2-Ar7 the BEB model
+    // uses the neutral atom's inner-shell binding energies (N 2s 20.33 eV,
+    // Ar 3s 29.3 eV), which lie below the ion's ionisation energy, so the model
+    // ionises those ions from 20.33 / 29.3 eV.  Referencing each stage to its
+    // own threshold keeps the forward rate exactly what the cross section says.
+    inline AMREX_GPU_MANAGED Real E_ref_table[NumSpec];
     inline AMREX_GPU_MANAGED bool initialized = false; 
     // Maxwellian weight function
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
@@ -167,67 +194,116 @@ namespace coll_ion
         } 
         return sigma * 1e4_rt; 
     } 
-    // Computes the ionization rate for a given atomic number and temperature
-    // by integrating the electron impact ionization cross-section over a maxwellian
-    inline AMREX_GPU_HOST_DEVICE 
-    Real compute_rate(int atomic_number, int zstar, Real Te) 
-    { 
-        Real sum = 0.0_rt; 
-        Real norm = 0.0_rt; 
+    // Ionisation energy of the stage ispe (eV).  For the top stage of an atom
+    // the index runs into the next atom's entries; such a stage cannot ionise
+    // (sigma_E = 0), so its table holds ln_rate_floor and the value is unused.
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    Real stage_ionization_energy(int ispe)
+    {
+        const int idx = get_energy_index(zatom[get_atom_index(ispe)])
+                      + static_cast<int>(zion[ispe]);
+        return ionization_energy[amrex::min(idx, 16)];
+    }
 
-        const Real E_min = 0.0_rt; 
-        const Real E_max = 1e3_rt; 
-        const Real dE = (E_max - E_min) / npoints; 
+    // ln of the reduced rate R = <sigma v> exp(E_ion/T), T and E in eV.
+    //
+    // With the Maxwellian f(E) = 2 sqrt(E/pi) T^{-3/2} exp(-E/T), and E = E_ion + T x,
+    //     R = (2/sqrt(pi)) T^{-1/2} Int_0^inf sigma(E) v(E) sqrt(E) exp(-x) dx .
+    // The exponential that makes k_ion underflow is taken out analytically,
+    // the normalisation is exact rather than a sum over the grid, and the
+    // grid follows the Maxwellian tail at every T instead of a fixed 1 eV
+    // step (which left everything below ~1 eV unresolved).  sigma_E vanishes
+    // below the ionisation threshold, so nothing is lost below x = 0.
+    AMREX_GPU_HOST_DEVICE inline
+    Real compute_log_reduced_rate(int atomic_number, int zstar, Real Te, Real E_ion)
+    {
+        const Real h = x_max / static_cast<Real>(npoints);
+        Real sum = 0.0_rt;
+        for (int i = 0; i <= npoints; i++) {
+            const Real x = static_cast<Real>(i) * h;
+            const Real E = E_ion + Te * x;
+            const Real v = std::sqrt(2.0_rt * E * C::ev2erg / C::m_e);
+            const Real wS = (i == 0 || i == npoints) ? 1.0_rt : ((i % 2) ? 4.0_rt : 2.0_rt);
+            sum += wS * sigma_E(atomic_number, zstar, E) * v * std::sqrt(E) * std::exp(-x);
+        }
+        sum *= h / 3.0_rt;
+        if (!(sum > 0.0_rt)) { return ln_rate_floor; }
+        return std::log(2.0_rt / std::sqrt(M_PI) * sum / std::sqrt(Te));
+    }
 
-        for (int i = 0; i < npoints; i++) { 
-            Real E = E_min + i * dE; 
-            Real w = maxwell_weight(E, Te); 
-            Real sig = sigma_E(atomic_number, zstar, E); 
-            Real v = std::sqrt(2.0_rt * std::abs(E) * C::ev2erg / C::m_e); 
+    // Lowest energy [eV] at which sigma_E(atomic_number, zstar, E) > 0, or a
+    // negative value if the stage cannot ionise in the model.
+    inline Real cross_section_threshold(int atomic_number, int zstar)
+    {
+        Real lo = 0.0_rt, hi = 2.0e3_rt;
+        if (!(sigma_E(atomic_number, zstar, hi) > 0.0_rt)) { return -1.0_rt; }
+        for (Real E = 1.0e-3_rt; E < hi; E *= 1.001_rt) {
+            if (sigma_E(atomic_number, zstar, E) > 0.0_rt) { hi = E; break; }
+        }
+        for (int it = 0; it < 80; ++it) {
+            const Real m = 0.5_rt * (lo + hi);
+            if (sigma_E(atomic_number, zstar, m) > 0.0_rt) { hi = m; } else { lo = m; }
+        }
+        return hi;
+    }
 
-            sum += sig * v * w; 
-            norm += w; 
-        } 
+    // Maxwellian-averaged ionisation rate [cm^3/s] at Te [eV], evaluated
+    // directly (no table).  Kept for tests and diagnostics.
+    inline Real compute_rate(int atomic_number, int zstar, Real Te)
+    {
+        const Real E_ref = cross_section_threshold(atomic_number, zstar);
+        if (E_ref < 0.0_rt) { return 0.0_rt; }
+        const Real lnR = compute_log_reduced_rate(atomic_number, zstar, Te, E_ref);
+        const Real e = lnR - E_ref / Te;
+        return (lnR <= ln_rate_floor || e < -log_huge()) ? 0.0_rt : std::exp(e);
+    }
 
-        if (norm > 0.0_rt) { 
-            sum /= norm; 
-        } 
-        return sum; 
-    } 
-    // Precomputes the ionization rate for all species and temperatures
-    // and stores them in the rate_table array to speed up the computation
-    inline void initialize() 
-    { 
-        if (initialized) return; 
+    // Precomputes ln R for all stages and temperatures
+    inline void initialize()
+    {
+        if (initialized) return;
+        for (int ispe = 0; ispe < NumSpec; ispe++) {
+            const int Z = zatom[get_atom_index(ispe)];
+            const int zstar = static_cast<int>(zion[ispe]);
+            const Real E_ion = stage_ionization_energy(ispe);
+            const Real thr = cross_section_threshold(Z, zstar);
+            // snap to E_ion where the model is consistent, so that detailed
+            // balance is exact there rather than good to the bisection
+            E_ref_table[ispe] = (thr < 0.0_rt || std::abs(thr - E_ion) < 1.0e-9_rt * E_ion)
+                              ? E_ion : thr;
+            for (int it = 0; it < NT; it++) {
+                const Real logT = std::log(T_min) + (std::log(T_max) - std::log(T_min)) * it / (NT - 1);
+                ln_reduced_table[ispe][it] = (thr < 0.0_rt) ? ln_rate_floor
+                    : compute_log_reduced_rate(Z, zstar, std::exp(logT), E_ref_table[ispe]);
+            }
+        }
+        initialized = true;
+    }
 
-        for (int ispe = 0; ispe < NumSpec; ispe++) { 
-            int Z = zatom[get_atom_index(ispe)]; 
-            int zstar = zion[ispe]; 
+    // ln R of the direct (electron-impact) ionisation of stage ispe at Te [K],
+    // R = k_ion exp(+E_ref/T), interpolated linearly in ln T and held constant
+    // outside the table.
+    AMREX_GPU_HOST_DEVICE inline
+    Real get_log_reduced_rate_direct(int ispe, Real Te)
+    {
+        const Real TeV = amrex::Clamp(Te * K_to_eV, T_min, T_max);
+        const Real f = (std::log(TeV) - std::log(T_min))
+                     / (std::log(T_max) - std::log(T_min)) * (NT - 1);
+        const int  i = amrex::min(static_cast<int>(f), NT - 2);
+        const Real w = f - static_cast<Real>(i);
+        return (1.0_rt - w) * ln_reduced_table[ispe][i] + w * ln_reduced_table[ispe][i + 1];
+    }
 
-            for (int it = 0; it < NT; it++) { 
-                Real logT = std::log(T_min) + (std::log(T_max) - std::log(T_min)) * it / (NT - 1); 
-                Real Te = std::exp(logT); 
-                rate_table[ispe][it] = compute_rate(Z, zstar, Te); 
-            } 
-        } 
-        initialized = true; 
-    } 
-    // Accesses the ionization rate for a given atomic number and temperature
-    // by interpolating the precomputed rate_table array
-    AMREX_GPU_HOST_DEVICE inline 
-    Real get_rate_direct_ion(int ispe, Real Te) 
-    { 
-        Te *= K_to_eV; 
-
-        if (Te <= T_min) return rate_table[ispe][0]; 
-        if (Te >= T_max) return rate_table[ispe][NT - 1]; 
-
-        Real x = (std::log(Te) - std::log(T_min)) / (std::log(T_max) - std::log(T_min)); 
-        Real f = x * (NT - 1); 
-        int i = static_cast<int>(f); 
-        Real w = f - i; 
-        return (1.0_rt - w) * rate_table[ispe][i] + w * rate_table[ispe][i + 1]; 
-    } 
+    // Direct ionisation rate [cm^3/s] of stage ispe at Te [K]
+    AMREX_GPU_HOST_DEVICE inline
+    Real get_rate_direct_ion(int ispe, Real Te)
+    {
+        const Real lnR = get_log_reduced_rate_direct(ispe, Te);
+        if (lnR <= ln_rate_floor) { return 0.0_rt; }
+        const Real TeV = amrex::max(Te * K_to_eV, 1.0e-300_rt);
+        const Real e = lnR - E_ref_table[ispe] / TeV;
+        return (e < -log_huge()) ? 0.0_rt : std::exp(e);
+    }
     // Accesses the excitation ionization rate for a given atomic number and temperature
     // by interpolating the precomputed rate_table array
     AMREX_GPU_HOST_DEVICE inline 
@@ -259,6 +335,24 @@ namespace coll_ion
         return rate; 
     } 
 
+    // ln of the excitation channel's rate with its own exp(-E_ex/T) removed:
+    // the rate model above is C(T) exp(-E_ex/T), and this returns ln C(T).
+    // Same clamps as get_rate_ex_ion; ln_rate_floor where it vanishes.
+    AMREX_GPU_HOST_DEVICE inline
+    Real get_log_reduced_rate_ex(int ispe, Real Te)
+    {
+        if (zion[ispe] != 0) { return ln_rate_floor; }
+        Real TeV = Te * K_to_eV;
+        if (TeV < T_min) { return ln_rate_floor; }
+        if (TeV > T_max) { TeV = T_max; }
+        const int idx = get_atom_index(ispe);
+        const Real x = std::log(TeV);
+        Real poly = 0.0_rt;
+        for (int n = 0; n < 7; n++) { poly += gaunt_fit[idx][n] * std::pow(x, 6 - n); }
+        return std::log(1.57e-7_rt * oscillator_strength[idx] / (ex_energy_atom[idx] * std::sqrt(TeV)))
+             + poly;
+    }
+
     // Effective temperature used to regularize the 3-body recombination
     // rate at low Te.
     AMREX_GPU_HOST_DEVICE inline
@@ -268,60 +362,61 @@ namespace coll_ion
         const Real n_e_safe = amrex::max(n_e * 1e-6_rt, 1.e-30_rt);
         // Wigner-Seitz radius and the associated Coulomb temperature
         const Real a_d = std::cbrt(3.0_rt / (4.0_rt * M_PI * n_e_safe));
-        const Real T_coulomb = (q_elem_cgs * q_elem_cgs / a_d) / (C::k_B);
+        const Real T_coulomb = (q_elem_cgs * q_elem_cgs / a_d) / C::k_B;
         // Regularized evaluation temperature including Coulomb temperature
-        const Real T_eff = std::sqrt(Te * Te + T_coulomb * T_coulomb);
-        return T_eff;
+        return std::sqrt(Te * Te + T_coulomb * T_coulomb);
     }
 
-    // Accesses the 3-body recombination rate for a given atomic number and
-    // temperature with the Saha detailled balance.
+    // 3-body recombination coefficient of stage ispe+1 -> ispe, as the
+    // detailed-balance (Saha) inverse of the ionisation channels.  In the
+    // units problem_source.H uses, with n_e in m^-3, rho in g/cm^3 and Te in K:
+    //
+    //   k_3b = [R_dir + R_ex] lambda^3 (rho/m_u) g_i / (2 g_{i+1}),
+    //
+    // R the reduced rates above, lambda the electron de Broglie length.  No
+    // exp(+E/T) is formed, so nothing overflows at any temperature.
+    //
+    // channels: 1 = direct ionisation only, 2 = excitation channel only, 3 = both.
+    //
+    // Known limitation, kept deliberately: the excitation channel is inverted
+    // with its own energy E_ex, as before, not with E_ion.  Exact detailed
+    // balance would need exp(+(E_ion - E_ex)/T) here, which grows as e^100 at
+    // 0.03 eV for H: the forward model exp(-E_ex/T) is not an ionisation rate
+    // at low T, and fixing that is a change of physics, not of numerics.
     AMREX_GPU_HOST_DEVICE inline
-    Real get_rate_3body(int ispe, Real n_e, Real rho, Real Te)
+    Real get_rate_3body(int ispe, Real n_e, Real rho, Real Te, int channels = 3)
     {
         // Regularized evaluation temperature including Coulomb temperature
-        Real Te_eff = get_effective_temperature(Te, n_e);
-        std::cout << "Te_eff: " << Te_eff << std::endl;
-        const Real rate_dir = get_rate_direct_ion(ispe, Te_eff);
-        const Real rate_ex  = get_rate_ex_ion(ispe, Te_eff);
+        const Real Te_eff = get_effective_temperature(Te, n_e);
 
-        const int idx_atom = get_atom_index(ispe);
-        const int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
+        // Exact Saha inverse of the direct channel, k_dir exp(+E_ion/T), where
+        // the cross section starts at E_ion (H, He, N0, Ar0, Ar1).  Where the
+        // model ionises from below E_ion (N1-N4, Ar2-Ar7) the exact inverse
+        // grows as exp(+(E_ion - E_ref)/T) -- e^{77.6 eV/T} for N4 -- so it is
+        // inverted from E_ref instead, like the excitation channel: finite,
+        // but not in detailed balance.  That is a cross-section defect.
+        const Real Te_eff_eV = Te_eff * K_to_eV;
+        const Real lnRd = (channels & 1)
+            ? get_log_reduced_rate_direct(ispe, Te_eff)
+              - amrex::max(E_ref_table[ispe] - stage_ionization_energy(ispe), 0.0_rt) / Te_eff_eV
+            : ln_rate_floor;
+        const Real lnRx = (channels & 2) ? get_log_reduced_rate_ex(ispe, Te_eff)     : ln_rate_floor;
+        const Real mx = amrex::max(lnRd, lnRx);
+        if (mx <= ln_rate_floor) { return 0.0_rt; }
+        const Real lnR = mx + std::log(std::exp(lnRd - mx) + std::exp(lnRx - mx));
 
-        // Assemble the product in log space
-        const Real ln_tiny = -log_huge();
-
-        // lambda_DeBroglie = hbar * sqrt(2 pi / (m_e k_B Te))
+        // lambda_DeBroglie^3 = (2 pi hbar^2 / (m_e k_B Te))^{3/2}
         const Real log_lambda3 = 1.5_rt * std::log(2.0_rt * M_PI * C::hbar * C::hbar
                                                    / (C::m_e * C::k_B * Te_eff));
 
-        const Real log_geom = std::log(rho) - std::log(aion[ispe] * C::m_p)
+        // The extra electron density is X_e rho / m_u.  It used to be
+        // rho / (A m_p), which made recombination A times too slow for every
+        // element but hydrogen (4x He, 14x N, 40x Ar), and 0.7% slow for H.
+        const Real log_geom = std::log(rho) - std::log(C::m_u)
                             + std::log(g_deg[ispe]) - std::log(2.0_rt * g_deg[ispe + 1]);
 
-        // Calculate the log of the rate for two different physical processes (ionization and excitation)
-
-        // Compute log of each rate contribution
-        // If rate_dir is valid (> 0), take its natural log; otherwise use a tiny number to prevent -infinity
-        const Real log_rate_dir = (rate_dir > 0.0_rt) ? std::log(rate_dir) : ln_tiny;
-        // Add the energy contribution (energy divided by electron temperature)
-        const Real a = log_rate_dir + ionization_energy[idx_Eion] / (Te_eff / C::k_B);
-
-        // Same process for the excitation channel
-        const Real log_rate_ex = (rate_ex > 0.0_rt) ? std::log(rate_ex) : ln_tiny;
-        const Real b = log_rate_ex + ex_energy_atom[idx_atom] / (Te_eff / C::k_B);
-
-        // Combine the two channels using the "log-sum-exp" trick
-        // This is a numerically stable way to compute log(e^a + e^b) without overflow
-        const Real max_val = amrex::max(a, b);  // Find the larger value
-        const Real log_rate_forward = max_val + std::log(std::exp(a - max_val) + std::exp(b - max_val));
-
-        // Add additional physical factors (lambda and geometry corrections)
-        const Real log_rate = log_rate_forward + log_lambda3 + log_geom;
-
-        // If the rate is too small (underflow), return zero
-        if (log_rate < ln_tiny) return 0.0_rt;
-
-        // Convert back from log space to actual rate, but cap at a maximum to prevent overflow
+        const Real log_rate = lnR + log_lambda3 + log_geom;
+        if (log_rate < -log_huge()) return 0.0_rt;
         return std::exp(amrex::min(log_rate, log_huge()));
     }
 } 
