@@ -104,7 +104,7 @@ namespace coll_ion
         return std::sqrt(E) * std::exp(-E / Te); 
     } 
     // Electron impact ionization cross-section from Kim et al. (2000)
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    AMREX_GPU_HOST_DEVICE inline
     Real sigma_E(int atomic_number, int zstar, Real ep) 
     { 
         // Prevent electron (-1) out of bounds crash
