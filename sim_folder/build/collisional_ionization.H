@@ -283,7 +283,7 @@ namespace coll_ion
     }
     // Accesses the excitation ionization rate for a given atomic number and temperature
     // by interpolating the precomputed rate_table array
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    AMREX_GPU_HOST_DEVICE  inline
     Real get_rate_ex_ion(int ispe, Real Te) 
     { 
         Real rate = 0.0_rt; 
