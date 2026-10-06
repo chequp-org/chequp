@@ -69,7 +69,7 @@ namespace coll_ion
     static constexpr Real T_max = 5.0e2_rt;  // Maximum temperature in eV
     static constexpr Real K_to_eV = 8.617333262145e-5_rt;  // Conversion factor from Kelvin to eV
 
-    static constexpr int  npoints = 4000;
+    static constexpr int  npoints = 1000;
     // x = (E - E_ion) / T, to prevent overflows
     static constexpr Real x_max   = 60.0_rt;
 
