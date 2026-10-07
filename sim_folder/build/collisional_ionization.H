@@ -46,9 +46,9 @@ inline AMREX_GPU_MANAGED amrex::Real gaunt_fit[num_atom_species][7] = {
     { 1.12925396e-05_rt, 7.83928108e-05_rt, -8.07569320e-04_rt, -1.45478529e-03_rt, 4.14430633e-03_rt, 5.21310441e-02_rt, 2.49330993e-01_rt} 
 }; 
 // Oscillator strengths for each species (H, N, He, Ar)
-inline AMREX_GPU_MANAGED amrex::Real oscillator_strength[num_atom_species] = {0.416_rt, 0.276_rt, 0.26_rt, 0.12_rt}; 
+inline AMREX_GPU_MANAGED amrex::Real oscillator_strength[num_atom_species] = {0.416_rt, 0.12_rt, 0.276_rt, 0.26_rt}; 
 // Excitation energy for each species (H, N, He, Ar) 
-inline AMREX_GPU_MANAGED amrex::Real ex_energy_atom[num_atom_species] = {10.6_rt, 19.8_rt, 11.6_rt, 10.3_rt}; 
+inline AMREX_GPU_MANAGED amrex::Real ex_energy_atom[num_atom_species] = {10.6_rt, 10.3_rt, 19.8_rt, 11.6_rt}; 
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
 int get_energy_index(int Z) 
