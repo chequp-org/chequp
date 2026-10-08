@@ -6,7 +6,7 @@ stop_time = 10e-9
 geometry.is_periodic =  0 0 # Not periodic in either x or z
 geometry.coord_sys   =  1       # r-z coordinates
 geometry.prob_lo     =  0    0
-geometry.prob_hi     =  0.06 0.06
+geometry.prob_hi     =  0.06 0.06 # 600 um radius by 600 um length
 amr.n_cell           = 32   32 #number of cells in each direction at the coarsest level
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -60,9 +60,10 @@ amr.plot_file       = plt_2d_
 amr.plot_int        = 10
 
 # PROBLEM PARAMETERS
-problem.initial_conditions_file = "plasma_from_file_2d.h5"
+# Generated with: python3 generate_initial_conditions.py --dim 2
+# (or with initial_condition/Plasma_heating.ipynb for laser-ionized profiles)
+problem.initial_conditions_file = "example_2d_initial_conditions.h5"
 problem.p_ambient = 1.e-6
-problem.dens_ambient = 1.67e-6 # g per cm^3 ; H with 1e18 cc
 
 # EOS
 eos.eos_assume_neutral = 0
