@@ -305,6 +305,7 @@ namespace coll_ion
         const Real log_rate_dir = (rate_dir > 0.0_rt) ? std::log(rate_dir) : ln_tiny;
         // Add the energy contribution (energy divided by electron temperature)
         const Real a = log_rate_dir + ionization_energy[idx_Eion] / Te_eff_eV;
+
         // Same process for the excitation channel
         const Real log_rate_ex = (rate_ex > 0.0_rt) ? std::log(rate_ex) : ln_tiny;
         const Real b = log_rate_ex + ex_energy_atom[idx_atom] / Te_eff_eV;
