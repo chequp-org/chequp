@@ -280,8 +280,7 @@ namespace coll_ion
     {
         // Regularized evaluation temperature including Coulomb temperature
         Real Te_eff = get_effective_temperature(Te, n_e);
-        const Real Te_eff_eV = Te_eff / C::k_B;
-
+        const Real Te_eff_eV = Te_eff * K_to_eV;
         const Real rate_dir = get_rate_direct_ion(ispe, Te_eff);
         const Real rate_ex  = get_rate_ex_ion(ispe, Te_eff);
 
@@ -305,7 +304,7 @@ namespace coll_ion
         const Real log_rate_dir = (rate_dir > 0.0_rt) ? std::log(rate_dir) : ln_tiny;
         // Add the energy contribution (energy divided by electron temperature)
         const Real a = log_rate_dir + ionization_energy[idx_Eion] / Te_eff_eV;
-
+        
         // Same process for the excitation channel
         const Real log_rate_ex = (rate_ex > 0.0_rt) ? std::log(rate_ex) : ln_tiny;
         const Real b = log_rate_ex + ex_energy_atom[idx_atom] / Te_eff_eV;
