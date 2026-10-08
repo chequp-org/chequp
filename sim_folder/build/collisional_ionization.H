@@ -295,7 +295,7 @@ namespace coll_ion
         const Real log_lambda3 = 1.5_rt * std::log(2.0_rt * M_PI * C::hbar * C::hbar
                                                    / (C::m_e * C::k_B * Te_eff));
 
-        const Real log_geom = std::log(rho) - std::log(aion[ispe] * C::m_p)
+        const Real log_geom = std::log(rho) - std::log(C::m_p)
                             + std::log(g_deg[ispe]) - std::log(2.0_rt * g_deg[ispe + 1]);
 
         // Calculate the log of the rate for two different physical processes (ionization and excitation)
