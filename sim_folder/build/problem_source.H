@@ -98,8 +98,18 @@ void problem_source (int i, int j, int k,
             Real coll_I_d = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
             Real coll_I_e = X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
             Real three_body = X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, n_e, rho, T_e);
-            // Net Rate Coefficient
-            Real const coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / C::m_p);
+            // Net Rate Coefficient (per unit volume/time scaling)
+            Real coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / C::m_p);
+            // Ensure it don't ionize more than available
+            if (coeff > 0.0_rt) {
+                Real available_mass_source = state(i, j, k, UFS + beta) / dt;
+                coeff = amrex::min(coeff, available_mass_source);
+            } 
+            // Ensure it don't drain state(beta+1) more than available
+            else if (coeff < 0.0_rt) {
+                Real available_mass_next = state(i, j, k, UFS + beta_next) / dt;
+                coeff = amrex::max(coeff, -available_mass_next);
+            }
             // Update Mass Fraction Sources
             src(i,j,k,UFS+beta)      -= coeff;
             src(i,j,k,UFS+beta_next) += coeff;
