@@ -97,7 +97,9 @@ void problem_source (int i, int j, int k,
             // Calculate Rates
             Real coll_I_d = X_stage[beta] * X_e * coll_ion::get_rate_direct_ion(beta, T_e);
             Real coll_I_e = X_stage[beta] * X_e * coll_ion::get_rate_ex_ion(beta, T_e);
-            Real three_body = X_stage[beta+1] * X_e * X_e * coll_ion::get_rate_3body(beta, n_e, rho, T_e);
+            Real three_body = three_body_recombination ? \
+                              X_stage[beta + 1] * X_e * X_e * coll_ion::get_rate_3body(beta, n_e, rho, T_e) \
+                              : Real(0);
             // Net Rate Coefficient
             Real const coeff = (coll_I_d + coll_I_e - three_body) * (rho * rho / C::m_p);
             // Update Mass Fraction Sources
