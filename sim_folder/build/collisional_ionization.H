@@ -83,14 +83,15 @@ namespace coll_ion
         return 0.99_rt * static_cast<Real>(std::numeric_limits<Real>::max_exponent) * ln2;
     }
 
-    inline AMREX_GPU_MANAGED Real rate_table[NumSpec][NT];
+    // The rate varies like exp(-E_th/Te) close to threshold, which cannot be
+    // tabulated nor linearly interpolated accurately at low Te. We therefore store
+    // log(rate) + E_th/Te, which is smooth in log(Te), and add back -E_th/Te analytically.
+    inline AMREX_GPU_MANAGED Real log_reduced_rate_table[NumSpec][NT];
+    // Lowest energy (in eV) at which the ionization cross-section is non-zero
+    inline AMREX_GPU_MANAGED Real threshold_energy[NumSpec];
+    // False when the species cannot be ionized (e.g. fully stripped ion)
+    inline AMREX_GPU_MANAGED bool has_ionization[NumSpec];
     inline AMREX_GPU_MANAGED bool initialized = false; 
-    // Maxwellian weight function
-    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE 
-    Real maxwell_weight(Real E, Real Te) 
-    { 
-        return std::sqrt(E) * std::exp(-E / Te); 
-    } 
     // Electron impact ionization cross-section from Kim et al. (2000)
     AMREX_GPU_HOST_DEVICE inline 
     Real sigma_E(int atomic_number, int zstar, Real ep) 
@@ -167,35 +168,54 @@ namespace coll_ion
         } 
         return sigma * 1e4_rt; 
     } 
-    // Computes the ionization rate for a given atomic number and temperature
-    // by integrating the electron impact ionization cross-section over a maxwellian
-    inline AMREX_GPU_HOST_DEVICE 
-    Real compute_rate(int atomic_number, int zstar, Real Te) 
-    { 
-        Real sum = 0.0_rt; 
-        Real norm = 0.0_rt; 
-
-        const Real E_min = 0.0_rt; 
-        const Real E_max = 1e3_rt; 
-        const Real dE = (E_max - E_min) / npoints; 
-
-        for (int i = 0; i < npoints; i++) { 
-            Real E = E_min + i * dE; 
-            Real w = maxwell_weight(E, Te); 
-            Real sig = sigma_E(atomic_number, zstar, E); 
-            Real v = std::sqrt(2.0_rt * std::abs(E) * C::ev2erg / C::m_e); 
-
-            sum += sig * v * w; 
-            norm += w; 
-        } 
-
-        if (norm > 0.0_rt) { 
-            sum /= norm; 
-        } 
-        return sum; 
-    } 
+    // Finds the lowest energy (in eV) at which the ionization cross-section is non-zero.
+    // Returns a negative value if the cross-section vanishes everywhere.
+    inline Real find_threshold_energy(int atomic_number, int zstar)
+    {
+        // Coarse scan on a logarithmic grid, followed by a bisection
+        constexpr int nscan = 4000;
+        const Real log_E_lo = std::log(1.e-2_rt);
+        const Real log_E_hi = std::log(1.e5_rt);
+        Real E_prev = 0.0_rt;
+        for (int i = 0; i < nscan; i++) {
+            Real E = std::exp(log_E_lo + (log_E_hi - log_E_lo) * i / (nscan - 1));
+            if (sigma_E(atomic_number, zstar, E) > 0.0_rt) {
+                Real lo = E_prev, hi = E;
+                for (int it = 0; it < 100; it++) {
+                    Real mid = 0.5_rt * (lo + hi);
+                    if (sigma_E(atomic_number, zstar, mid) > 0.0_rt) { hi = mid; } else { lo = mid; }
+                }
+                return lo;
+            }
+            E_prev = E;
+        }
+        return -1.0_rt;
+    }
+    // Computes log(rate) + E_th/Te, where rate is the ionization rate obtained
+    // by integrating the electron impact ionization cross-section over a maxwellian.
+    // The integration starts at the threshold E_th, with a step scaled to Te
+    // (E = E_th + x*Te), so that it remains accurate even when Te << E_th.
+    // The maxwellian normalization int sqrt(E) exp(-E/Te) dE = sqrt(pi)/2 Te^1.5 is analytical.
+    inline Real compute_log_reduced_rate(int atomic_number, int zstar, Real E_th, Real Te)
+    {
+        constexpr Real x_max = 60.0_rt;
+        const Real dx = x_max / npoints;
+        Real sum = 0.0_rt;
+        // Trapezoidal rule (the integrand vanishes at x=0)
+        for (int i = 1; i <= npoints; i++) {
+            Real x = i * dx;
+            Real E = E_th + x * Te;
+            Real sig = sigma_E(atomic_number, zstar, E);
+            Real v = std::sqrt(2.0_rt * E * C::ev2erg / C::m_e);
+            Real weight = (i == npoints) ? 0.5_rt : 1.0_rt;
+            sum += weight * sig * v * std::sqrt(E) * std::exp(-x);
+        }
+        sum *= dx * Te;
+        if (sum <= 0.0_rt) return -log_huge();
+        return std::log(sum) - std::log(0.5_rt * std::sqrt(M_PI) * std::pow(Te, 1.5_rt));
+    }
     // Precomputes the ionization rate for all species and temperatures
-    // and stores them in the rate_table array to speed up the computation
+    // and stores them in the log_reduced_rate_table array to speed up the computation
     inline void initialize() 
     { 
         if (initialized) return; 
@@ -204,42 +224,58 @@ namespace coll_ion
             int Z = zatom[get_atom_index(ispe)]; 
             int zstar = zion[ispe]; 
 
+            Real E_th = find_threshold_energy(Z, zstar);
+            has_ionization[ispe] = (E_th > 0.0_rt);
+            threshold_energy[ispe] = has_ionization[ispe] ? E_th : 0.0_rt;
+
             for (int it = 0; it < NT; it++) { 
                 Real logT = std::log(T_min) + (std::log(T_max) - std::log(T_min)) * it / (NT - 1); 
                 Real Te = std::exp(logT); 
-                rate_table[ispe][it] = compute_rate(Z, zstar, Te); 
+                log_reduced_rate_table[ispe][it] = has_ionization[ispe] ?
+                    compute_log_reduced_rate(Z, zstar, E_th, Te) : -log_huge();
             } 
         } 
         initialized = true; 
     } 
-    // Accesses the ionization rate for a given atomic number and temperature
-    // by interpolating the precomputed rate_table array
+    // Returns log(rate) of the direct ionization rate for a given species and temperature (in K),
+    // by interpolating the precomputed table in log space.
+    // Returns -log_huge() if the species cannot be ionized.
+    AMREX_GPU_HOST_DEVICE inline
+    Real get_log_rate_direct_ion(int ispe, Real Te)
+    {
+        if (!has_ionization[ispe]) return -log_huge();
+
+        Te *= K_to_eV;
+        // Clamp the temperature at which the (smooth) reduced rate is evaluated,
+        // but keep the exact exponential factor exp(-E_th/Te)
+        Real Te_tab = amrex::Clamp(Te, T_min, T_max);
+
+        Real x = (std::log(Te_tab) - std::log(T_min)) / (std::log(T_max) - std::log(T_min));
+        Real f = x * (NT - 1);
+        int i = amrex::min(static_cast<int>(f), NT - 2);
+        Real w = f - i;
+        Real log_reduced = (1.0_rt - w) * log_reduced_rate_table[ispe][i] + w * log_reduced_rate_table[ispe][i + 1];
+        return log_reduced - threshold_energy[ispe] / Te;
+    }
+    // Accesses the ionization rate for a given species and temperature (in K)
     AMREX_GPU_HOST_DEVICE inline 
     Real get_rate_direct_ion(int ispe, Real Te) 
     { 
-        Te *= K_to_eV; 
-
-        if (Te <= T_min) return rate_table[ispe][0]; 
-        if (Te >= T_max) return rate_table[ispe][NT - 1]; 
-
-        Real x = (std::log(Te) - std::log(T_min)) / (std::log(T_max) - std::log(T_min)); 
-        Real f = x * (NT - 1); 
-        int i = static_cast<int>(f); 
-        Real w = f - i; 
-        return (1.0_rt - w) * rate_table[ispe][i] + w * rate_table[ispe][i + 1]; 
+        Real log_rate = get_log_rate_direct_ion(ispe, Te);
+        if (log_rate <= -log_huge()) return 0.0_rt;
+        return std::exp(log_rate);
     } 
     // Accesses the excitation ionization rate for a given atomic number and temperature
     // by interpolating the precomputed rate_table array
+    // Returns log(rate), or -log_huge() if the rate vanishes
     AMREX_GPU_HOST_DEVICE inline 
-    Real get_rate_ex_ion(int ispe, Real Te) 
+    Real get_log_rate_ex_ion(int ispe, Real Te) 
     { 
-        Real rate = 0.0_rt; 
-
-        if (zion[ispe] != 0) return rate; 
+        if (zion[ispe] != 0) return -log_huge(); 
 
         Te *= K_to_eV; 
 
-        if (Te < T_min) return 0.0_rt; 
+        if (Te < T_min) return -log_huge(); 
         if (Te > T_max) Te = T_max; 
 
         int idx = get_atom_index(ispe); 
@@ -255,8 +291,15 @@ namespace coll_ion
         Real f = oscillator_strength[idx]; 
         Real prefactor = 1.57e-7_rt; 
 
-        rate = prefactor * f * Gaunt_value / (dE * std::sqrt(Te)) * std::exp(-dE / Te); 
-        return rate; 
+        // Computed in log space, since exp(-dE/Te) underflows at low Te
+        return std::log(prefactor * f / (dE * std::sqrt(Te))) + poly - dE / Te;
+    } 
+    AMREX_GPU_HOST_DEVICE inline 
+    Real get_rate_ex_ion(int ispe, Real Te) 
+    { 
+        Real log_rate = get_log_rate_ex_ion(ispe, Te);
+        if (log_rate <= -log_huge()) return 0.0_rt;
+        return std::exp(log_rate);
     } 
 
     // Effective temperature used to regularize the 3-body recombination
@@ -282,8 +325,10 @@ namespace coll_ion
         Real Te_eff = get_effective_temperature(Te, n_e);
         const Real Te_eff_eV = Te_eff * K_to_eV;
 
-        const Real rate_dir = get_rate_direct_ion(ispe, Te_eff);
-        const Real rate_ex  = get_rate_ex_ion(ispe, Te_eff);
+        // Work with log(rate): the rates themselves underflow at low Te, while
+        // the products rate*exp(E/Te) needed for detailed balance are finite
+        const Real log_rate_dir = get_log_rate_direct_ion(ispe, Te_eff);
+        const Real log_rate_ex  = get_log_rate_ex_ion(ispe, Te_eff);
 
         const int idx_atom = get_atom_index(ispe);
         const int idx_Eion = get_energy_index(zatom[idx_atom]) + zion[ispe];
@@ -300,14 +345,10 @@ namespace coll_ion
 
         // Calculate the log of the rate for two different physical processes (ionization and excitation)
 
-        // Compute log of each rate contribution
-        // If rate_dir is valid (> 0), take its natural log; otherwise use a tiny number to prevent -infinity
-        const Real log_rate_dir = (rate_dir > 0.0_rt) ? std::log(rate_dir) : ln_tiny;
         // Add the energy contribution (energy divided by electron temperature)
         const Real a = log_rate_dir + ionization_energy[idx_Eion] / Te_eff_eV;
 
         // Same process for the excitation channel
-        const Real log_rate_ex = (rate_ex > 0.0_rt) ? std::log(rate_ex) : ln_tiny;
         const Real b = log_rate_ex + ex_energy_atom[idx_atom] / Te_eff_eV;
 
         // Combine the two channels using the "log-sum-exp" trick
