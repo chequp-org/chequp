@@ -72,8 +72,8 @@ gaunt_fit = {
 }
 
 # Same as in the CHEQUP code
-OSC_STRENGTHS = {"H": 0.416, "Ar": 0.12}
-EX_ENERGIES   = {"H": 10.6,  "Ar": 10.3}
+OSC_STRENGTHS = {"H": 0.416, "Ar": 0.26}
+EX_ENERGIES   = {"H": 10.6,  "Ar": 11.6}
 
 # Ionization energies
 ION_ENERGIES = {
