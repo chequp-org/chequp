@@ -68,6 +68,7 @@ CHEQUP (Castro-based Hofi Expansion with QUasineutral Plasma) is a module built 
    :caption: Getting Started
 
    installation
+   initial_conditions
    run
    analyze_basic
    example_tutorial
@@ -89,6 +90,7 @@ CHEQUP (Castro-based Hofi Expansion with QUasineutral Plasma) is a module built 
    analysis_tool_python
    hipace_to_chequp
    chequp_to_fbpic
+   openpmd_conversion
 
 .. toctree::
    :hidden:

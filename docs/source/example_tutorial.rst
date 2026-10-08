@@ -16,6 +16,7 @@ This tutorial walks through creating initial conditions, running, and analyzing 
 
     # Ensure custom modules are in the path
     sys.path.append("../../initial_condition")
+    sys.path.append("../analysis")
     from ionization_routines import save_to_openpmd
     from analysis_tool import CastroSimulation
 
@@ -58,7 +59,9 @@ This tutorial walks through creating initial conditions, running, and analyzing 
 
 .. rubric:: Executing the Simulation
 
-The input file ``inputs.2d.cyl``::
+The input file used below is a modified version of ``sim_folder/run/inputs.2d.cyl`` (smaller domain, coarser grid,
+no thermal diffusion). Instead of editing the file, the same changes can be passed on the command line, e.g.
+``geometry.prob_hi="0.01 1.0" amr.n_cell="8 8" castro.diffuse_temp=0 problem.initial_conditions_file=2d_inputs.h5``::
 
     # ------------------  INPUTS TO MAIN PROGRAM  -------------------
     max_step = 10000
@@ -141,6 +144,7 @@ Run the 2D simulation
 .. code-block:: python
 
     # Load the simulation data
+    sim_folder = '.'  # directory where the simulation was run
     cs = CastroSimulation(sim_folder, 'plt_2d_')
     cs.sim_info()          # Prints grid, domain, and available fields
     max_level = cs.max_level # Identifies the maximum Adaptive Mesh Refinement (AMR) level
@@ -218,28 +222,4 @@ Run the 2D simulation
     plt.ylabel('Particle Number')
     plt.yscale('log')
     plt.legend()
-    plt.show()
-
-
-.. rubric:: AMR Grid Overlay Plot
-
-.. code-block:: python
-
-    # --- Plot AMR Grid Overlay ---
-    t_amr = 3.5e-9
-    fig, ax = plt.subplots(figsize=(8, 6))
-
-    n_H1 = cs.get_field(t_amr, quantity='rho_H1', level=4)
-    ax.imshow(n_H1['q']/atomic_mass, 
-              extent=[n_H1['z'][0]*1e1, n_H1['z'][-1]*1e1, n_H1['r'][0]*1e4, n_H1['r'][-1]*1e4], 
-              origin='lower', aspect='auto', cmap='Blues')
-
-    # Overlay the mesh patches and individual cells
-    cs.plot_AMR_grid(t_amr, ax, scale_z=10, scale_r=10000, 
-                     plot_patches=True, plot_cells=True, 
-                     swap_axes=True, linewidth_cell=0.14, linewidth_patch=1.0)
-                     
-    ax.set_xlim(0, 10)
-    ax.set_ylim(0, 100)
-    ax.set_title(f'AMR Grid Overlay at {t_amr} s')
     plt.show()
